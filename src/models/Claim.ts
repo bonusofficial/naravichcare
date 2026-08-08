@@ -64,6 +64,9 @@ const ClaimSchema: Schema = new Schema(
         currentStep: { type: Number, default: 1 },
         consumedQuotaName: { type: String }, // name of the quota being used
         createdBy: { type: String, default: "admin" },
+        cancelledByBuybackId: { type: Schema.Types.ObjectId, ref: "Buyback" },
+        cancelledAt: { type: Date },
+        cancellationReason: { type: String },
     },
     { timestamps: true }
 );

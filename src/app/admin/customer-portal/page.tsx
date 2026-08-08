@@ -41,7 +41,7 @@ export default function CustomerPortal() {
 
             {activeTab === "balance" && (
                 <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
                         <div className="bg-white p-4 rounded-xl border border-gray-200"><p className="text-xs text-gray-500 mb-1">ยอดผ่อนทั้งหมด</p><p className="text-xl font-black text-gray-800">฿45,000</p></div>
                         <div className="bg-white p-4 rounded-xl border border-gray-200"><p className="text-xs text-gray-500 mb-1">คงเหลืออีก</p><p className="text-xl font-black text-amber-600">฿30,000</p></div>
                     </div>
@@ -73,7 +73,7 @@ export default function CustomerPortal() {
                             <div className="flex justify-between text-xs font-semibold text-gray-600 mb-1.5"><span>อายุประกันที่เหลือ</span><span className="text-blue-600 font-black">24/36 เดือน</span></div>
                             <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden"><div className="h-full w-2/3 bg-blue-500 rounded-full"></div></div>
                         </div>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid gap-3 sm:grid-cols-3">
                             {quota.map((q, i) => (
                                 <div key={i} className={`p-3 rounded-lg border ${q.remaining > 0 ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"} text-center`}>
                                     <div className={`flex justify-center mb-2 ${q.remaining > 0 ? "text-emerald-600" : "text-red-500"}`}>{q.icon}</div>

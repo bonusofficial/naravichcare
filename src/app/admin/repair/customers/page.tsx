@@ -82,7 +82,7 @@ export default function RepairCustomersList() {
                     customers.map((c) => (
                         <div 
                             key={c._id} 
-                            className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col overflow-hidden relative"
+                            className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-gray-100 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl sm:rounded-[2.5rem] sm:p-8"
                         >
                             <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-1000"></div>
                             

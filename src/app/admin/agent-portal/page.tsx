@@ -18,7 +18,7 @@ export default function AgentPortalPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid gap-4 sm:grid-cols-3">
                 {[{ label: "พอร์ตทั้งหมด", value: "฿2.4M", icon: <TrendingUp size={16} />, color: "text-blue-600 bg-blue-50" }, { label: "ค่าคอมมิชชั่น", value: "฿24,000", icon: <CreditCard size={16} />, color: "text-emerald-600 bg-emerald-50" }, { label: "ลูกค้าทั้งหมด", value: "34 ราย", icon: <Users size={16} />, color: "text-indigo-600 bg-indigo-50" }].map(s => (
                     <div key={s.label} className="bg-white p-4 rounded-xl border border-gray-200">
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${s.color}`}>{s.icon}</div>

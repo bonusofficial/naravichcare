@@ -11,6 +11,7 @@ const RegistrationSchema = new mongoose.Schema(
             required: [true, "Please provide an IMEI"],
             index: true,
         },
+        imeiNormalized: { type: String, required: false, index: true },
         brand: {
             type: String,
             required: [true, "Please provide a device brand"],
@@ -39,6 +40,7 @@ const RegistrationSchema = new mongoose.Schema(
         firstName: { type: String, required: false },
         lastName: { type: String, required: false },
         idCard: { type: String, required: false, index: true },
+        idCardNormalized: { type: String, required: false, index: true },
         email: { type: String, required: false },
         // Detailed Address Info
         postCode: { type: String, required: false },
@@ -59,6 +61,7 @@ const RegistrationSchema = new mongoose.Schema(
             type: String,
             required: false,
         },
+        policyNumberNormalized: { type: String, required: false, index: true },
         referenceNumber: {
             type: String,
             required: false,
@@ -72,6 +75,22 @@ const RegistrationSchema = new mongoose.Schema(
             type: Date,
             required: false,
         },
+        coverageStatus: {
+            type: String,
+            enum: ["active", "expired", "bought_back"],
+            required: false,
+        },
+        coverageSnapshot: {
+            planId: { type: mongoose.Schema.Types.ObjectId, ref: "CoveragePlan" },
+            planName: { type: String },
+            priceMultiplier: { type: Number },
+            packagePriceSatang: { type: Number, min: 0 },
+            coverageStartAt: { type: Date },
+            coverageEndAt: { type: Date },
+            totalCoverageDays: { type: Number, min: 1 },
+            durationMonths: { type: Number, min: 1 },
+            snapshottedAt: { type: Date },
+        },
         createdAt: {
             type: Date,
             default: Date.now,
@@ -82,6 +101,12 @@ const RegistrationSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
+
+RegistrationSchema.pre("save", function () {
+    this.imeiNormalized = typeof this.imei === "string" ? this.imei.replace(/\D/g, "") : undefined;
+    this.idCardNormalized = typeof this.idCard === "string" ? this.idCard.replace(/\D/g, "") : undefined;
+    this.policyNumberNormalized = typeof this.policyNumber === "string" ? this.policyNumber.trim().toUpperCase() : undefined;
+});
 
 const Registration = mongoose.models.Registration || mongoose.model("Registration", RegistrationSchema);
 export default Registration;

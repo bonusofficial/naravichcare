@@ -98,7 +98,7 @@ export default function AdminFooterPage() {
 
     return (
         <div className="space-y-8 max-w-3xl mx-auto">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
                         <LayoutTemplate className="text-blue-600" size={30} />
@@ -138,11 +138,11 @@ export default function AdminFooterPage() {
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
                 <h3 className="font-black text-slate-800 uppercase tracking-tight text-sm border-b border-slate-100 pb-2">ติดต่อสอบถาม</h3>
                 <Field label="หัวข้อคอลัมน์ติดต่อ" value={data.contactTitle} onChange={set("contactTitle")} />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="เบอร์โทร (ที่แสดง)" value={data.phoneDisplay} onChange={set("phoneDisplay")} />
                     <Field label="ลิงก์โทร (tel:...)" value={data.phoneHref} onChange={set("phoneHref")} hint='เช่น tel:+6621234567' />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="อีเมล (ที่แสดง)" value={data.emailDisplay} onChange={set("emailDisplay")} />
                     <Field label="ลิงก์อีเมล (mailto:...)" value={data.emailHref} onChange={set("emailHref")} />
                 </div>

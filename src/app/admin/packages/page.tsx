@@ -117,7 +117,7 @@ export default function PackagesAdmin() {
             {/* Add/Edit Overlay */}
             {(showAddForm || editingId) && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+                    <div className="animate-in fade-in zoom-in w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl duration-200 sm:p-8">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-xl font-black text-gray-900">
                                 {showAddForm ? "เพิ่มแพ็กเกจใหม่" : "แก้ไขแพ็กเกจ"}
@@ -161,7 +161,7 @@ export default function PackagesAdmin() {
                                     required
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4 text-left">
+                            <div className="grid gap-4 text-left sm:grid-cols-2">
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-bold text-gray-500 ml-1 uppercase">ราคารายเดือน</label>
                                     <input
@@ -263,7 +263,7 @@ export default function PackagesAdmin() {
                         </div>
 
                         {/* The Card UI (Matching Project Theme) */}
-                        <div className="bg-white rounded-3xl p-8 shadow-xl shadow-gray-200/40 border border-gray-100 flex flex-col h-full transition-all duration-300">
+                        <div className="flex h-full flex-col rounded-3xl border border-gray-100 bg-white p-5 shadow-xl shadow-gray-200/40 transition-all duration-300 sm:p-8">
                             {/* Header */}
                             <div className="mb-6">
                                 <h3 className="text-lg font-black text-gray-800 mb-0.5 leading-tight">{pkg.title || "ราคาเครื่อง"}</h3>

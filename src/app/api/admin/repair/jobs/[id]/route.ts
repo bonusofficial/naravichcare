@@ -4,6 +4,7 @@ import RepairJob from "@/models/RepairJob";
 
 import { sendLineFlexMessage } from "@/lib/line-messaging";
 import { recordAdminLog } from "@/lib/admin-log";
+import { assertClaimEligible, ClaimEligibilityError } from "@/lib/claim-eligibility";
 
 interface Context {
     params: Promise<{ id: string }>;
@@ -36,6 +37,7 @@ export async function PATCH(req: Request, { params }: Context) {
         if (!currentJob) {
             return NextResponse.json({ error: "Job not found" }, { status: 404 });
         }
+        if (currentJob.jobType === "claim") await assertClaimEligible({ imei: currentJob.imei });
 
         const getStatusLabel = (status: string) => {
             switch (status) {
@@ -155,6 +157,7 @@ export async function PATCH(req: Request, { params }: Context) {
 
         return NextResponse.json(updatedJob);
     } catch (error: any) {
+        if (error instanceof ClaimEligibilityError) return NextResponse.json({ error: error.message, code: error.code }, { status: 409 });
         console.error("Update Job Error:", error);
         return NextResponse.json({ error: "Failed to update job" }, { status: 500 });
     }
@@ -164,9 +167,13 @@ export async function DELETE(req: Request, { params }: Context) {
     try {
         await dbConnect();
         const { id } = await params;
+        const job = await RepairJob.findById(id).select("jobType imei").lean();
+        if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+        if (job.jobType === "claim") await assertClaimEligible({ imei: job.imei });
         await RepairJob.findByIdAndDelete(id);
         return NextResponse.json({ success: true });
     } catch (error) {
+        if (error instanceof ClaimEligibilityError) return NextResponse.json({ error: error.message, code: error.code }, { status: 409 });
         return NextResponse.json({ error: "Failed to delete job" }, { status: 500 });
     }
 }

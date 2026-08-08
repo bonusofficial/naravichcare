@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import Registration from "@/models/Registration";
 import CoveragePlan from "@/models/CoveragePlan";
 import Claim from "@/models/Claim";
+import Buyback from "@/models/Buyback";
 
 export async function POST(req: Request) {
     try {
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
                 { idCard: cleanQuery }
             ]
         })
-            .select("firstName lastName imei idCard brand model policyNumber packageType status approvedAt createdAt")
+            .select("firstName lastName imei idCard brand model policyNumber packageType status coverageStatus coverageSnapshot.coverageEndAt approvedAt createdAt")
             .sort({ createdAt: -1 })
             .lean();
 
@@ -34,6 +35,18 @@ export async function POST(req: Request) {
             return NextResponse.json({
                 error: "ประกันของลูกค้ายังไม่ได้รับการอนุมัติ สถานะปัจจุบัน: " + registration.status
             }, { status: 403 });
+        }
+
+        const expiredByDate = registration.coverageSnapshot?.coverageEndAt && new Date(registration.coverageSnapshot.coverageEndAt).getTime() <= Date.now();
+        if (registration.coverageStatus === "bought_back" || registration.coverageStatus === "expired" || expiredByDate) {
+            return NextResponse.json({ error: "สิทธิ์แพ็กคุ้มครองสิ้นสุดแล้ว" }, { status: 409 });
+        }
+        const buybackLock = await Buyback.findOne({
+            registrationId: registration._id,
+            status: { $in: ["pending_approval", "processing", "approved"] },
+        }).select("status").lean();
+        if (buybackLock) {
+            return NextResponse.json({ error: "แพ็กอยู่ระหว่างหรือเสร็จสิ้นการซื้อคืน ไม่สามารถเปิดเคลมได้", buybackStatus: buybackLock.status }, { status: 409 });
         }
 
         // Parallel execution for remaining data

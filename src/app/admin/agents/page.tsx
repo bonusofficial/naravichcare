@@ -276,7 +276,7 @@ export default function AgentsManagement() {
                             </button>
                         </div>
 
-                        <form onSubmit={handleSave} className="p-8">
+                        <form onSubmit={handleSave} className="p-4 sm:p-8">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 {/* Left Col - Info */}
                                 <div className="space-y-6">
@@ -305,7 +305,7 @@ export default function AgentsManagement() {
                                             />
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid gap-4 sm:grid-cols-2">
                                             <div className="space-y-1.5">
                                                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ชื่อผู้ติดต่อหลัก *</label>
                                                 <input
@@ -380,7 +380,7 @@ export default function AgentsManagement() {
                                                 <option value="ไอซีบีซี">ธนาคารไอซีบีซี ไทย (ICBCT)</option>
                                             </select>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid gap-4 sm:grid-cols-2">
                                             <div className="space-y-1.5">
                                                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">เลขที่บัญชี</label>
                                                 <input

@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRegister } from "../RegisterContext";
+import { COVERAGE_PLAN_DEVICE_OPTIONS, isCoveragePlanDeviceType } from "@/lib/coverage-plan";
 
 const phoneData: Record<string, string[]> = {
     Apple: [
@@ -63,7 +64,7 @@ const phoneData: Record<string, string[]> = {
 
 export default function Step2() {
     const router = useRouter();
-    const { brand, setBrand, model, setModel, devicePrice, setDevicePrice, setDeviceType } = useRegister();
+    const { brand, setBrand, model, setModel, devicePrice, setDevicePrice, deviceType, setDeviceType } = useRegister();
 
     // State to toggle manual input
     const [isCustomBrand, setIsCustomBrand] = useState(false);
@@ -75,11 +76,13 @@ export default function Step2() {
             setIsCustomBrand(true);
             setBrand("");
             setModel("");
+            setDeviceType("all");
         } else {
             setIsCustomBrand(false);
             setBrand(val);
             setIsCustomModel(false); // Reset custom model when brand changes
             setModel("");
+            setDeviceType("");
         }
     };
 
@@ -88,13 +91,21 @@ export default function Step2() {
         if (val === "อื่นๆ") {
             setIsCustomModel(true);
             setModel("");
+            setDeviceType("all");
         } else {
             setIsCustomModel(false);
             setModel(val);
+            setDeviceType("");
         }
     };
 
     const handleNext = () => {
+        if (customBrandActive || customModelActive) {
+            setDeviceType(isCoveragePlanDeviceType(deviceType) ? deviceType : "all");
+            router.push("/register/step3");
+            return;
+        }
+
         // Logic to determine deviceType
         let identifiedType = "Smartphone";
         const m = model.toLowerCase();
@@ -113,6 +124,8 @@ export default function Step2() {
     };
 
     const availableModels = phoneData[brand] || [];
+    const customBrandActive = isCustomBrand || Boolean(brand && !phoneData[brand]);
+    const customModelActive = isCustomModel || Boolean(!customBrandActive && brand && model && !availableModels.includes(model));
 
     return (
         <div className="w-full max-w-[600px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -126,7 +139,7 @@ export default function Step2() {
                 {/* Brand */}
                 <div className="space-y-3">
                     <label className="text-sm font-black text-slate-400 uppercase tracking-widest ml-1">ยี่ห้อ (Brand)</label>
-                    {!isCustomBrand ? (
+                    {!customBrandActive ? (
                         <select
                             className="w-full border-2 border-slate-100 rounded-2xl px-5 py-4 focus:border-blue-500 focus:outline-none transition-colors text-slate-800 font-bold bg-slate-50 appearance-none cursor-pointer"
                             value={brand && phoneData[brand] ? brand : (brand ? "อื่นๆ" : "")}
@@ -149,7 +162,7 @@ export default function Step2() {
                                 autoFocus
                             />
                             <button
-                                onClick={() => { setIsCustomBrand(false); setBrand(""); }}
+                                onClick={() => { setIsCustomBrand(false); setBrand(""); setModel(""); setDeviceType(""); }}
                                 className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase text-slate-400 hover:text-blue-500"
                             >
                                 ยกเลิก
@@ -161,7 +174,7 @@ export default function Step2() {
                 {/* Model */}
                 <div className="space-y-3">
                     <label className="text-sm font-black text-slate-400 uppercase tracking-widest ml-1">รุ่น (Model)</label>
-                    {(!isCustomModel && !isCustomBrand && brand && availableModels.length > 0) ? (
+                    {(!customModelActive && !customBrandActive && brand && availableModels.length > 0) ? (
                         <select
                             className="w-full border-2 border-slate-100 rounded-2xl px-5 py-4 focus:border-blue-500 focus:outline-none transition-colors text-slate-800 font-bold bg-slate-50 appearance-none cursor-pointer disabled:opacity-50"
                             value={model && availableModels.includes(model) ? model : (model ? "อื่นๆ" : "")}
@@ -183,11 +196,11 @@ export default function Step2() {
                                 value={model}
                                 onChange={(e) => setModel(e.target.value)}
                                 disabled={!brand}
-                                autoFocus={isCustomModel || isCustomBrand}
+                                autoFocus={customModelActive || customBrandActive}
                             />
-                            {(isCustomModel && !isCustomBrand && availableModels.length > 0) && (
+                            {(customModelActive && !customBrandActive && availableModels.length > 0) && (
                                 <button
-                                    onClick={() => { setIsCustomModel(false); setModel(""); }}
+                                    onClick={() => { setIsCustomModel(false); setModel(""); setDeviceType(""); }}
                                     className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase text-slate-400 hover:text-blue-500"
                                 >
                                     ยกเลิก
@@ -196,6 +209,22 @@ export default function Step2() {
                         </div>
                     )}
                 </div>
+
+                {(customBrandActive || customModelActive) && (
+                    <div className="space-y-3">
+                        <label className="text-sm font-black text-slate-400 uppercase tracking-widest ml-1">ประเภทอุปกรณ์ (Device Type)</label>
+                        <select
+                            className="w-full border-2 border-slate-100 rounded-2xl px-5 py-4 focus:border-blue-500 focus:outline-none transition-colors text-slate-800 font-bold bg-slate-50 appearance-none cursor-pointer"
+                            value={isCoveragePlanDeviceType(deviceType) ? deviceType : "all"}
+                            onChange={(event) => setDeviceType(event.target.value)}
+                        >
+                            {COVERAGE_PLAN_DEVICE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                        </select>
+                        <p className="text-[10px] text-slate-400 font-bold italic ml-2">เลือกทั้งหมดเพื่อดูแผนที่เปิดใช้งานสำหรับอุปกรณ์ทุกประเภท</p>
+                    </div>
+                )}
 
                 <div className="py-2 border-t border-slate-50"></div>
 

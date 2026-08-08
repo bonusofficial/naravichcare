@@ -1,37 +1,57 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "default_secret");
+function unauthorized(request: NextRequest) {
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const response = NextResponse.redirect(new URL("/admin/login", request.url));
+    response.cookies.delete("admin_token");
+    return response;
+}
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const adminToken = request.cookies.get("admin_token")?.value;
+    const isAdminPage = pathname.startsWith("/admin") && pathname !== "/admin/login";
+    const isAdminApi = pathname.startsWith("/api/admin/")
+        || pathname === "/api/admin-users"
+        || pathname.startsWith("/api/admin-users/")
+        || pathname === "/api/auth/change-password";
+    const isUserManagementApi = pathname === "/api/admin/users" || pathname === "/api/admin-users" || pathname.startsWith("/api/admin-users/");
 
-    // 1. If trying to access admin pages (except login)
-    if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
+    if (isAdminPage || isAdminApi) {
         if (!adminToken) {
-            return NextResponse.redirect(new URL("/admin/login", request.url));
+            return unauthorized(request);
         }
 
         try {
-            // Verify token
-            await jwtVerify(adminToken, JWT_SECRET);
+            const secret = process.env.JWT_SECRET;
+            if (!secret || secret.length < 32) {
+                console.error("JWT_SECRET is missing or shorter than 32 characters");
+                return NextResponse.json({ error: "Server authentication is not configured" }, { status: 500 });
+            }
+
+            const { payload } = await jwtVerify(adminToken, new TextEncoder().encode(secret));
+
+            if (isUserManagementApi && payload.role !== "super_admin") {
+                return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            }
+
             return NextResponse.next();
-        } catch (error) {
-            // Token invalid or expired
-            const response = NextResponse.redirect(new URL("/admin/login", request.url));
-            response.cookies.delete("admin_token");
-            return response;
+        } catch {
+            return unauthorized(request);
         }
     }
 
-    // 2. If already logged in and trying to access login page
     if (pathname === "/admin/login" && adminToken) {
         try {
-            await jwtVerify(adminToken, JWT_SECRET);
+            const secret = process.env.JWT_SECRET;
+            if (!secret) return NextResponse.next();
+            await jwtVerify(adminToken, new TextEncoder().encode(secret));
             return NextResponse.redirect(new URL("/admin", request.url));
-        } catch (error) {
-            // Token invalid, let them stay on login page
+        } catch {
             return NextResponse.next();
         }
     }
@@ -39,7 +59,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
 }
 
-// Config to match only admin routes
 export const config = {
-    matcher: ["/admin/:path*"],
+    matcher: ["/admin/:path*", "/api/admin/:path*", "/api/admin-users/:path*", "/api/auth/change-password"],
 };

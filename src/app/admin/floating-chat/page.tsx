@@ -80,9 +80,9 @@ export default function AdminFloatingChatPage() {
     const setField = (key: keyof Omit<FloatingChatData, "contacts">) => (value: string) =>
         setData(prev => ({ ...prev, [key]: value }));
 
-    const updateContact = (i: number, field: keyof ContactMethod, value: any) => {
+    const updateContact = <K extends keyof ContactMethod>(i: number, field: K, value: ContactMethod[K]) => {
         const updated = [...data.contacts];
-        (updated[i] as any)[field] = value;
+        updated[i] = { ...updated[i], [field]: value };
         setData(prev => ({ ...prev, contacts: updated }));
     };
 
@@ -132,7 +132,7 @@ export default function AdminFloatingChatPage() {
     return (
         <div className="space-y-6 max-w-3xl mx-auto">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
                         <MessageCircle className="text-blue-600" size={30} />
@@ -221,7 +221,7 @@ export default function AdminFloatingChatPage() {
                             </div>
 
                             {/* Row 2: fields */}
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid gap-3 sm:grid-cols-2">
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">ข้อความหลัก</label>
                                     <input

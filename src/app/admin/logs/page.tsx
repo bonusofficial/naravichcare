@@ -176,7 +176,7 @@ export default function AdminLogsPage() {
                 </div>
 
                 {totalPages > 1 && (
-                    <div className="p-6 border-t border-slate-50 flex items-center justify-between">
+                    <div className="flex flex-col gap-3 border-t border-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                             หน้า {currentPage} จาก {totalPages}
                         </p>

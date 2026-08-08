@@ -3,15 +3,12 @@ import { jwtVerify } from "jose";
 import AdminLog from "@/models/AdminLog";
 import dbConnect from "@/lib/mongodb";
 
-const secretKey = process.env.JWT_SECRET || "navarichcare_secret_key_12345";
-const JWT_SECRET = new TextEncoder().encode(secretKey);
-
 interface LogParams {
     action: string;
     description: string;
     targetId?: string;
     targetType?: string;
-    details?: any;
+    details?: unknown;
     req?: Request;
 }
 
@@ -28,7 +25,9 @@ export async function recordAdminLog({ action, description, targetId, targetType
 
         if (token) {
             try {
-                const { payload } = await jwtVerify(token, JWT_SECRET);
+                const secretKey = process.env.JWT_SECRET;
+                if (!secretKey) throw new Error("JWT_SECRET is not configured");
+                const { payload } = await jwtVerify(token, new TextEncoder().encode(secretKey));
                 adminId = payload.id as string;
                 adminName = (payload.username as string) || "Unknown Admin";
             } catch (err) {

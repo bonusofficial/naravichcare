@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"; // Re-sync schema 2
 import dbConnect from "@/lib/mongodb";
 import CoveragePlan from "@/models/CoveragePlan";
+import { isCoveragePlanDeviceType } from "@/lib/coverage-plan";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -31,6 +32,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         await dbConnect();
         const { id } = await params;
         const body = await req.json();
+        if (!Number.isInteger(Number(body.coverageDurationMonths)) || Number(body.coverageDurationMonths) < 1) {
+            return NextResponse.json({ message: "กรุณาระบุระยะเวลาคุ้มครองเป็นจำนวนเดือน" }, { status: 400 });
+        }
+        if (!isCoveragePlanDeviceType(body.deviceType)) {
+            return NextResponse.json({ message: "กรุณาเลือกประเภทอุปกรณ์ที่ถูกต้อง" }, { status: 400 });
+        }
+        body.coverageDurationMonths = Number(body.coverageDurationMonths);
         const plan = await CoveragePlan.findByIdAndUpdate(id, body, { new: true, runValidators: true });
         return NextResponse.json(plan);
     } catch (error: any) {

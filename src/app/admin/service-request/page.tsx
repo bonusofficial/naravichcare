@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Save, GripVertical, Table, Eye, EyeOff, Loader2, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, Save, GripVertical, Table, Loader2, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ServiceRow {
     _id?: string;
@@ -65,9 +65,9 @@ export default function AdminServiceRequestPage() {
         setRows(rows.filter((_, idx) => idx !== i));
     };
 
-    const updateRow = (i: number, field: keyof ServiceRow, value: any) => {
+    const updateRow = <K extends keyof ServiceRow>(i: number, field: K, value: ServiceRow[K]) => {
         const updated = [...rows];
-        (updated[i] as any)[field] = value;
+        updated[i] = { ...updated[i], [field]: value };
         setRows(updated);
     };
 
@@ -96,9 +96,9 @@ export default function AdminServiceRequestPage() {
     return (
         <div className="space-y-8 max-w-6xl mx-auto pb-20">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
+                    <h2 className="flex items-start gap-3 text-2xl font-black uppercase tracking-tight text-slate-900 sm:items-center sm:text-3xl">
                         <Table className="text-blue-600" size={30} />
                         จัดการตารางคำขอรับบริิการ (Service Request)
                     </h2>
@@ -107,7 +107,7 @@ export default function AdminServiceRequestPage() {
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-wider shadow-xl transition-all
+                    className={`flex w-full items-center justify-center gap-2 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-wider shadow-xl transition-all sm:w-auto
                         ${saved ? "bg-emerald-500 text-white" : "bg-slate-900 hover:bg-blue-600 text-white"}`}
                 >
                     {saving ? (
@@ -121,9 +121,9 @@ export default function AdminServiceRequestPage() {
             </div>
 
             {/* General Info */}
-            <div className="bg-white rounded-3xl p-8 border-2 border-slate-100 space-y-6 shadow-sm">
+            <div className="space-y-6 rounded-3xl border-2 border-slate-100 bg-white p-4 shadow-sm sm:p-8">
                 <h3 className="text-lg font-black text-slate-800 uppercase italic border-b-2 border-slate-50 pb-3">หัวข้อและส่วนประกอบทั่วไป</h3>
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid gap-6 sm:grid-cols-2">
                     <div className="space-y-2">
                         <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Subtitle (เล็ก)</label>
                         <input
@@ -152,9 +152,9 @@ export default function AdminServiceRequestPage() {
             </div>
 
             {/* Columns Manage */}
-            <div className="bg-white rounded-3xl p-8 border-2 border-slate-100 space-y-6 shadow-sm font-bold">
+            <div className="space-y-6 rounded-3xl border-2 border-slate-100 bg-white p-4 font-bold shadow-sm sm:p-8">
                 <h3 className="text-lg font-black text-slate-800 uppercase italic border-b-2 border-slate-50 pb-3">หัวข้อคอลัมน์ (3 คอลัมน์)</h3>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid gap-4 sm:grid-cols-3">
                     {columns.map((col, i) => (
                         <div key={i} className="space-y-2">
                             <label className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] ml-1">คอลัมน์ {i + 1}</label>
@@ -171,7 +171,7 @@ export default function AdminServiceRequestPage() {
 
             {/* Rows Manage */}
             <div className="space-y-4">
-                <div className="flex items-center justify-between px-4">
+                <div className="flex flex-col gap-3 px-1 sm:flex-row sm:items-center sm:justify-between sm:px-4">
                     <h3 className="text-lg font-black text-slate-800 uppercase italic tracking-wider">ข้อมูลแต่ละแถว (Rows)</h3>
                     <button
                         onClick={addRow}

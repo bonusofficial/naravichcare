@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Edit2, ShieldCheck, ListChecks, Smartphone } from "lucide-react";
 import Link from "next/link";
+import { getCoveragePlanDeviceLabel } from "@/lib/coverage-plan";
 
 interface ICoveragePlan {
     _id: string;
@@ -10,10 +11,12 @@ interface ICoveragePlan {
     subTitle: string;
     durationText: string;
     durationUnit: string;
+    coverageDurationMonths?: number;
     priceMultiplier: number;
     highlights: string[];
     order: number;
     isActive: boolean;
+    deviceType?: string;
 }
 
 export default function CoveragePlansAdmin() {
@@ -119,8 +122,10 @@ export default function CoveragePlansAdmin() {
                                         {pkg.name}<br />
                                         <span className="text-slate-400 text-base">{pkg.subTitle}</span> <span className="text-blue-600">{pkg.durationText}</span>
                                     </h4>
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest py-1 px-3 bg-slate-50 rounded-lg">ลำดับ: {pkg.order}</p>
+                                        <p className={`text-[9px] font-black uppercase tracking-widest py-1 px-3 rounded-lg ${pkg.coverageDurationMonths ? "bg-blue-50 text-blue-500" : "bg-red-50 text-red-500"}`}>{pkg.coverageDurationMonths ? `${pkg.coverageDurationMonths} เดือน` : "ต้องกำหนดระยะเวลา"}</p>
+                                        <p className="text-[9px] font-black py-1 px-3 rounded-lg bg-cyan-50 text-cyan-700">{getCoveragePlanDeviceLabel(pkg.deviceType)}</p>
                                     </div>
                                 </div>
 
