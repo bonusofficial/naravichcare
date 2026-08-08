@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import FloatingChat from "@/models/FloatingChat";
+import { recordAdminLog } from "@/lib/admin-log";
 
 const DEFAULT_CONTACTS = [
     { iconType: "facebook", label: "Chat with us", desc: "Facebook Messenger", href: "https://m.me/naravichcare", isActive: true, order: 0 },
@@ -32,6 +33,15 @@ export async function PUT(req: Request) {
             Object.assign(doc, body);
             await doc.save();
         }
+
+        await recordAdminLog({
+            req,
+            action: "update_floating_chat",
+            description: "อัปเดตการตั้งค่า Floating Chat",
+            targetId: doc._id.toString(),
+            targetType: "FloatingChat"
+        });
+
         return NextResponse.json({ success: true, data: doc });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

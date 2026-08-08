@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"; // Re-sync schema 2
 import dbConnect from "@/lib/mongodb";
 import CoveragePlan from "@/models/CoveragePlan";
+import { recordAdminLog } from "@/lib/admin-log";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -32,6 +33,16 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         const { id } = await params;
         const body = await req.json();
         const plan = await CoveragePlan.findByIdAndUpdate(id, body, { new: true, runValidators: true });
+
+        await recordAdminLog({
+            req,
+            action: "update_coverage_plan",
+            description: `อัปเดตแผนความคุ้มครอง: ${body.name || plan?.name || id}`,
+            targetId: id,
+            targetType: "CoveragePlan",
+            details: body
+        });
+
         return NextResponse.json(plan);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 400 });
@@ -42,7 +53,17 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     try {
         await dbConnect();
         const { id } = await params;
+        const plan = await CoveragePlan.findById(id);
         await CoveragePlan.findByIdAndDelete(id);
+
+        await recordAdminLog({
+            req,
+            action: "delete_coverage_plan",
+            description: `ลบแผนความคุ้มครอง: ${plan?.name || id}`,
+            targetId: id,
+            targetType: "CoveragePlan"
+        });
+
         return NextResponse.json({ success: true });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 400 });

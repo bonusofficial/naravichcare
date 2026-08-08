@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"; // Re-sync schema
 import dbConnect from "@/lib/mongodb";
 import CoveragePlan from "@/models/CoveragePlan";
+import { recordAdminLog } from "@/lib/admin-log";
 
 export async function GET() {
     try {
@@ -17,6 +18,15 @@ export async function POST(req: Request) {
         await dbConnect();
         const body = await req.json();
         const plan = await CoveragePlan.create(body);
+
+        await recordAdminLog({
+            req,
+            action: "create_coverage_plan",
+            description: `สร้างแผนความคุ้มครองใหม่: ${body.name || 'ไม่ระบุชื่อ'}`,
+            targetId: plan._id.toString(),
+            targetType: "CoveragePlan"
+        });
+
         return NextResponse.json(plan, { status: 201 });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 400 });

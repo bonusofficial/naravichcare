@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import FooterSettings from "@/models/FooterSettings";
+import { recordAdminLog } from "@/lib/admin-log";
 
 export async function GET() {
     try {
@@ -32,6 +33,15 @@ export async function PUT(req: Request) {
             if (body.poweredByText !== undefined) doc.poweredByText = body.poweredByText;
             await doc.save();
         }
+
+        await recordAdminLog({
+            req,
+            action: "update_footer",
+            description: "อัปเดตการตั้งค่า Footer",
+            targetId: doc._id.toString(),
+            targetType: "FooterSettings"
+        });
+
         return NextResponse.json({ success: true, data: doc });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import Payment from "@/models/Payment";
 import Loan from "@/models/Loan";
 import { sendLineNotify } from "@/lib/line";
+import { recordAdminLog } from "@/lib/admin-log";
 
 export async function POST(req: Request) {
     try {
@@ -55,6 +56,16 @@ export async function POST(req: Request) {
             `💵 ยอดชำระ: ฿${amount.toLocaleString()}\n` +
             `🔢 งวดที่: ${loan.paidInstallments}/${loan.totalInstallments}`
         );
+
+        // 5. Record Admin Log
+        await recordAdminLog({
+            req,
+            action: "record_payment",
+            description: `บันทึกรับชำระเงิน: ${receiptId} - สัญญา ${loan.contractId} งวดที่ ${loan.paidInstallments}`,
+            targetId: payment._id.toString(),
+            targetType: "Payment",
+            details: { receiptId, contractId: loan.contractId, amount, installmentNumber: loan.paidInstallments }
+        });
 
         return NextResponse.json({ success: true, receiptId, payment });
     } catch (error: any) {

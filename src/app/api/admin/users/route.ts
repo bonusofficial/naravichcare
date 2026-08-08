@@ -68,6 +68,15 @@ export async function PATCH(req: Request) {
             { new: true }
         ).select("-password");
 
+        await recordAdminLog({
+            req,
+            action: "update_user",
+            description: `แก้ไขข้อมูลพนักงาน "${updatedUser.name}" (@${updatedUser.username})`,
+            targetId: id,
+            targetType: "AdminUser",
+            details: updateData
+        });
+
         return NextResponse.json(updatedUser);
     } catch (error) {
         console.error("Update User Error:", error);

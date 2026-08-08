@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Claim from "@/models/Claim";
+import { recordAdminLog } from "@/lib/admin-log";
 
 // GET all claims
 export async function GET() {
@@ -19,6 +20,15 @@ export async function POST(req: Request) {
         await dbConnect();
         const body = await req.json();
         const claim = await Claim.create(body);
+
+        await recordAdminLog({
+            req,
+            action: "create_claim",
+            description: `สร้างคำขอเคลมใหม่ ID: ${claim._id}`,
+            targetId: claim._id.toString(),
+            targetType: "Claim"
+        });
+
         return NextResponse.json({ success: true, data: claim }, { status: 201 });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -33,6 +43,16 @@ export async function PUT(req: Request) {
         if (!_id) return NextResponse.json({ error: "Missing Claim ID" }, { status: 400 });
 
         const claim = await Claim.findByIdAndUpdate(_id, updateData, { new: true });
+
+        await recordAdminLog({
+            req,
+            action: "update_claim",
+            description: `อัปเดตคำขอเคลม ID: ${_id}`,
+            targetId: _id,
+            targetType: "Claim",
+            details: updateData
+        });
+
         return NextResponse.json({ success: true, data: claim });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -47,7 +67,17 @@ export async function DELETE(req: Request) {
 
         if (!id) return NextResponse.json({ error: "Missing Claim ID" }, { status: 400 });
 
+        const claim = await Claim.findById(id);
         await Claim.findByIdAndDelete(id);
+
+        await recordAdminLog({
+            req,
+            action: "delete_claim",
+            description: `ลบคำขอเคลม ID: ${id}`,
+            targetId: id,
+            targetType: "Claim"
+        });
+
         return NextResponse.json({ success: true, message: "Claim deleted" });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import TermsPage from "@/models/TermsPage";
+import { recordAdminLog } from "@/lib/admin-log";
 
 const DEFAULT_TERMS = [
     {
@@ -49,6 +50,15 @@ export async function PUT(req: Request) {
             page.items = body.items;
             await page.save();
         }
+
+        await recordAdminLog({
+            req,
+            action: "update_terms",
+            description: "อัปเดตข้อกำหนดและเงื่อนไข",
+            targetId: page._id.toString(),
+            targetType: "TermsPage"
+        });
+
         return NextResponse.json({ success: true, data: page });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

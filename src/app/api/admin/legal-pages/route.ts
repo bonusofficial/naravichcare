@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import LegalPage from "@/models/LegalPage";
+import { recordAdminLog } from "@/lib/admin-log";
 
 export async function GET() {
     try {
@@ -46,6 +47,13 @@ export async function PUT(req: Request) {
                 { upsert: true, new: true }
             );
         }
+
+        await recordAdminLog({
+            req,
+            action: "update_legal_pages",
+            description: `อัปเดตหน้ากฎหมาย: ${privacy ? 'นโยบายความเป็นส่วนตัว' : ''} ${terms ? 'เงื่อนไขการใช้บริการ' : ''}`,
+            targetType: "LegalPage"
+        });
 
         const pages = await LegalPage.find({ slug: { $in: ["privacy", "terms"] } });
         const p = pages.find(x => x.slug === "privacy");

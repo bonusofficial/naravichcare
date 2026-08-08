@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import ServiceRequestPage from "@/models/ServiceRequestPage";
+import { recordAdminLog } from "@/lib/admin-log";
 
 const DEFAULT_ROWS = [
     {
@@ -62,6 +63,15 @@ export async function PUT(req: Request) {
             if (body.footer) page.footer = body.footer;
             await page.save();
         }
+
+        await recordAdminLog({
+            req,
+            action: "update_service_request",
+            description: "อัปเดตหน้าขอรับบริการ",
+            targetId: page._id.toString(),
+            targetType: "ServiceRequestPage"
+        });
+
         return NextResponse.json({ success: true, data: page });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

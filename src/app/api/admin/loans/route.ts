@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import Loan from "@/models/Loan";
 import Insurance from "@/models/Insurance";
 import { sendLineNotify } from "@/lib/line";
+import { recordAdminLog } from "@/lib/admin-log";
 
 export async function POST(req: Request) {
     try {
@@ -59,6 +60,16 @@ export async function POST(req: Request) {
             `💰 ยอดจัด: ฿${loan.loanAmount.toLocaleString()}\n` +
             `📅 เริ่ม: ${new Date().toLocaleDateString('th-TH')}`
         );
+
+        // 6. Record Admin Log
+        await recordAdminLog({
+            req,
+            action: "create_loan",
+            description: `สร้างสัญญาใหม่: ${contractId} - ${loan.customerName}`,
+            targetId: loan._id.toString(),
+            targetType: "Loan",
+            details: { contractId, customerName: loan.customerName, loanAmount: loan.loanAmount }
+        });
 
         return NextResponse.json({ success: true, contractId, loan });
     } catch (error: any) {
