@@ -24,6 +24,25 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         if (password) updatedUser.password = password;
         await updatedUser.save();
 
+        const { name, role, email, isActive, branchId } = data;
+        if (branchId && (!mongoose.isValidObjectId(branchId) || !(await Branch.exists({ _id: branchId, isActive: true })))) {
+            return NextResponse.json({ error: "Branch not found or inactive" }, { status: 400 });
+        }
+        if (typeof name === "string") user.name = name;
+        if (typeof role === "string") user.role = role;
+        if (typeof email === "string") user.email = email;
+        if (typeof isActive === "boolean") user.isActive = isActive;
+        if (branchId === "" || branchId === null) user.branchId = undefined;
+        else if (typeof branchId === "string" && mongoose.isValidObjectId(branchId)) user.branchId = new mongoose.Types.ObjectId(branchId);
+
+        if (data.password) {
+            const passwordError = validatePassword(data.password);
+            if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 });
+            user.password = data.password;
+        }
+
+        await user.save();
+
         // Record Admin Log
         const { recordAdminLog } = await import("@/lib/admin-log");
         await recordAdminLog({
@@ -64,7 +83,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         });
 
         return NextResponse.json({ message: "User deleted successfully" });
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: "Failed to delete admin user" }, { status: 500 });
     }
 }

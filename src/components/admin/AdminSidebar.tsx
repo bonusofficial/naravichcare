@@ -71,10 +71,12 @@ const navGroups: NavGroup[] = [
 
 interface AdminSidebarProps {
     collapsed: boolean;
+    mobileOpen: boolean;
+    onMobileClose: () => void;
     onToggle: () => void;
 }
 
-export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
+export function AdminSidebar({ collapsed, mobileOpen, onMobileClose, onToggle }: AdminSidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
     // Permissions arrive with the user from /api/auth/me. Fetching them from
@@ -122,8 +124,8 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
 
     return (
         <aside
-            className="h-screen bg-white flex flex-col fixed left-0 top-0 z-50 border-r border-gray-200 transition-all duration-300 ease-in-out"
-            style={{ width: collapsed ? "72px" : "288px" }}
+            className={`fixed left-0 top-0 z-50 flex h-dvh w-[calc(100vw-2rem)] max-w-72 flex-col border-r border-gray-200 bg-white shadow-2xl transition-all duration-300 ease-in-out lg:w-[var(--admin-sidebar-width)] lg:shadow-none ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+            style={{ "--admin-sidebar-width": `${contentCollapsed ? 72 : 288}px` } as React.CSSProperties}
         >
             {/* Brand */}
             <div className="flex items-center h-16 border-b border-gray-100 shrink-0 px-4 relative overflow-hidden">
@@ -132,21 +134,29 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
                 </div>
                 <div
                     className="ml-3 overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap"
-                    style={{ opacity: collapsed ? 0 : 1, maxWidth: collapsed ? 0 : 200 }}
+                    style={{ opacity: contentCollapsed ? 0 : 1, maxWidth: contentCollapsed ? 0 : 200 }}
                 >
                     <p className="text-[15px] font-bold text-gray-800 leading-none tracking-tight">NaravichCare</p>
                     <p className="text-[10px] text-blue-500 font-semibold uppercase tracking-[0.15em] mt-1">Admin Panel</p>
                 </div>
                 <button
                     onClick={onToggle}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-600 flex items-center justify-center transition-all"
+                    className="absolute right-2 top-1/2 hidden -translate-y-1/2 w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-600 lg:flex items-center justify-center transition-all"
                 >
-                    {collapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
+                    {contentCollapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
+                </button>
+                <button
+                    type="button"
+                    aria-label="ปิดเมนูหลังบ้าน"
+                    onClick={onMobileClose}
+                    className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg bg-gray-100 text-gray-500 lg:hidden"
+                >
+                    <ChevronsLeft size={16} />
                 </button>
             </div>
 
             {/* Profile */}
-            {!collapsed ? (
+            {!contentCollapsed ? (
                 <div className="px-4 pt-4 shrink-0">
                     <div className={`flex items-center gap-3 px-3 py-3 rounded-xl ${roleColors.bg} hover:opacity-90 border border-gray-200 cursor-pointer group`}>
                         <div className="relative shrink-0">
@@ -185,14 +195,14 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
                         )}
                         {collapsed && <div className="w-full h-px bg-gray-100 my-2" />}
                         <div className="space-y-0.5">
-                            {group.items.map((item) => {
+                            {group.items.filter((item) => !item.roles || (user && item.roles.includes(user.role))).map((item) => {
                                 const isActive = pathname === item.href;
                                 return (
-                                    <Link key={item.href} href={item.href} title={collapsed ? item.title : undefined}
-                                        className={`relative flex items-center rounded-lg transition-all duration-150 group/item overflow-hidden ${collapsed ? "justify-center px-0 py-3" : "gap-3 px-3 py-2.5"} ${isActive ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"}`}>
-                                        {isActive && !collapsed && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-blue-500 rounded-r-full" />}
+                                    <Link key={item.href} href={item.href} onClick={onMobileClose} title={contentCollapsed ? item.title : undefined}
+                                        className={`relative flex items-center rounded-lg transition-all duration-150 group/item overflow-hidden ${contentCollapsed ? "justify-center px-0 py-3" : "gap-3 px-3 py-2.5"} ${isActive ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"}`}>
+                                        {isActive && !contentCollapsed && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-blue-500 rounded-r-full" />}
                                         <span className={`shrink-0 transition-colors ${isActive ? "text-blue-600" : "text-gray-400 group-hover/item:text-gray-600"}`}>{item.icon}</span>
-                                        {!collapsed && (
+                                        {!contentCollapsed && (
                                             <>
                                                 <span className="flex-1 truncate text-[13.5px] font-medium">{item.title}</span>
                                                 {item.badge !== undefined && (
@@ -200,7 +210,7 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
                                                 )}
                                             </>
                                         )}
-                                        {collapsed && item.badge !== undefined && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full" />}
+                                        {contentCollapsed && item.badge !== undefined && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full" />}
                                     </Link>
                                 );
                             })}
@@ -213,24 +223,24 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
 
             {/* Footer */}
             <div className="px-3 py-3 space-y-0.5 shrink-0">
-                {[{ icon: <Bell size={18} />, label: "แจ้งเตือน", badge: "3", href: "/admin" }, { icon: <Settings size={18} />, label: "ตั้งค่าระบบ", href: "/admin" }].map((a) => (
-                    <Link key={a.label} href={a.href} title={collapsed ? a.label : undefined}
-                        className={`flex items-center rounded-lg text-[13.5px] font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-all group/item ${collapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5"}`}>
+                {[{ icon: <Bell size={18} />, label: "แจ้งเตือน", badge: "3", href: "/admin" }, { icon: <Settings size={18} />, label: "เปลี่ยนรหัสผ่าน", href: "/admin/change-password" }].map((a) => (
+                    <Link key={a.label} href={a.href} onClick={onMobileClose} title={contentCollapsed ? a.label : undefined}
+                        className={`flex items-center rounded-lg text-[13.5px] font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-all group/item ${contentCollapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5"}`}>
                         <span className="shrink-0 text-gray-400 group-hover/item:text-gray-600">{a.icon}</span>
-                        {!collapsed && <><span className="flex-1">{a.label}</span>{"badge" in a && a.badge && <span className="text-[10px] font-bold bg-red-100 text-red-500 px-2 py-0.5 rounded-full">{a.badge}</span>}</>}
+                        {!contentCollapsed && <><span className="flex-1">{a.label}</span>{"badge" in a && a.badge && <span className="text-[10px] font-bold bg-red-100 text-red-500 px-2 py-0.5 rounded-full">{a.badge}</span>}</>}
                     </Link>
                 ))}
                 <button
-                    title={collapsed ? "ออกจากระบบ" : undefined}
+                    title={contentCollapsed ? "ออกจากระบบ" : undefined}
                     onClick={handleLogout}
-                    className={`w-full flex items-center rounded-lg text-[13.5px] font-medium text-red-400 hover:text-red-600 hover:bg-red-50 transition-all ${collapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5"}`}
+                    className={`w-full flex items-center rounded-lg text-[13.5px] font-medium text-red-400 hover:text-red-600 hover:bg-red-50 transition-all ${contentCollapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5"}`}
                 >
                     <LogOut size={18} className="shrink-0" />
-                    {!collapsed && <span>ออกจากระบบ</span>}
+                    {!contentCollapsed && <span>ออกจากระบบ</span>}
                 </button>
             </div>
 
-            {!collapsed && (
+            {!contentCollapsed && (
                 <div className="px-4 pb-4 shrink-0">
                     <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-200">
                         <Circle size={7} className="text-emerald-500 fill-emerald-500 shrink-0" />

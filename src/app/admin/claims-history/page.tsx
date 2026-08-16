@@ -300,7 +300,7 @@ export default function ClaimsHistoryPage() {
                                 </div>
                             )}
                         </div>
-                        <div className="p-6 border-t border-slate-100 flex gap-3">
+                        <div className="grid gap-3 border-t border-slate-100 p-4 sm:flex sm:p-6">
                             <button onClick={() => setSelected(null)} className="flex-1 bg-slate-100 text-slate-700 font-black py-3 rounded-xl hover:bg-slate-200 transition-all">
                                 ปิด
                             </button>

@@ -6,65 +6,72 @@ import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { JWT_SECRET } from "@/lib/jwt";
 
-export async function POST(req: Request) {
-    console.log("LOGIN_ATTEMPT: Connection initiated");
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_ATTEMPTS = 8;
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
 
+function getClientKey(req: Request, username: string) {
+    const ip = req.headers.get("cf-connecting-ip")
+        || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+        || "unknown";
+    return `${ip}:${username.toLowerCase()}`;
+}
+
+export async function POST(req: Request) {
     try {
         // 2. Database Connection
         try {
             await dbConnect();
-            console.log("LOGIN_ATTEMPT: DB Connected");
-        } catch (dbErr: any) {
+        } catch (dbErr) {
             console.error("LOGIN_ATTEMPT: DB Connection Failed", dbErr);
-            return NextResponse.json({
-                error: "ไม่สามารถเชื่อมต่อฐานข้อมูลได้",
-                details: dbErr.message
-            }, { status: 500 });
+            return NextResponse.json({ error: "ไม่สามารถเชื่อมต่อฐานข้อมูลได้" }, { status: 500 });
         }
 
-        // 3. Parse Body
         let body;
         try {
             body = await req.json();
-            console.log("LOGIN_ATTEMPT: Payload received for", body.username);
-        } catch (jsonErr: any) {
+        } catch {
             return NextResponse.json({ error: "รูปแบบข้อมูลไม่ถูกต้อง" }, { status: 400 });
         }
 
         const { username, password } = body;
-        if (!username || !password) {
+        if (typeof username !== "string" || typeof password !== "string" || !username || !password) {
             return NextResponse.json({ error: "กรุณากรอก Username และ Password" }, { status: 400 });
         }
 
-        // 4. Find User & Verify
-        // We use lean() for better performance and to avoid some Mongoose method issues in dev
+        const attemptKey = getClientKey(req, username);
+        const now = Date.now();
+        const existingAttempt = loginAttempts.get(attemptKey);
+        if (existingAttempt && existingAttempt.resetAt > now && existingAttempt.count >= LOGIN_MAX_ATTEMPTS) {
+            return NextResponse.json(
+                { error: "ลองเข้าสู่ระบบหลายครั้งเกินไป กรุณารอ 15 นาที" },
+                { status: 429, headers: { "Retry-After": String(Math.ceil((existingAttempt.resetAt - now) / 1000)) } }
+            );
+        }
+        if (existingAttempt && existingAttempt.resetAt <= now) loginAttempts.delete(attemptKey);
+
         const user = await AdminUser.findOne({ username }).select("+password").lean();
 
-        if (!user) {
-            console.log("LOGIN_ATTEMPT: User not found:", username);
+        if (!user || !user.password || !user.isActive) {
+            const attempt = loginAttempts.get(attemptKey);
+            loginAttempts.set(attemptKey, {
+                count: (attempt?.count || 0) + 1,
+                resetAt: attempt?.resetAt || now + LOGIN_WINDOW_MS,
+            });
             return NextResponse.json({ error: "Username หรือ Password ไม่ถูกต้อง" }, { status: 401 });
         }
 
-        if (!user.isActive) {
-            console.log("LOGIN_ATTEMPT: User is inactive:", username);
-            return NextResponse.json({ error: "บัญชีนี้ยังไม่ถูกเปิดใช้งาน" }, { status: 401 });
-        }
-
-        // 5. Password Check (Manual Bcrypt to be safe)
-        console.log("LOGIN_ATTEMPT: Verifying password...");
-        if (!user.password) {
-            console.error("LOGIN_ATTEMPT: Password field missing in DB for user", username);
-            return NextResponse.json({ error: "ข้อมูลบัญชีมีปัญหา (No password stored)" }, { status: 500 });
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password as string);
+        const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            console.log("LOGIN_ATTEMPT: Password mismatch for", username);
+            const attempt = loginAttempts.get(attemptKey);
+            loginAttempts.set(attemptKey, {
+                count: (attempt?.count || 0) + 1,
+                resetAt: attempt?.resetAt || now + LOGIN_WINDOW_MS,
+            });
             return NextResponse.json({ error: "Username หรือ Password ไม่ถูกต้อง" }, { status: 401 });
         }
 
-        // 6. Generate Token
-        console.log("LOGIN_ATTEMPT: Creating session...");
+        loginAttempts.delete(attemptKey);
         let token;
         try {
             token = await new SignJWT({
@@ -74,42 +81,34 @@ export async function POST(req: Request) {
             })
                 .setProtectedHeader({ alg: "HS256" })
                 .setIssuedAt()
-                .setExpirationTime("24h")
+                .setExpirationTime("8h")
                 .sign(JWT_SECRET);
-        } catch (jwtErr: any) {
+        } catch (jwtErr) {
             console.error("LOGIN_ATTEMPT: JWT Generation Failed", jwtErr);
-            return NextResponse.json({ error: "ไม่สามารถสร้าง Token ได้", details: jwtErr.message }, { status: 500 });
+            return NextResponse.json({ error: "ไม่สามารถสร้าง Token ได้" }, { status: 500 });
         }
 
-        // 7. Set Cookie
-        console.log("LOGIN_ATTEMPT: Setting cookie...");
         try {
             const cookieStore = await cookies();
             cookieStore.set("admin_token", token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
                 sameSite: "lax",
-                maxAge: 60 * 60 * 24, // 1 day
+                maxAge: 60 * 60 * 8,
                 path: "/",
             });
-        } catch (cookErr: any) {
+        } catch (cookErr) {
             console.error("LOGIN_ATTEMPT: Cookie setting failed", cookErr);
-            // This is critical since middleware depends on it
-            return NextResponse.json({ error: "ไม่สามารถบันทึก Cookie ได้", details: cookErr.message }, { status: 500 });
+            return NextResponse.json({ error: "ไม่สามารถบันทึก Cookie ได้" }, { status: 500 });
         }
 
-        console.log("LOGIN_ATTEMPT: Login Successful!");
         return NextResponse.json({
             success: true,
-            user: { username: user.username, name: (user as any).name, role: user.role }
+            user: { username: user.username, name: user.name, role: user.role }
         });
 
-    } catch (globalErr: any) {
+    } catch (globalErr) {
         console.error("LOGIN_ATTEMPT: UNEXPECTED ERROR", globalErr);
-        return NextResponse.json({
-            error: "เกิดข้อผิดพลาดที่ไม่คาดคิด",
-            debug: globalErr.message,
-            stack: globalErr.stack
-        }, { status: 500 });
+        return NextResponse.json({ error: "เกิดข้อผิดพลาดที่ไม่คาดคิด" }, { status: 500 });
     }
 }

@@ -48,6 +48,8 @@ export async function POST(req: NextRequest) {
         await dbConnect();
         const data = await req.json();
 
+        if (data.jobType === "claim") await assertClaimEligible({ imei: data.imei });
+
         // If customer ID is not provided, we might need to create a new customer
         let customerId = data.customer;
         if (!customerId && data.newCustomer) {
@@ -82,6 +84,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json(job, { status: 201 });
     } catch (error: any) {
+        if (error instanceof ClaimEligibilityError) return NextResponse.json({ error: error.message, code: error.code }, { status: 409 });
         console.error("Create RepairJob Error:", error);
         return NextResponse.json({ error: error.message || "Failed to create repair job" }, { status: 500 });
     }

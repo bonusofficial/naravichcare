@@ -114,7 +114,7 @@ export function RegisterProvider({ children }: { children: React.ReactNode }) {
         } catch (e) {
             console.error("Quota exceeded for text only state", e);
         }
-    }, [phone, imei, brand, model, devicePrice, packageType, firstName, lastName, idCard, email, postCode, province, district, subDistrict, addressDetails, agentCode]);
+    }, [phone, imei, brand, model, devicePrice, deviceType, packageType, firstName, lastName, idCard, email, postCode, province, district, subDistrict, addressDetails, agentCode]);
 
     const setDeviceImages = (key: string, v: string | null) => {
         setDeviceImagesState(prev => ({ ...prev, [key]: v }));

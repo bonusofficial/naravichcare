@@ -33,6 +33,11 @@ export async function POST(req: Request) {
             }, { status: 403 });
         }
 
+        const expiredByDate = registration.coverageSnapshot?.coverageEndAt && new Date(registration.coverageSnapshot.coverageEndAt).getTime() <= Date.now();
+        if (registration.coverageStatus === "bought_back" || registration.coverageStatus === "expired" || expiredByDate) {
+            return NextResponse.json({ error: "สิทธิ์แพ็กคุ้มครองสิ้นสุดแล้ว", coverageStatus: registration.coverageStatus }, { status: 403 });
+        }
+
         return NextResponse.json({
             success: true,
             data: registration

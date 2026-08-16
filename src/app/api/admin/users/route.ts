@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import AdminUser from "@/models/AdminUser";
+import Branch from "@/models/Branch";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
 
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
         if (!authorized) return error;
 
         await dbConnect();
-        const users = await AdminUser.find({}).select("-password").sort({ createdAt: -1 });
+        const users = await AdminUser.find({}).select("-password").populate("branchId", "name location").sort({ createdAt: -1 });
         return NextResponse.json(users);
     } catch (error) {
         console.error("Fetch Users Error:", error);
@@ -28,7 +29,12 @@ export async function POST(req: NextRequest) {
 
         await dbConnect();
         const body = await req.json();
-        const { username, password, name, role, email } = body;
+        const { username, password, name, role, email, branchId } = body;
+        const passwordError = validatePassword(password);
+        if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 });
+        if (branchId && (!mongoose.isValidObjectId(branchId) || !(await Branch.exists({ _id: branchId, isActive: true })))) {
+            return NextResponse.json({ error: "Branch not found or inactive" }, { status: 400 });
+        }
 
         // Check for existing user
         const existing = await AdminUser.findOne({ username });
@@ -42,6 +48,7 @@ export async function POST(req: NextRequest) {
             name,
             role,
             email,
+            branchId: branchId || undefined,
             isActive: true
         });
 

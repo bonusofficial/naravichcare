@@ -11,6 +11,7 @@ const RegistrationSchema = new mongoose.Schema(
             required: [true, "Please provide an IMEI"],
             index: true,
         },
+        imeiNormalized: { type: String, required: false, index: true },
         brand: {
             type: String,
             required: [true, "Please provide a device brand"],
@@ -39,6 +40,7 @@ const RegistrationSchema = new mongoose.Schema(
         firstName: { type: String, required: false },
         lastName: { type: String, required: false },
         idCard: { type: String, required: false, index: true },
+        idCardNormalized: { type: String, required: false, index: true },
         email: { type: String, required: false },
         // Detailed Address Info
         postCode: { type: String, required: false },
@@ -59,6 +61,7 @@ const RegistrationSchema = new mongoose.Schema(
             type: String,
             required: false,
         },
+        policyNumberNormalized: { type: String, required: false, index: true },
         referenceNumber: {
             type: String,
             required: false,

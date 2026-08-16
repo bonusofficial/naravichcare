@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NavarichCare
 
-## Getting Started
+ระบบลงทะเบียนแพ็กคุ้มครอง เคลม งานซ่อม และซื้อคืนแพ็ก ใช้ Next.js กับ MongoDB
 
-First, run the development server:
+## เริ่มระบบในเครื่อง
 
 ```bash
+docker compose up -d
+npm install
+npm run push-schema
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+เปิด [http://localhost:3000/admin](http://localhost:3000/admin) และดูคู่มือติดตั้ง production ที่ [SETUP-VPS.md](./SETUP-VPS.md)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ระบบซื้อคืนแพ็ก
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- เมนู `/admin/buybacks` สำหรับ `admin` และ `super_admin`
+- ต้องผูกบัญชีกับสาขา และผู้สร้างรายการห้ามอนุมัติรายการของตนเอง
+- ตั้ง `BUYBACK_STORAGE_DIR` เป็น private persistent directory ห้ามอยู่ใน `public/`
+- PDF ใบรับคืนเก็บถาวร ส่วนรูปถูกลบหลังอนุมัติหรือปฏิเสธ 35 วัน
 
-## Learn More
+คำสั่งที่เกี่ยวข้อง:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run migrate:coverage             # dry-run
+npm run migrate:coverage -- --apply  # migrate จริงหลัง backup
+npm run cleanup:buyback-images       # งาน cron รายวัน
+npm run test:buyback
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## แก้ไข Hero Banner
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- เมนู `/admin/hero-banner` แก้รูปหลัก ไอคอน Badge ขวา ตำแหน่งรูป ข้อความ และราคา
+- ตั้ง `HERO_BANNER_STORAGE_DIR` เป็น persistent directory ที่ user ของแอปเขียนได้
+- รูปที่อัปโหลดจะถูกตรวจชนิดจริง ย่อขนาด ตัด EXIF และแสดงผ่าน public read-only API
+- ทดสอบส่วนนี้ด้วย `npm run test:hero-banner`

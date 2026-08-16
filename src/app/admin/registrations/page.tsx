@@ -251,7 +251,7 @@ export default function AdminRegistrations() {
     if (showCertificate && selected) {
         return (
             <div className="fixed inset-0 z-[100] bg-slate-100 flex flex-col items-center py-10 overflow-auto print:bg-white print:py-0">
-                <div className="mb-6 flex gap-3 print:hidden">
+                <div className="mb-6 flex flex-wrap justify-center gap-3 print:hidden">
                     <button
                         onClick={() => setShowCertificate(false)}
                         className="px-5 py-2.5 bg-white border border-gray-200 rounded-md font-semibold text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2 transition-all shadow-sm"
@@ -646,7 +646,7 @@ export default function AdminRegistrations() {
                                 {deleteConfirm.error && (
                                     <p className="text-sm text-red-600 font-medium mb-4 px-3 py-2 bg-red-50 rounded-lg">{deleteConfirm.error}</p>
                                 )}
-                                <div className="flex gap-3 justify-end">
+                                <div className="flex flex-wrap justify-end gap-3">
                                     <button
                                         onClick={() => setDeleteConfirm(null)}
                                         disabled={deleteLoading}
@@ -678,8 +678,8 @@ export default function AdminRegistrations() {
                         <div className="bg-white w-full max-w-[1000px] max-h-[92vh] rounded-xl shadow-2xl flex flex-col border border-gray-200 overflow-hidden">
 
                             {/* Modal Header */}
-                            <div className="px-7 py-5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
-                                <div className="flex items-center gap-4">
+                            <div className="flex shrink-0 flex-col gap-3 border-b border-gray-100 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-5">
+                                <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-4">
                                     <div className="w-10 h-10 rounded-md bg-gray-900 flex items-center justify-center text-white text-sm font-bold">
                                         {selected.firstName?.[0]}{selected.lastName?.[0]}
                                     </div>
@@ -691,7 +691,7 @@ export default function AdminRegistrations() {
                                         {STATUS_CONFIG[selected.status].label}
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                     {selected.status === "approved" && (
                                         <button
                                             onClick={() => setShowCertificate(true)}
@@ -712,7 +712,7 @@ export default function AdminRegistrations() {
 
                                     {/* Left: Info & Photos */}
                                     <div className="p-7 space-y-7 overflow-y-auto">
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid gap-4 sm:grid-cols-2">
                                             {[
                                                 { label: "ชื่อ-นามสกุล", value: `${selected.firstName} ${selected.lastName}` },
                                                 { label: "เบอร์โทรศัพท์", value: selected.phone },
@@ -741,7 +741,7 @@ export default function AdminRegistrations() {
                                                 <Smartphone size={13} /> รูปภาพตัวเครื่อง
                                             </h4>
                                             {selected.images ? (
-                                                <div className="grid grid-cols-3 gap-2">
+                                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                                                     {Object.entries(selected.images).filter(([k]) => k !== 'receipt').map(([side, url]) => (
                                                         <div key={side} className="aspect-[3/4] bg-gray-100 rounded-md overflow-hidden relative border border-gray-200">
                                                             <img src={url} alt={side} className="w-full h-full object-cover" />
@@ -864,7 +864,7 @@ export default function AdminRegistrations() {
             {showTransaction && selected && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <div className="bg-white w-full max-w-md rounded-xl shadow-2xl flex flex-col border border-gray-200 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+                        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 bg-white px-4 py-4 sm:px-6">
                             <div className="flex items-center gap-2">
                                 <FileText size={18} className="text-blue-600" />
                                 <h2 className="text-base font-bold text-gray-900">หลักฐานการชำระเงิน</h2>

@@ -323,7 +323,7 @@ function ClaimsContent() {
                                     <p className="text-slate-500 text-sm">ค้นหาสิทธิ์ประกันด้วย IMEI หรือ เลขบัตรประจำตัวประชาชน เพื่อดึงข้อมูลกรมธรรม์</p>
                                 </div>
 
-                                <div className="flex gap-3">
+                                <div className="flex flex-col gap-3 sm:flex-row">
                                     <div className="relative flex-1"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                         <input
                                             type="text"
@@ -339,7 +339,7 @@ function ClaimsContent() {
                                         id="search-claim-btn"
                                         onClick={handleSearch}
                                         disabled={loading || searchQuery.length < 5}
-                                        className={`px-8 font-black rounded-xl text-sm transition-all shadow-sm ${loading || searchQuery.length < 5 ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-white hover:bg-blue-600 hover:shadow-blue-200 hover:shadow-lg'}`}
+                                        className={`min-h-12 px-8 font-black rounded-xl text-sm transition-all shadow-sm sm:min-h-0 ${loading || searchQuery.length < 5 ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-white hover:bg-blue-600 hover:shadow-blue-200 hover:shadow-lg'}`}
                                     >
                                         {loading ? "กำลังค้นหา..." : "ค้นหา"}
                                     </button>
@@ -764,7 +764,7 @@ function ClaimsContent() {
                                         )}
 
                                         {postRepairImages.length > 0 && (
-                                            <div className="grid grid-cols-2 gap-3">
+                                            <div className="grid gap-3 sm:grid-cols-2">
                                                 {postRepairImages.map((src, i) => (
                                                     <div key={`postimg-${i}`} className="relative aspect-square rounded-xl overflow-hidden group border border-slate-100">
                                                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -915,7 +915,7 @@ function ClaimsContent() {
 
                     {/* Bottom nav - hide when claim is done */}
                     {!claimDone && (
-                        <div className="bg-white p-5 border-t border-slate-200 flex justify-between items-center shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+                        <div className="flex flex-col gap-3 border-t border-slate-200 bg-white p-3 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] sm:flex-row sm:items-center sm:justify-between sm:p-5">
                             <button
                                 onClick={() => activeStep === 1 ? setShowNew(false) : setActiveStep(Math.max(1, activeStep - 1))}
                                 className="px-5 py-3 font-bold text-slate-500 hover:text-slate-900 text-sm hover:bg-slate-100 rounded-xl transition-all"
@@ -923,7 +923,7 @@ function ClaimsContent() {
                                 {activeStep === 1 ? "ยกเลิกการเคลม" : "← ย้อนกลับ"}
                             </button>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-end gap-2 sm:gap-3">
                                 <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest hidden md:inline">Step {activeStep} of 6</span>
 
                                 {/* Save Draft Button */}
@@ -950,7 +950,7 @@ function ClaimsContent() {
                                     <button
                                         onClick={() => setActiveStep(Math.min(6, activeStep + 1))}
                                         disabled={activeStep === 1 && !customerData}
-                                        className={`px-8 py-3 font-black rounded-xl text-sm transition-all shadow-md ${(activeStep === 1 && !customerData) ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none" : "bg-blue-600 text-white hover:bg-slate-900"}`}
+                                        className={`px-4 py-3 font-black rounded-xl text-sm transition-all shadow-md sm:px-8 ${(activeStep === 1 && !customerData) ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none" : "bg-blue-600 text-white hover:bg-slate-900"}`}
                                     >
                                         ขั้นตอนถัดไป →
                                     </button>
@@ -960,7 +960,7 @@ function ClaimsContent() {
                     )}
                 </div>
             ) : (
-                <div className="bg-white rounded-2xl border border-gray-200 p-16 flex flex-col items-center text-center shadow-sm">
+                <div className="flex flex-col items-center rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm sm:p-16">
                     <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6">
                         <ClipboardList size={40} className="text-slate-300" strokeWidth={1.5} />
                     </div>
@@ -988,7 +988,7 @@ function ClaimsContent() {
             {/* Custom Confirm Modal */}
             {confirmModal?.show && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center animate-in zoom-in-95 duration-200">
+                    <div className="animate-in zoom-in-95 w-full max-w-sm rounded-3xl bg-white p-5 text-center shadow-2xl duration-200 sm:p-8">
                         <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
                             <ClipboardList size={40} />
                         </div>

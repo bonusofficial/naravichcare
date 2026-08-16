@@ -2,6 +2,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useRegister } from "../RegisterContext";
+import { supportsDeviceType } from "@/lib/coverage-plan";
 
 export default function Step3() {
     const router = useRouter();
@@ -16,10 +17,10 @@ export default function Step3() {
                 const res = await fetch("/api/coverage-plans");
                 const data = await res.json();
 
-                // Filter by isActive AND deviceType
+                // An all-device plan is available alongside device-specific plans.
                 // If deviceType is null/empty, we default to Smartphone for backward compatibility
                 const currentType = deviceType || "Smartphone";
-                setPackages(data.filter((p: any) => p.isActive && p.deviceType === currentType));
+                setPackages(data.filter((p: any) => p.isActive && supportsDeviceType(p.deviceType, currentType)));
             } catch (err) {
                 console.error(err);
             } finally {

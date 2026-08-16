@@ -123,6 +123,8 @@ const RepairJobSchema: Schema = new Schema(
         ],
         receivedAt: { type: Date, default: Date.now },
         completedAt: { type: Date },
+        cancelledByBuybackId: { type: Schema.Types.ObjectId, ref: "Buyback" },
+        cancelledAt: { type: Date },
     },
     { timestamps: true }
 );

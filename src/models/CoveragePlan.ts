@@ -1,4 +1,5 @@
 import mongoose, { Schema, model, models } from "mongoose";
+import { COVERAGE_PLAN_DEVICE_TYPES } from "@/lib/coverage-plan";
 
 const CoveragePlanSchema = new Schema(
     {
@@ -13,6 +14,11 @@ const CoveragePlanSchema = new Schema(
         durationText: {
             type: String,
             required: true, // e.g., (1 ปี)
+        },
+        coverageDurationMonths: {
+            type: Number,
+            required: false,
+            min: 1,
         },
         durationUnit: {
             type: String,
@@ -36,8 +42,8 @@ const CoveragePlanSchema = new Schema(
         },
         deviceType: {
             type: String,
-            enum: ["iPhone", "iPad", "Smartphone", "Tablet"],
-            required: [true, "Please specify device type (iPhone, iPad, Smartphone, Tablet)"],
+            enum: COVERAGE_PLAN_DEVICE_TYPES,
+            required: [true, "Please specify a supported device type"],
             default: "Smartphone",
         },
         quotas: {

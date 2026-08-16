@@ -16,9 +16,9 @@ export async function GET(req: NextRequest) {
             .select("-images -paymentReceipt")
             .sort({ createdAt: -1 })
             .lean();
-        return NextResponse.json({ data: registrations }, { status: 200 });
-    } catch (error: any) {
-        return NextResponse.json({ message: error.message }, { status: 500 });
+        return NextResponse.json({ data: registrations.map(serializeRegistration) }, { status: 200 });
+    } catch (error: unknown) {
+        return NextResponse.json({ message: errorMessage(error) }, { status: 500 });
     }
 }
 
@@ -121,9 +121,9 @@ export async function PATCH(req: NextRequest) {
             req
         });
 
-        return NextResponse.json({ message: "Updated successfully", data: registration }, { status: 200 });
-    } catch (error: any) {
-        return NextResponse.json({ message: error.message }, { status: 500 });
+        return NextResponse.json({ message: "Updated successfully", data: serializeRegistration(registration) }, { status: 200 });
+    } catch (error: unknown) {
+        return NextResponse.json({ message: errorMessage(error) }, { status: 500 });
     }
 }
 
@@ -139,7 +139,7 @@ export async function DELETE(req: NextRequest) {
         }
         const result = await Registration.deleteMany({ _id: { $in: ids } });
         return NextResponse.json({ success: true, deletedCount: result.deletedCount }, { status: 200 });
-    } catch (error: any) {
-        return NextResponse.json({ message: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ message: errorMessage(error) }, { status: 500 });
     }
 }

@@ -7,8 +7,7 @@ import {
     Clock, 
     CheckCircle, 
     TrendingUp, 
-    ChevronRight, 
-    Search, 
+    ChevronRight,
     User, 
     Settings, 
     History,
@@ -18,8 +17,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+interface RepairStats {
+    total: number;
+    pending: number;
+    ready: number;
+    completed: number;
+    dailyRevenue: number;
+    dailyProfit: number;
+    monthlyRevenue: number;
+    monthlyProfit: number;
+    dailyCount: number;
+}
+
 export default function RepairDashboard() {
-    const [stats, setStats] = useState<any>(null);
+    const [stats, setStats] = useState<RepairStats | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -53,7 +64,7 @@ export default function RepairDashboard() {
                     <h1 className="text-2xl font-black text-slate-800 tracking-tighter uppercase italic">Repair Dashboard</h1>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Real-time Service Analytics & Management</p>
                 </div>
-                <Link href="/admin/repair/create" className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2 shadow-lg shadow-slate-200">
+                <Link href="/admin/repair/jobs/new" className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2 shadow-lg shadow-slate-200">
                     <Wrench size={14} /> สร้างใบรับซ่อมใหม่
                 </Link>
             </div>
@@ -62,7 +73,7 @@ export default function RepairDashboard() {
                 {/* Main Content (Left 8) */}
                 <div className="lg:col-span-8 space-y-6">
                     {/* Stats Highlights (Compact) */}
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid gap-4 sm:grid-cols-3">
                         {[
                             { label: "งานทั้งหมด (Total)", value: stats?.total || 0, icon: <Smartphone size={14}/>, color: "text-slate-800", bg: "bg-white" },
                             { label: "รอตรวจเช็ก (Pending)", value: stats?.pending || 0, icon: <Clock size={14}/>, color: "text-amber-500", bg: "bg-white" },
@@ -123,7 +134,7 @@ export default function RepairDashboard() {
                     </div>
 
                     {/* Bottom Quick Row */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
                         <div className="bg-blue-600 rounded-2xl p-6 text-white relative overflow-hidden">
                              <div className="absolute right-0 top-0 w-24 h-24 bg-white/5 rounded-full -mr-10 -mt-10"></div>
                              <h4 className="text-[11px] font-black uppercase tracking-widest mb-1 opacity-80 italic">Status Today</h4>

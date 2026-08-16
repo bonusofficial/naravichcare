@@ -79,7 +79,7 @@ export default function AdminLoginPage() {
                 </div>
 
                 {/* Login Card */}
-                <div className="bg-white/80 backdrop-blur-2xl rounded-[2.5rem] p-10 shadow-[0_32px_80px_-20px_rgba(0,0,0,0.08)] border border-white/60 relative overflow-hidden group/card text-left">
+                <div className="group/card relative overflow-hidden rounded-[2rem] border border-white/60 bg-white/80 p-5 text-left shadow-[0_32px_80px_-20px_rgba(0,0,0,0.08)] backdrop-blur-2xl sm:rounded-[2.5rem] sm:p-10">
                     {/* Top Accent Line */}
                     <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-500" />
 

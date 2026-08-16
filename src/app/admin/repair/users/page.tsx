@@ -136,7 +136,7 @@ export default function UserManagement() {
     return (
         <div className="max-w-4xl mx-auto space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-5 duration-700">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-gray-100 pb-5">
+            <div className="flex flex-col gap-4 border-b border-gray-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
                     <Link href="/admin/repair" className="w-8 h-8 bg-white rounded-lg shadow-sm border border-gray-100 flex items-center justify-center text-gray-400 hover:text-blue-600 transition-all">
                         <ArrowLeft size={16} />
@@ -161,7 +161,7 @@ export default function UserManagement() {
                     </div>
                 ) : (
                     users.map((user) => (
-                        <div key={user._id} className="bg-white border border-gray-100 p-4 rounded-2xl flex items-center justify-between hover:border-slate-300 transition-all group group shadow-sm">
+                        <div key={user._id} className="group flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:border-slate-300 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-center gap-4">
                                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all">
                                      <User size={20} />
@@ -190,7 +190,7 @@ export default function UserManagement() {
             {/* Modal Form */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-[2px]">
-                    <div className="bg-white rounded-3xl w-full max-w-sm relative shadow-2xl p-8 space-y-6 animate-in zoom-in-95">
+                    <div className="animate-in zoom-in-95 relative w-full max-w-sm space-y-6 rounded-3xl bg-white p-5 shadow-2xl sm:p-8">
                         <div className="text-center">
                             <h2 className="text-base font-black text-slate-800 uppercase tracking-tighter italic">
                                 {editingUser ? "Edit Account" : "Access Creation"}

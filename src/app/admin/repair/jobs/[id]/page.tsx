@@ -404,7 +404,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
             </div>
 
             {/* NORMAL UI VIEW */}
-            <div className="flex items-center justify-between no-print border-b border-gray-100 pb-5">
+            <div className="no-print flex flex-col gap-4 border-b border-gray-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
                     <Link href="/admin/repair/jobs" className="w-8 h-8 bg-white rounded-lg shadow-sm border border-gray-100 flex items-center justify-center text-gray-400 hover:text-blue-600 transition-all">
                         <ArrowLeft size={16} />
@@ -416,7 +416,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                         </div>
                     </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex w-full flex-wrap gap-2 sm:w-auto">
                     <button onClick={() => handlePrint("quote")} className="flex items-center gap-2 bg-slate-100 text-slate-600 px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all flex items-center gap-2">
                         <Printer size={14} /> พิมพ์ใบซ่อม/เสนอราคา
                     </button>
@@ -468,7 +468,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                         <div className="p-6">
                              {/* Before Repair */}
                              <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 italic mb-3">🛠️ รูปภาพก่อนซ่อม (Before)</h5>
-                             <div className="grid grid-cols-5 gap-3 mb-6">
+                             <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
                                  {job.photosBefore?.map((p: string, i: number) => (
                                      <div key={i} className="aspect-square bg-slate-50 border border-slate-100 rounded-xl overflow-hidden relative group">
                                          <img src={p} className="w-full h-full object-cover" alt="Before" />
@@ -484,7 +484,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
 
                              {/* After Repair */}
                              <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 italic mb-3">✅ รูปภาพหลังซ่อม (After)</h5>
-                             <div className="grid grid-cols-5 gap-3">
+                             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                                  {job.photosAfter?.map((p: string, i: number) => (
                                      <div key={i} className="aspect-square bg-slate-50 border border-slate-100 rounded-xl overflow-hidden relative group">
                                          <img src={p} className="w-full h-full object-cover" alt="After" />
@@ -599,7 +599,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
             {/* Modal & Toast */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 no-print bg-slate-900/40 backdrop-blur-[2px]">
-                    <div className="bg-white rounded-3xl w-full max-w-md relative shadow-2xl p-8 space-y-6">
+                    <div className="relative w-full max-w-md space-y-6 rounded-3xl bg-white p-5 shadow-2xl sm:p-8">
                         <div className="text-center">
                             <h2 className="text-base font-black text-slate-800 uppercase tracking-tighter italic">Workflow Update</h2>
                             <p className="text-[9px] text-slate-400 font-bold uppercase mt-1 italic">Moving task to: <span className="text-blue-600 underline">"{getStatusLabel(pendingStatus || "")}"</span></p>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, ShieldCheck, Trash2, ListChecks, Save, Activity } from "lucide-react";
 import Link from "next/link";
+import { COVERAGE_PLAN_DEVICE_OPTIONS } from "@/lib/coverage-plan";
 
 export default function EditCoveragePlan() {
     const router = useRouter();
@@ -16,6 +17,7 @@ export default function EditCoveragePlan() {
         name: "",
         subTitle: "",
         durationText: "",
+        coverageDurationMonths: 0,
         durationUnit: "",
         priceMultiplier: 0.05,
         highlights: [""],
@@ -126,7 +128,7 @@ export default function EditCoveragePlan() {
                 </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-10 shadow-2xl shadow-slate-200/50 border border-slate-100">
+            <form onSubmit={handleSubmit} className="rounded-3xl border border-slate-100 bg-white p-4 shadow-2xl shadow-slate-200/50 sm:p-7 lg:p-10">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Basic Info */}
                     <div className="col-span-2 space-y-1.5">
@@ -173,6 +175,12 @@ export default function EditCoveragePlan() {
                     </div>
 
                     <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ระยะคุ้มครองจริง (เดือน)</label>
+                        <input type="number" min="1" step="1" required value={form.coverageDurationMonths} onChange={e => setForm({ ...form, coverageDurationMonths: Number(e.target.value) })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 focus:border-blue-500 outline-none font-bold text-slate-900" />
+                        <p className="text-[10px] text-slate-400">ใช้คำนวณวันสิ้นสุดและยอดซื้อคืน</p>
+                    </div>
+
+                    <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ตัวคูณคำนวณราคา (Multiplier)</label>
                         <input
                             type="number" step="0.001"
@@ -202,10 +210,9 @@ export default function EditCoveragePlan() {
                             onChange={e => setForm({ ...form, deviceType: e.target.value })}
                             required
                         >
-                            <option value="iPhone">iPhone</option>
-                            <option value="iPad">iPad</option>
-                            <option value="Smartphone">Smartphone (Android)</option>
-                            <option value="Tablet">Tablet (Android)</option>
+                            {COVERAGE_PLAN_DEVICE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
                         </select>
                     </div>
 

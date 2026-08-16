@@ -12,6 +12,7 @@ interface IAdminUser {
     email: string;
     isActive: boolean;
     createdAt?: string;
+    branchId?: string | { _id: string; name: string; location: string };
 }
 
 interface IRole {
@@ -37,6 +38,7 @@ export default function AdminManagement() {
         email: "",
         isActive: true
     });
+    const [branches, setBranches] = useState<IBranch[]>([]);
 
     useEffect(() => {
         fetchUsers();
@@ -154,7 +156,7 @@ export default function AdminManagement() {
             {/* Add/Edit Modal */}
             {(showAddForm || editingId) && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+                    <div className="animate-in fade-in zoom-in w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl duration-200 sm:p-8">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-xl font-black text-gray-900">
                                 {showAddForm ? "เพิ่มแอดมินใหม่" : "แก้ไขข้อมูลแอดมิน"}
@@ -192,6 +194,18 @@ export default function AdminManagement() {
                                     />
                                 </div>
                             )}
+                            {!showAddForm && (
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-gray-500 ml-1 uppercase">รหัสผ่านใหม่ (เว้นว่างหากไม่เปลี่ยน)</label>
+                                    <input
+                                        type="password"
+                                        className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none transition-all font-medium text-sm"
+                                        placeholder="อย่างน้อย 12 ตัว มี A-Z, a-z, ตัวเลข และสัญลักษณ์"
+                                        value={editForm?.password || ""}
+                                        onChange={e => setEditForm({ ...editForm!, password: e.target.value })}
+                                    />
+                                </div>
+                            )}
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-gray-500 ml-1 uppercase">ชื่อ-นามสกุล</label>
                                 <input
@@ -218,7 +232,9 @@ export default function AdminManagement() {
                                 <select
                                     className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none transition-all font-medium text-sm bg-white"
                                     value={showAddForm ? newForm.role : editForm?.role}
-                                    onChange={e => showAddForm ? setNewForm({ ...newForm, role: e.target.value as any }) : setEditForm({ ...editForm!, role: e.target.value as any })}
+                                    onChange={e => showAddForm
+                                        ? setNewForm({ ...newForm, role: e.target.value as IAdminUser["role"] })
+                                        : setEditForm({ ...editForm!, role: e.target.value as IAdminUser["role"] })}
                                 >
                                     {roles.map(role => (
                                         <option key={role._id} value={role.name}>
@@ -226,6 +242,17 @@ export default function AdminManagement() {
                                             {role.isSystem && " (ระบบพื้นฐาน)"}
                                         </option>
                                     ))}
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-gray-500 ml-1 uppercase">สาขาประจำ</label>
+                                <select
+                                    className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none transition-all font-medium text-sm bg-white"
+                                    value={showAddForm ? (typeof newForm.branchId === "string" ? newForm.branchId : "") : (typeof editForm?.branchId === "string" ? editForm.branchId : editForm?.branchId?._id || "")}
+                                    onChange={e => showAddForm ? setNewForm({ ...newForm, branchId: e.target.value }) : setEditForm({ ...editForm!, branchId: e.target.value })}
+                                >
+                                    <option value="">ยังไม่ผูกสาขา</option>
+                                    {branches.filter(branch => branch.isActive).map(branch => <option key={branch._id} value={branch._id}>{branch.name}</option>)}
                                 </select>
                             </div>
                             <div className="flex items-center gap-2 pt-2">
@@ -295,12 +322,15 @@ export default function AdminManagement() {
                                     {getRoleDisplay(user.role)}
                                 </span>
                             </div>
+                            <div className="flex items-center gap-3 text-gray-500">
+                                <span className="text-xs font-medium">สาขา: {typeof user.branchId === "object" ? user.branchId.name : "ยังไม่ผูก"}</span>
+                            </div>
                         </div>
 
                         {/* Actions */}
                         <div className="flex gap-2 pt-4 border-t border-gray-50 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
-                                onClick={() => { setEditingId(user._id!); setEditForm(user); }}
+                                onClick={() => { setEditingId(user._id!); setEditForm({ ...user, branchId: typeof user.branchId === "object" ? user.branchId._id : user.branchId }); }}
                                 className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all text-xs font-bold"
                             >
                                 <Edit2 size={12} /> แก้ไข

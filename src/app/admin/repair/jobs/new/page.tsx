@@ -112,7 +112,7 @@ export default function NewRepairJob() {
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-5 duration-700">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-xl font-black text-gray-800 tracking-tight">รับเครื่องซ่อม/เคลม</h1>
                     <p className="text-[11px] text-gray-500 font-medium">เปิดใบรับซ่อมใหม่ บันทึกข้อมูลลูกค้าและอุปกรณ์</p>
@@ -126,7 +126,7 @@ export default function NewRepairJob() {
 
             <div className="bg-white rounded-3xl shadow-xl shadow-slate-200 border border-slate-100 overflow-hidden">
                 {step === 1 && (
-                    <div className="p-8 md:p-12 space-y-6">
+                    <div className="space-y-6 p-4 sm:p-8 md:p-12">
                         <div className="text-center max-w-sm mx-auto space-y-3">
                             <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
                                 <Search size={24} />
@@ -159,7 +159,7 @@ export default function NewRepairJob() {
                 )}
 
                 {step === 1.5 && (
-                    <div className="p-8 space-y-6">
+                    <div className="space-y-6 p-4 sm:p-8">
                         <div className="flex items-center gap-3 border-b border-gray-50 pb-5">
                             <div className="w-9 h-9 bg-pink-50 text-pink-500 rounded-lg flex items-center justify-center">
                                 <UserPlus size={18} />
@@ -170,7 +170,7 @@ export default function NewRepairJob() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">ชื่อ</label>
                                 <input 
@@ -197,7 +197,7 @@ export default function NewRepairJob() {
                 )}
 
                 {step >= 2 && (
-                    <div className="p-8 space-y-8">
+                    <div className="space-y-8 p-4 sm:p-8">
                          {customer && (
                             <div className="flex items-center justify-between p-4 bg-blue-50 rounded-2xl border border-blue-100">
                                 <div className="flex items-center gap-3">
@@ -241,7 +241,7 @@ export default function NewRepairJob() {
                                             onChange={(e) => setFormData({...formData, deviceModel: e.target.value})}
                                         />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid gap-3 sm:grid-cols-2">
                                         <div className="space-y-1">
                                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">IMEI</label>
                                             <input 
@@ -310,12 +310,12 @@ export default function NewRepairJob() {
                             </div>
                          </div>
 
-                         <div className="pt-6 border-t border-gray-50 flex items-center justify-between">
+                         <div className="flex flex-col gap-4 border-t border-gray-50 pt-6 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-500 italic">
                                 <ShieldCheck size={14} />
                                 <span>ออก Job ID อัตโนมัติ</span>
                             </div>
-                            <div className="flex gap-3">
+                            <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto">
                                 <button type="button" onClick={() => setStep(1)} className="px-6 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">ย้อนกลับ</button>
                                 <button 
                                     onClick={handleCreateJob}

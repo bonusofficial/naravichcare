@@ -26,9 +26,12 @@ export async function POST(req: NextRequest) {
         await dbConnect();
         const data = await req.json();
 
-        // Add a default password if not provided (though the UI should provide it)
-        if (!data.password) {
-            data.password = "Admin@12345"; // Default temporary password
+        const passwordError = validatePassword(data.password);
+        if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 });
+
+        const { username, password, name, role, email, isActive = true, branchId } = data;
+        if (branchId && (!mongoose.isValidObjectId(branchId) || !(await Branch.exists({ _id: branchId, isActive: true })))) {
+            return NextResponse.json({ error: "Branch not found or inactive" }, { status: 400 });
         }
 
         const newUser = await AdminUser.create(data);
