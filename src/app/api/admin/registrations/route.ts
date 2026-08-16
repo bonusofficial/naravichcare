@@ -5,6 +5,22 @@ import Registration from "@/models/Registration";
 import Package from "@/models/Package";
 import Agent from "@/models/Agent";
 import { checkPermission } from "@/lib/check-permission";
+import { formatSatang } from "@/lib/buyback";
+
+// Restored from 6bd21e5; the merge in fe993d6 kept the call sites but dropped
+// these definitions.
+function serializeRegistration(source: unknown) {
+    const value = JSON.parse(JSON.stringify(source));
+    if (value.coverageSnapshot?.packagePriceSatang !== undefined) {
+        value.coverageSnapshot.packagePrice = formatSatang(value.coverageSnapshot.packagePriceSatang);
+        delete value.coverageSnapshot.packagePriceSatang;
+    }
+    return value;
+}
+
+function errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : "Unexpected error";
+}
 
 export async function GET(req: NextRequest) {
     try {

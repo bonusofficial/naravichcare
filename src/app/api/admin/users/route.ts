@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
 import AdminUser from "@/models/AdminUser";
 import Branch from "@/models/Branch";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
+import { validatePassword } from "@/lib/password-policy";
 
 // Used by /admin/repair/users to manage repair staff. It reads and writes
 // AdminUser records, so it is gated on the admin-user permissions rather than
