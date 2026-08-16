@@ -15,6 +15,16 @@ interface IAdminUser {
     branchId?: string | { _id: string; name: string; location: string };
 }
 
+// Shape of the JSON returned by the branches API. Declared locally rather than
+// imported from @/models/Branch: that type extends Mongoose's Document, which
+// types _id as unknown and would drag server types into this client component.
+interface IBranch {
+    _id: string;
+    name: string;
+    location: string;
+    isActive: boolean;
+}
+
 interface IRole {
     _id: string;
     name: string;
