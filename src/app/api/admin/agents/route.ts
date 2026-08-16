@@ -1,9 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Agent from "@/models/Agent";
+import { checkPermission } from "@/lib/check-permission";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
+        const { authorized, user, error } = await checkPermission(req, "view_agents");
+        if (!authorized) return error;
+
         await dbConnect();
         const agents = await Agent.find().sort({ name: 1 });
         return NextResponse.json({ success: true, agents });
@@ -12,8 +16,11 @@ export async function GET() {
     }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
+        const { authorized, user, error } = await checkPermission(req, "create_agents");
+        if (!authorized) return error;
+
         await dbConnect();
         const body = await req.json();
 

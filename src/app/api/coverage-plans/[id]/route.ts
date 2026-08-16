@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server"; // Re-sync schema 2
+import { NextRequest, NextResponse } from "next/server"; // Re-sync schema 2
 import dbConnect from "@/lib/mongodb";
 import CoveragePlan from "@/models/CoveragePlan";
 import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
+// Public: the registration flow reads a single coverage plan before login.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         await dbConnect();
@@ -27,8 +29,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 }
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
+        const { authorized, error } = await checkPermission(req, "edit_coverage_plans");
+        if (!authorized) return error;
+
         await dbConnect();
         const { id } = await params;
         const body = await req.json();
@@ -49,8 +54,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
 }
 
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
+        const { authorized, error } = await checkPermission(req, "edit_coverage_plans");
+        if (!authorized) return error;
+
         await dbConnect();
         const { id } = await params;
         const plan = await CoveragePlan.findById(id);

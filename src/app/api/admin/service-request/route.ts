@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import ServiceRequestPage from "@/models/ServiceRequestPage";
 import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
 const DEFAULT_ROWS = [
     {
@@ -47,8 +48,11 @@ export async function GET() {
     }
 }
 
-export async function PUT(req: Request) {
+export async function PUT(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "edit_service_request");
+        if (!authorized) return error;
+
         await dbConnect();
         const body = await req.json();
         let page = await ServiceRequestPage.findOne();

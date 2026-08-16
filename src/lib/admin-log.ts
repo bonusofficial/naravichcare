@@ -2,9 +2,7 @@ import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import AdminLog from "@/models/AdminLog";
 import dbConnect from "@/lib/mongodb";
-
-const secretKey = process.env.JWT_SECRET || "navarichcare_secret_key_12345";
-const JWT_SECRET = new TextEncoder().encode(secretKey);
+import { JWT_SECRET } from "@/lib/jwt";
 
 interface LogParams {
     action: string;

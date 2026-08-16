@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "default_secret");
+import { JWT_SECRET } from "@/lib/jwt";
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;

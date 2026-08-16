@@ -4,15 +4,12 @@ import AdminUser from "@/models/AdminUser";
 import { SignJWT } from "jose";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
+import { JWT_SECRET } from "@/lib/jwt";
 
 export async function POST(req: Request) {
     console.log("LOGIN_ATTEMPT: Connection initiated");
 
     try {
-        // 1. Initial Checks
-        const secretKey = process.env.JWT_SECRET || "navarichcare_secret_key_12345";
-        const JWT_SECRET = new TextEncoder().encode(secretKey);
-
         // 2. Database Connection
         try {
             await dbConnect();

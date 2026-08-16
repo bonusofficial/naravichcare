@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import LegalPage from "@/models/LegalPage";
 import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
 export async function GET() {
     try {
@@ -27,8 +28,11 @@ async function ensurePage(slug: string, title: string, content: string) {
     return page;
 }
 
-export async function PUT(req: Request) {
+export async function PUT(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "edit_legal_pages");
+        if (!authorized) return error;
+
         await dbConnect();
         const body = await req.json();
         const { privacy, terms } = body;

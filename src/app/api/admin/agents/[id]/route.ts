@@ -1,10 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Agent from "@/models/Agent";
 import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
-export async function PUT(req: Request, context: { params: Promise<{ id: string }> }) {
+export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
+        const { authorized, user, error } = await checkPermission(req, "edit_agents");
+        if (!authorized) return error;
+
         await dbConnect();
         const { id } = await context.params;
         const body = await req.json();
@@ -31,8 +35,11 @@ export async function PUT(req: Request, context: { params: Promise<{ id: string 
     }
 }
 
-export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
+        const { authorized, user, error } = await checkPermission(req, "delete_agents");
+        if (!authorized) return error;
+
         await dbConnect();
         const { id } = await context.params;
 

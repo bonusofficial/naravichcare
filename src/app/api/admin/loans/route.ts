@@ -1,12 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Loan from "@/models/Loan";
 import Insurance from "@/models/Insurance";
 import { sendLineNotify } from "@/lib/line";
 import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "create_loans");
+        if (!authorized) return error;
+
         await dbConnect();
         const data = await req.json();
 
@@ -78,8 +82,11 @@ export async function POST(req: Request) {
     }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "view_loans");
+        if (!authorized) return error;
+
         await dbConnect();
         const loans = await Loan.find().sort({ createdAt: -1 });
         return NextResponse.json({ success: true, loans });

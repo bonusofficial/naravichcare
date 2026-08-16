@@ -1,10 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import AdminUser from "@/models/AdminUser";
 import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
-export async function GET() {
+// Used by /admin/repair/users to manage repair staff. It reads and writes
+// AdminUser records, so it is gated on the admin-user permissions rather than
+// the repair ones - a POST here can mint an account of any role.
+export async function GET(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "view_admin_users");
+        if (!authorized) return error;
+
         await dbConnect();
         const users = await AdminUser.find({}).select("-password").sort({ createdAt: -1 });
         return NextResponse.json(users);
@@ -14,8 +21,11 @@ export async function GET() {
     }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "create_admin_users");
+        if (!authorized) return error;
+
         await dbConnect();
         const body = await req.json();
         const { username, password, name, role, email } = body;
@@ -54,19 +64,25 @@ export async function POST(req: Request) {
     }
 }
 
-export async function PATCH(req: Request) {
+export async function PATCH(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "edit_admin_users");
+        if (!authorized) return error;
+
         await dbConnect();
         const body = await req.json();
-        const { id, ...updateData } = body;
+        const { id, password, ...updateData } = body;
 
         if (!id) return NextResponse.json({ error: "User ID required" }, { status: 400 });
 
-        const updatedUser = await AdminUser.findByIdAndUpdate(
-            id,
-            { $set: updateData },
-            { new: true }
-        ).select("-password");
+        const updatedUser = await AdminUser.findById(id);
+        if (!updatedUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+        // save() rather than findByIdAndUpdate() so the pre-save hook hashes a
+        // changed password; an omitted/blank one leaves the existing hash alone.
+        Object.assign(updatedUser, updateData);
+        if (password) updatedUser.password = password;
+        await updatedUser.save();
 
         await recordAdminLog({
             req,
@@ -77,15 +93,19 @@ export async function PATCH(req: Request) {
             details: updateData
         });
 
-        return NextResponse.json(updatedUser);
+        const { password: _omit, ...safeUser } = updatedUser.toObject();
+        return NextResponse.json(safeUser);
     } catch (error) {
         console.error("Update User Error:", error);
         return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
     }
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "delete_admin_users");
+        if (!authorized) return error;
+
         await dbConnect();
         const { searchParams } = new URL(req.url);
         const id = searchParams.get("id");

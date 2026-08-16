@@ -8,14 +8,24 @@ interface IAdminUser {
     username: string;
     password?: string;
     name: string;
-    role: "super_admin" | "admin" | "viewer";
+    role: string;  // Changed from enum to string
     email: string;
     isActive: boolean;
     createdAt?: string;
 }
 
+interface IRole {
+    _id: string;
+    name: string;
+    displayName: string;
+    description?: string;
+    color?: string;
+    isSystem: boolean;
+}
+
 export default function AdminManagement() {
     const [users, setUsers] = useState<IAdminUser[]>([]);
+    const [roles, setRoles] = useState<IRole[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<IAdminUser | null>(null);
@@ -30,6 +40,7 @@ export default function AdminManagement() {
 
     useEffect(() => {
         fetchUsers();
+        fetchRoles();
     }, []);
 
     const fetchUsers = async () => {
@@ -47,6 +58,28 @@ export default function AdminManagement() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const fetchRoles = async () => {
+        try {
+            const res = await fetch("/api/admin/roles");
+            const data = await res.json();
+            if (data.roles && Array.isArray(data.roles)) {
+                setRoles(data.roles);
+            }
+        } catch (error) {
+            console.error("Error fetching roles:", error);
+        }
+    };
+
+    const getRoleDisplay = (roleName: string) => {
+        const role = roles.find(r => r.name === roleName);
+        return role?.displayName || roleName.replace("_", " ").toUpperCase();
+    };
+
+    const getRoleColor = (roleName: string) => {
+        const role = roles.find(r => r.name === roleName);
+        return role?.color || "#6366F1"; // Default indigo
     };
 
     const handleAdd = async (e: React.FormEvent) => {
@@ -187,9 +220,12 @@ export default function AdminManagement() {
                                     value={showAddForm ? newForm.role : editForm?.role}
                                     onChange={e => showAddForm ? setNewForm({ ...newForm, role: e.target.value as any }) : setEditForm({ ...editForm!, role: e.target.value as any })}
                                 >
-                                    <option value="super_admin">Super Admin</option>
-                                    <option value="admin">Admin</option>
-                                    <option value="viewer">Viewer</option>
+                                    {roles.map(role => (
+                                        <option key={role._id} value={role.name}>
+                                            {role.displayName}
+                                            {role.isSystem && " (ระบบพื้นฐาน)"}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
                             <div className="flex items-center gap-2 pt-2">
@@ -249,7 +285,15 @@ export default function AdminManagement() {
                             </div>
                             <div className="flex items-center gap-3 text-gray-500">
                                 <Shield size={14} className="shrink-0" />
-                                <span className="text-xs font-bold uppercase tracking-wider text-indigo-500">{user.role.replace("_", " ")}</span>
+                                <span
+                                    className="text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-lg"
+                                    style={{
+                                        backgroundColor: `${getRoleColor(user.role)}20`,
+                                        color: getRoleColor(user.role)
+                                    }}
+                                >
+                                    {getRoleDisplay(user.role)}
+                                </span>
                             </div>
                         </div>
 

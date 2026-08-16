@@ -1,11 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import AdminUser from "@/models/AdminUser";
+import { checkPermission } from "@/lib/check-permission";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
+        const { authorized, user, error } = await checkPermission(req, "view_admin_users");
+        if (!authorized) return error;
+
         await dbConnect();
-        const users = await AdminUser.find({}).sort({ createdAt: -1 });
+        // Never return the bcrypt hash to the client.
+        const users = await AdminUser.find({}).select("-password").sort({ createdAt: -1 });
         return NextResponse.json(users);
     } catch (error) {
         console.error("Failed to fetch admin users:", error);
@@ -13,8 +18,11 @@ export async function GET() {
     }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
+        const { authorized, user, error } = await checkPermission(req, "create_admin_users");
+        if (!authorized) return error;
+
         await dbConnect();
         const data = await req.json();
 
@@ -23,20 +31,21 @@ export async function POST(req: Request) {
             data.password = "Admin@12345"; // Default temporary password
         }
 
-        const user = await AdminUser.create(data);
+        const newUser = await AdminUser.create(data);
 
         // Record Admin Log
         const { recordAdminLog } = await import("@/lib/admin-log");
         await recordAdminLog({
             action: "create_admin",
-            description: `สร้างแอดมินใหม่: ${user.name} (User: ${user.username})`,
-            targetId: user._id.toString(),
+            description: `สร้างแอดมินใหม่: ${newUser.name} (User: ${newUser.username})`,
+            targetId: newUser._id.toString(),
             targetType: "AdminUser",
-            details: { name: user.name, role: user.role },
+            details: { name: newUser.name, role: newUser.role },
             req
         });
 
-        return NextResponse.json(user, { status: 201 });
+        const { password, ...safeUser } = newUser.toObject();
+        return NextResponse.json(safeUser, { status: 201 });
     } catch (error: any) {
         if (error.code === 11000) {
             return NextResponse.json({ error: "Username already exists" }, { status: 400 });

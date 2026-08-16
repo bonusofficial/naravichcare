@@ -1,11 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Claim from "@/models/Claim";
 import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
 // GET all claims
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
+        const { authorized, user, error } = await checkPermission(req, "view_claims");
+        if (!authorized) return error;
+
         await dbConnect();
         const claims = await Claim.find({}).sort({ createdAt: -1 });
         return NextResponse.json({ success: true, data: claims });
@@ -15,8 +19,11 @@ export async function GET() {
 }
 
 // POST create new claim
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
+        const { authorized, user, error } = await checkPermission(req, "create_claims");
+        if (!authorized) return error;
+
         await dbConnect();
         const body = await req.json();
         const claim = await Claim.create(body);
@@ -35,8 +42,11 @@ export async function POST(req: Request) {
     }
 }
 // PUT update existing claim (for drafts)
-export async function PUT(req: Request) {
+export async function PUT(req: NextRequest) {
     try {
+        const { authorized, user, error } = await checkPermission(req, "edit_claims");
+        if (!authorized) return error;
+
         await dbConnect();
         const body = await req.json();
         const { _id, ...updateData } = body;
@@ -59,8 +69,11 @@ export async function PUT(req: Request) {
     }
 }
 // DELETE a claim
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
     try {
+        const { authorized, user, error } = await checkPermission(req, "delete_claims");
+        if (!authorized) return error;
+
         await dbConnect();
         const { searchParams } = new URL(req.url);
         const id = searchParams.get("id");

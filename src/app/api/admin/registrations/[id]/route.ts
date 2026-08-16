@@ -1,13 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
 import Registration from "@/models/Registration";
 import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
 export async function GET(
-    _req: Request,
+    req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { authorized, error } = await checkPermission(req, "view_registrations");
+        if (!authorized) return error;
+
         const { id } = await params;
         await connectToDatabase();
         const registration = await Registration.findById(id).lean();
@@ -19,10 +23,13 @@ export async function GET(
 }
 
 export async function DELETE(
-    req: Request,
+    req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { authorized, error } = await checkPermission(req, "delete_registrations");
+        if (!authorized) return error;
+
         const { id } = await params;
         await connectToDatabase();
         const registration = await Registration.findById(id);

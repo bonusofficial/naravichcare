@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server"; // Re-sync schema
+import { NextRequest, NextResponse } from "next/server"; // Re-sync schema
 import dbConnect from "@/lib/mongodb";
 import CoveragePlan from "@/models/CoveragePlan";
 import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
+// Public: the registration flow (step 3) reads coverage plans before login.
 export async function GET() {
     try {
         await dbConnect();
@@ -13,8 +15,11 @@ export async function GET() {
     }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "edit_coverage_plans");
+        if (!authorized) return error;
+
         await dbConnect();
         const body = await req.json();
         const plan = await CoveragePlan.create(body);

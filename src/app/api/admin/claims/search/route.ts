@@ -1,11 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Registration from "@/models/Registration";
 import CoveragePlan from "@/models/CoveragePlan";
 import Claim from "@/models/Claim";
+import { checkPermission } from "@/lib/check-permission";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "view_claims");
+        if (!authorized) return error;
+
         await dbConnect();
         const { query } = await req.json();
 

@@ -1,16 +1,20 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import RepairJob from "@/models/RepairJob";
 
 import { sendLineFlexMessage } from "@/lib/line-messaging";
 import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
 interface Context {
     params: Promise<{ id: string }>;
 }
 
-export async function GET(req: Request, { params }: Context) {
+export async function GET(req: NextRequest, { params }: Context) {
     try {
+        const { authorized, error } = await checkPermission(req, "view_repair_jobs");
+        if (!authorized) return error;
+
         await dbConnect();
         const { id } = await params;
         const job = await RepairJob.findById(id).populate("customer").populate("assignedTechnician", "name username");
@@ -26,8 +30,11 @@ export async function GET(req: Request, { params }: Context) {
     }
 }
 
-export async function PATCH(req: Request, { params }: Context) {
+export async function PATCH(req: NextRequest, { params }: Context) {
     try {
+        const { authorized, error } = await checkPermission(req, "edit_repair_jobs");
+        if (!authorized) return error;
+
         await dbConnect();
         const { id } = await params;
         const data = await req.json();
@@ -160,8 +167,11 @@ export async function PATCH(req: Request, { params }: Context) {
     }
 }
 
-export async function DELETE(req: Request, { params }: Context) {
+export async function DELETE(req: NextRequest, { params }: Context) {
     try {
+        const { authorized, error } = await checkPermission(req, "delete_repair_jobs");
+        if (!authorized) return error;
+
         await dbConnect();
         const { id } = await params;
         await RepairJob.findByIdAndDelete(id);

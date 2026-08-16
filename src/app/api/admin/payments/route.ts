@@ -1,12 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Payment from "@/models/Payment";
 import Loan from "@/models/Loan";
 import { sendLineNotify } from "@/lib/line";
 import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "create_payments");
+        if (!authorized) return error;
+
         await dbConnect();
         const { loanId, amount, paymentMethod, recordedBy, note } = await req.json();
 

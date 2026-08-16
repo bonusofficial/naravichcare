@@ -22,6 +22,7 @@ import "./src/models/Registration";
 import "./src/models/RepairCustomer";
 import "./src/models/RepairJob";
 import "./src/models/RepairPart";
+import "./src/models/Role";
 import "./src/models/ServiceRequestPage";
 import "./src/models/TermsPage";
 

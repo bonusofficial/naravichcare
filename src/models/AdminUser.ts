@@ -5,7 +5,7 @@ export interface IAdminUser extends Document {
     username: string;
     password?: string;
     name: string;
-    role: "super_admin" | "admin" | "viewer" | "technician" | "staff";
+    role: string;
     email: string;
     isActive: boolean;
     createdAt: Date;
@@ -16,7 +16,7 @@ const AdminUserSchema: Schema = new Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     name: { type: String, required: true },
-    role: { type: String, enum: ["super_admin", "admin", "viewer", "technician", "staff"], default: "admin" },
+    role: { type: String, required: true, default: "admin" },
     email: { type: String, required: true },
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },

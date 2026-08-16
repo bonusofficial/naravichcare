@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "push-schema": "tsx push-schema.ts"
+    "push-schema": "tsx push-schema.ts",
+    "list-admins": "tsx list-admins.ts",
+    "create-admin": "tsx create-admin.ts",
+    "migrate-profit": "tsx migrate-profit-data.ts",
+    "seed-roles": "tsx seed-roles.ts"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",
