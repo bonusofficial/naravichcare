@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
 import AdminUser from "@/models/AdminUser";
+import Branch from "@/models/Branch";
 import { checkPermission } from "@/lib/check-permission";
+import { validatePassword } from "@/lib/password-policy";
 
 export async function GET(req: NextRequest) {
     try {
@@ -29,7 +32,7 @@ export async function POST(req: NextRequest) {
         const passwordError = validatePassword(data.password);
         if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 });
 
-        const { username, password, name, role, email, isActive = true, branchId } = data;
+        const { branchId } = data;
         if (branchId && (!mongoose.isValidObjectId(branchId) || !(await Branch.exists({ _id: branchId, isActive: true })))) {
             return NextResponse.json({ error: "Branch not found or inactive" }, { status: 400 });
         }

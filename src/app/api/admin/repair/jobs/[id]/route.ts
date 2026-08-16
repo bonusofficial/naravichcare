@@ -5,6 +5,7 @@ import RepairJob from "@/models/RepairJob";
 import { sendLineFlexMessage } from "@/lib/line-messaging";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
+import { assertClaimEligible, ClaimEligibilityError } from "@/lib/claim-eligibility";
 
 interface Context {
     params: Promise<{ id: string }>;
