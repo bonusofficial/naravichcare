@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import AdminLog from "@/models/AdminLog";
 import dbConnect from "@/lib/mongodb";
+import { JWT_SECRET } from "@/lib/jwt";
 
 interface LogParams {
     action: string;

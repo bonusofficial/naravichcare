@@ -1,15 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
-
-function unauthorized(request: NextRequest) {
-    if (request.nextUrl.pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const response = NextResponse.redirect(new URL("/admin/login", request.url));
-    response.cookies.delete("admin_token");
-    return response;
-}
+import { JWT_SECRET } from "@/lib/jwt";
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;

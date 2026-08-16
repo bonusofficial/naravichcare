@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import AdminUser from "./src/models/AdminUser";
 
+dotenv.config({ path: ".env.local" });
 dotenv.config();
 
 async function run() {

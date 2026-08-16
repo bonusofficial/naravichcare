@@ -1,11 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Registration from "@/models/Registration";
 import Claim from "@/models/Claim";
 import CoveragePlan from "@/models/CoveragePlan";
+import { checkPermission } from "@/lib/check-permission";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "view_accounting");
+        if (!authorized) return error;
+
         await dbConnect();
 
         // 1. Calculate Insurance Sales (Income)

@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server"; // Re-sync schema 2
+import { NextRequest, NextResponse } from "next/server"; // Re-sync schema 2
 import dbConnect from "@/lib/mongodb";
 import CoveragePlan from "@/models/CoveragePlan";
-import { isCoveragePlanDeviceType } from "@/lib/coverage-plan";
+import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
+// Public: the registration flow reads a single coverage plan before login.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         await dbConnect();
@@ -27,8 +29,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 }
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
+        const { authorized, error } = await checkPermission(req, "edit_coverage_plans");
+        if (!authorized) return error;
+
         await dbConnect();
         const { id } = await params;
         const body = await req.json();
@@ -40,17 +45,40 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         }
         body.coverageDurationMonths = Number(body.coverageDurationMonths);
         const plan = await CoveragePlan.findByIdAndUpdate(id, body, { new: true, runValidators: true });
+
+        await recordAdminLog({
+            req,
+            action: "update_coverage_plan",
+            description: `อัปเดตแผนความคุ้มครอง: ${body.name || plan?.name || id}`,
+            targetId: id,
+            targetType: "CoveragePlan",
+            details: body
+        });
+
         return NextResponse.json(plan);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 400 });
     }
 }
 
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
+        const { authorized, error } = await checkPermission(req, "edit_coverage_plans");
+        if (!authorized) return error;
+
         await dbConnect();
         const { id } = await params;
+        const plan = await CoveragePlan.findById(id);
         await CoveragePlan.findByIdAndDelete(id);
+
+        await recordAdminLog({
+            req,
+            action: "delete_coverage_plan",
+            description: `ลบแผนความคุ้มครอง: ${plan?.name || id}`,
+            targetId: id,
+            targetType: "CoveragePlan"
+        });
+
         return NextResponse.json({ success: true });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 400 });

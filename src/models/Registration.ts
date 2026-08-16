@@ -50,7 +50,7 @@ const RegistrationSchema = new mongoose.Schema(
         addressDetails: { type: String, required: false },
         status: {
             type: String,
-            enum: ["pending", "paid", "approved", "rejected"],
+            enum: ["pending", "paid", "approved", "rejected", "cancelled", "refunded"],
             default: "pending",
         },
         paymentReceipt: {
@@ -75,21 +75,63 @@ const RegistrationSchema = new mongoose.Schema(
             type: Date,
             required: false,
         },
-        coverageStatus: {
-            type: String,
-            enum: ["active", "expired", "bought_back"],
+        // Profit calculation fields
+        salePrice: {
+            type: Number,
+            required: false,
+            default: 0,
+        },
+        packageCost: {
+            type: Number,
+            required: false,
+            default: 0,
+        },
+        agentCommission: {
+            type: Number,
+            required: false,
+            default: 0,
+        },
+        otherExpenses: {
+            type: Number,
+            required: false,
+            default: 0,
+        },
+        branchId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Branch",
             required: false,
         },
-        coverageSnapshot: {
-            planId: { type: mongoose.Schema.Types.ObjectId, ref: "CoveragePlan" },
-            planName: { type: String },
-            priceMultiplier: { type: Number },
-            packagePriceSatang: { type: Number, min: 0 },
-            coverageStartAt: { type: Date },
-            coverageEndAt: { type: Date },
-            totalCoverageDays: { type: Number, min: 1 },
-            durationMonths: { type: Number, min: 1 },
-            snapshottedAt: { type: Date },
+        totalCost: {
+            type: Number,
+            required: false,
+            default: 0,
+        },
+        netProfit: {
+            type: Number,
+            required: false,
+            default: 0,
+        },
+        profitMargin: {
+            type: Number,
+            required: false,
+            default: 0,
+        },
+        // Cancellation/Refund fields
+        isCancelled: {
+            type: Boolean,
+            default: false,
+        },
+        isRefunded: {
+            type: Boolean,
+            default: false,
+        },
+        refundedAt: {
+            type: Date,
+            required: false,
+        },
+        cancellationReason: {
+            type: String,
+            required: false,
         },
         createdAt: {
             type: Date,
@@ -102,10 +144,14 @@ const RegistrationSchema = new mongoose.Schema(
     }
 );
 
-RegistrationSchema.pre("save", function () {
-    this.imeiNormalized = typeof this.imei === "string" ? this.imei.replace(/\D/g, "") : undefined;
-    this.idCardNormalized = typeof this.idCard === "string" ? this.idCard.replace(/\D/g, "") : undefined;
-    this.policyNumberNormalized = typeof this.policyNumber === "string" ? this.policyNumber.trim().toUpperCase() : undefined;
+// Pre-save hook to calculate profit automatically
+RegistrationSchema.pre("save", function (this: any, next: any) {
+    if (this.salePrice !== undefined && this.packageCost !== undefined) {
+        this.totalCost = (this.packageCost || 0) + (this.agentCommission || 0) + (this.otherExpenses || 0);
+        this.netProfit = (this.salePrice || 0) - (this.totalCost || 0);
+        this.profitMargin = (this.salePrice || 0) > 0 ? (((this.netProfit || 0) / (this.salePrice || 1)) * 100) : 0;
+    }
+    next();
 });
 
 const Registration = mongoose.models.Registration || mongoose.model("Registration", RegistrationSchema);

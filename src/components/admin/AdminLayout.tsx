@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import { AdminSidebar } from "./AdminSidebar";
 import { Bell, Search, ChevronDown, Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useAdminSession } from "./AdminSession";
+import { useCurrentAdmin } from "@/hooks/useCurrentAdmin";
+import { ROLE_LABELS, ROLE_COLORS } from "@/lib/permissions";
 
 const SIDEBAR_OPEN = 288;
 const SIDEBAR_CLOSED = 72;
@@ -13,7 +14,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const pathname = usePathname();
-    const { user } = useAdminSession();
+    const { user, loading } = useCurrentAdmin();
 
     // Check if current route is login page
     const isLoginPage = pathname === "/admin/login";
@@ -22,15 +23,19 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         return <div className="min-h-screen bg-[#F8FAFC]">{children}</div>;
     }
 
+    const roleColors = user ? ROLE_COLORS[user.role] || ROLE_COLORS.staff : ROLE_COLORS.staff;
+    const roleLabel = user ? ROLE_LABELS[user.role] || user.role : "Loading...";
+    const initials = user ? (user.name || user.username || "U").substring(0, 1).toUpperCase() : "U";
+
     return (
         <div className="relative flex min-h-screen w-full overflow-x-hidden bg-[#F1F5F9]">
             {/* Global Print Resets */}
             <style jsx global>{`
                 @media print {
                     .no-print { display: none !important; }
-                    .print-reset-margin { 
-                        margin-left: 0 !important; 
-                        padding: 0 !important; 
+                    .print-reset-margin {
+                        margin-left: 0 !important;
+                        padding: 0 !important;
                         width: 100% !important;
                         position: absolute !important;
                         left: 0 !important;
@@ -81,12 +86,14 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                             <Bell size={18} />
                             <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full"></span>
                         </button>
-                        <div className="hidden h-6 w-px bg-gray-200 sm:block"></div>
-                        <div className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 px-1 sm:px-2 py-1.5 rounded-lg transition-colors">
-                            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center text-white font-bold text-xs">{user?.name?.charAt(0).toUpperCase() || "A"}</div>
+                        <div className="h-6 w-px bg-gray-200"></div>
+                        <div className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 px-2 py-1.5 rounded-lg transition-colors">
+                            <div className={`w-7 h-7 rounded-lg ${user?.role === 'super_admin' ? 'bg-gradient-to-tr from-purple-500 to-purple-700' : user?.role === 'admin' ? 'bg-gradient-to-tr from-blue-500 to-blue-700' : 'bg-gradient-to-tr from-gray-500 to-gray-700'} flex items-center justify-center text-white font-bold text-xs`}>
+                                {initials}
+                            </div>
                             <div className="hidden md:block">
-                                <p className="text-xs font-bold text-gray-800 leading-none">{user?.name || "Admin"}</p>
-                                <p className="text-[10px] text-gray-500 mt-0.5">{user?.branch?.name || "ยังไม่ผูกสาขา"}</p>
+                                <p className="text-xs font-bold text-gray-800 leading-none">{user?.name || user?.username || "Loading..."}</p>
+                                <p className={`text-[10px] mt-0.5 font-semibold ${roleColors.text}`}>{roleLabel}</p>
                             </div>
                             <ChevronDown size={12} className="hidden text-gray-400 sm:block" />
                         </div>

@@ -4,6 +4,7 @@ import AdminUser from "@/models/AdminUser";
 import { SignJWT } from "jose";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
+import { JWT_SECRET } from "@/lib/jwt";
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 8;
@@ -18,13 +19,7 @@ function getClientKey(req: Request, username: string) {
 
 export async function POST(req: Request) {
     try {
-        const secretKey = process.env.JWT_SECRET;
-        if (!secretKey || secretKey.length < 32) {
-            console.error("JWT_SECRET is missing or shorter than 32 characters");
-            return NextResponse.json({ error: "Server authentication is not configured" }, { status: 500 });
-        }
-        const JWT_SECRET = new TextEncoder().encode(secretKey);
-
+        // 2. Database Connection
         try {
             await dbConnect();
         } catch (dbErr) {

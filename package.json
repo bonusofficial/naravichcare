@@ -8,12 +8,10 @@
     "start": "next start -H 127.0.0.1",
     "lint": "eslint",
     "push-schema": "tsx push-schema.ts",
-    "reset-admin-password": "tsx reset-admin-password.ts",
-    "migrate:coverage": "tsx migrate-coverage-snapshots.ts",
-    "cleanup:buyback-images": "tsx cleanup-buyback-images.ts",
-    "test:buyback": "vitest run src/lib/buyback.test.ts src/lib/buyback-storage.test.ts",
-    "test:hero-banner": "vitest run src/lib/hero-banner.test.ts",
-    "test:coverage-plan": "vitest run src/lib/coverage-plan.test.ts"
+    "list-admins": "tsx list-admins.ts",
+    "create-admin": "tsx create-admin.ts",
+    "migrate-profit": "tsx migrate-profit-data.ts",
+    "seed-roles": "tsx seed-roles.ts"
   },
   "dependencies": {
     "@expo-google-fonts/noto-sans-thai": "^0.4.2",

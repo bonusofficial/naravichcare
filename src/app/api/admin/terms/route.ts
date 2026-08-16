@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import TermsPage from "@/models/TermsPage";
+import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
 const DEFAULT_TERMS = [
     {
@@ -38,8 +40,11 @@ export async function GET() {
     }
 }
 
-export async function PUT(req: Request) {
+export async function PUT(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "edit_terms");
+        if (!authorized) return error;
+
         await dbConnect();
         const body = await req.json();
         let page = await TermsPage.findOne();
@@ -49,6 +54,15 @@ export async function PUT(req: Request) {
             page.items = body.items;
             await page.save();
         }
+
+        await recordAdminLog({
+            req,
+            action: "update_terms",
+            description: "อัปเดตข้อกำหนดและเงื่อนไข",
+            targetId: page._id.toString(),
+            targetType: "TermsPage"
+        });
+
         return NextResponse.json({ success: true, data: page });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

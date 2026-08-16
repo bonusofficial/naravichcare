@@ -1,12 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
 import Registration from "@/models/Registration";
+import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
 export async function GET(
-    _req: Request,
+    req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { authorized, error } = await checkPermission(req, "view_registrations");
+        if (!authorized) return error;
+
         const { id } = await params;
         await connectToDatabase();
         const registration = await Registration.findById(id).lean();
@@ -18,14 +23,28 @@ export async function GET(
 }
 
 export async function DELETE(
-    _req: Request,
+    req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { authorized, error } = await checkPermission(req, "delete_registrations");
+        if (!authorized) return error;
+
         const { id } = await params;
         await connectToDatabase();
-        const registration = await Registration.findByIdAndDelete(id);
+        const registration = await Registration.findById(id);
         if (!registration) return NextResponse.json({ message: "Not found" }, { status: 404 });
+
+        await Registration.findByIdAndDelete(id);
+
+        await recordAdminLog({
+            req,
+            action: "delete_registration",
+            description: `ลบการลงทะเบียนของ ${registration.firstName} ${registration.lastName} (ID: ${id})`,
+            targetId: id,
+            targetType: "Registration"
+        });
+
         return NextResponse.json({ success: true }, { status: 200 });
     } catch (error: any) {
         return NextResponse.json({ message: error.message }, { status: 500 });

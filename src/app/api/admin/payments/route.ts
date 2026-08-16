@@ -1,11 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Payment from "@/models/Payment";
 import Loan from "@/models/Loan";
 import { sendLineNotify } from "@/lib/line";
+import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "create_payments");
+        if (!authorized) return error;
+
         await dbConnect();
         const { loanId, amount, paymentMethod, recordedBy, note } = await req.json();
 
@@ -55,6 +60,16 @@ export async function POST(req: Request) {
             `💵 ยอดชำระ: ฿${amount.toLocaleString()}\n` +
             `🔢 งวดที่: ${loan.paidInstallments}/${loan.totalInstallments}`
         );
+
+        // 5. Record Admin Log
+        await recordAdminLog({
+            req,
+            action: "record_payment",
+            description: `บันทึกรับชำระเงิน: ${receiptId} - สัญญา ${loan.contractId} งวดที่ ${loan.paidInstallments}`,
+            targetId: payment._id.toString(),
+            targetType: "Payment",
+            details: { receiptId, contractId: loan.contractId, amount, installmentNumber: loan.paidInstallments }
+        });
 
         return NextResponse.json({ success: true, receiptId, payment });
     } catch (error: any) {

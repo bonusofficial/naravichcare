@@ -1,12 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import RepairJob from "@/models/RepairJob";
 import RepairCustomer from "@/models/RepairCustomer";
 import { recordAdminLog } from "@/lib/admin-log";
-import { assertClaimEligible, ClaimEligibilityError } from "@/lib/claim-eligibility";
+import { checkPermission } from "@/lib/check-permission";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "view_repair_jobs");
+        if (!authorized) return error;
+
         await dbConnect();
         const { searchParams } = new URL(req.url);
         const status = searchParams.get("status");
@@ -37,8 +40,11 @@ export async function GET(req: Request) {
     }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "create_repair_jobs");
+        if (!authorized) return error;
+
         await dbConnect();
         const data = await req.json();
 

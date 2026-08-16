@@ -1,9 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import AdminLog from "@/models/AdminLog";
+import { checkPermission } from "@/lib/check-permission";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "view_logs");
+        if (!authorized) return error;
+
         await dbConnect();
 
         // Get query parameters for pagination or filtering if needed

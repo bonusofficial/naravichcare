@@ -1,13 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
+import { checkPermission } from "@/lib/check-permission";
 import Loan from "@/models/Loan";
 import Payment from "@/models/Payment";
 import Claim from "@/models/Claim";
 import Agent from "@/models/Agent";
 import Registration from "@/models/Registration";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "view_dashboard");
+        if (!authorized) return error;
+
         await dbConnect();
 
         const now = new Date();

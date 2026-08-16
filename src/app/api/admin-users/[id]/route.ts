@@ -1,17 +1,28 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import AdminUser from "@/models/AdminUser";
-import Branch from "@/models/Branch";
-import { validatePassword } from "@/lib/password-policy";
-import mongoose from "mongoose";
+import { checkPermission } from "@/lib/check-permission";
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
+        const { authorized, user, error } = await checkPermission(req, "edit_admin_users");
+        if (!authorized) return error;
+
         await dbConnect();
         const { id } = await params;
         const data = await req.json();
-        const user = await AdminUser.findById(id).select("+password");
-        if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+        const updatedUser = await AdminUser.findById(id);
+        if (!updatedUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+        // Assign and save() rather than findByIdAndUpdate() so the pre-save hook
+        // hashes a new password. findByIdAndUpdate skips the hook, which stored
+        // whatever plaintext the client sent. An omitted/blank password means
+        // "leave the existing one alone".
+        const { password, ...rest } = data;
+        Object.assign(updatedUser, rest);
+        if (password) updatedUser.password = password;
+        await updatedUser.save();
 
         const { name, role, email, isActive, branchId } = data;
         if (branchId && (!mongoose.isValidObjectId(branchId) || !(await Branch.exists({ _id: branchId, isActive: true })))) {
@@ -36,36 +47,38 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         const { recordAdminLog } = await import("@/lib/admin-log");
         await recordAdminLog({
             action: "update_admin",
-            description: `แก้ไขข้อมูลแอดมิน: ${user.name} (User: ${user.username})`,
-            targetId: user._id.toString(),
+            description: `แก้ไขข้อมูลแอดมิน: ${updatedUser.name} (User: ${updatedUser.username})`,
+            targetId: updatedUser._id.toString(),
             targetType: "AdminUser",
-            details: { name: user.name, role: user.role, isActive: user.isActive },
+            details: { name: updatedUser.name, role: updatedUser.role, isActive: updatedUser.isActive },
             req
         });
 
-        const response = user.toObject();
-        delete response.password;
-        return NextResponse.json(response);
-    } catch {
+        const { password: _omit, ...safeUser } = updatedUser.toObject();
+        return NextResponse.json(safeUser);
+    } catch (error) {
         return NextResponse.json({ error: "Failed to update admin user" }, { status: 500 });
     }
 }
 
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
+        const { authorized, user, error } = await checkPermission(req, "delete_admin_users");
+        if (!authorized) return error;
+
         await dbConnect();
         const { id } = await params;
-        const user = await AdminUser.findByIdAndDelete(id);
-        if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+        const deletedUser = await AdminUser.findByIdAndDelete(id);
+        if (!deletedUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
         // Record Admin Log
         const { recordAdminLog } = await import("@/lib/admin-log");
         await recordAdminLog({
             action: "delete_admin",
-            description: `ลบแอดมิน: ${user.name} (User: ${user.username})`,
+            description: `ลบแอดมิน: ${deletedUser.name} (User: ${deletedUser.username})`,
             targetId: id,
             targetType: "AdminUser",
-            details: { name: user.name, username: user.username },
+            details: { name: deletedUser.name, username: deletedUser.username },
             req
         });
 

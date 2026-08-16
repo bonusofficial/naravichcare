@@ -1,13 +1,18 @@
-import { NextResponse } from "next/server";
-import mongoose from "mongoose";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import AdminUser from "@/models/AdminUser";
 import Branch from "@/models/Branch";
 import { recordAdminLog } from "@/lib/admin-log";
-import { validatePassword } from "@/lib/password-policy";
+import { checkPermission } from "@/lib/check-permission";
 
-export async function GET() {
+// Used by /admin/repair/users to manage repair staff. It reads and writes
+// AdminUser records, so it is gated on the admin-user permissions rather than
+// the repair ones - a POST here can mint an account of any role.
+export async function GET(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "view_admin_users");
+        if (!authorized) return error;
+
         await dbConnect();
         const users = await AdminUser.find({}).select("-password").populate("branchId", "name location").sort({ createdAt: -1 });
         return NextResponse.json(users);
@@ -17,8 +22,11 @@ export async function GET() {
     }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "create_admin_users");
+        if (!authorized) return error;
+
         await dbConnect();
         const body = await req.json();
         const { username, password, name, role, email, branchId } = body;
@@ -63,48 +71,48 @@ export async function POST(req: Request) {
     }
 }
 
-export async function PATCH(req: Request) {
+export async function PATCH(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "edit_admin_users");
+        if (!authorized) return error;
+
         await dbConnect();
         const body = await req.json();
-        const { id, ...updateData } = body;
+        const { id, password, ...updateData } = body;
 
         if (!id) return NextResponse.json({ error: "User ID required" }, { status: 400 });
 
-        const user = await AdminUser.findById(id).select("+password");
-        if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+        const updatedUser = await AdminUser.findById(id);
+        if (!updatedUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-        const { username, password, name, role, email, isActive, branchId } = updateData;
-        if (branchId && (!mongoose.isValidObjectId(branchId) || !(await Branch.exists({ _id: branchId, isActive: true })))) {
-            return NextResponse.json({ error: "Branch not found or inactive" }, { status: 400 });
-        }
-        if (typeof username === "string") user.username = username;
-        if (typeof name === "string") user.name = name;
-        if (typeof role === "string") user.role = role;
-        if (typeof email === "string") user.email = email;
-        if (typeof isActive === "boolean") user.isActive = isActive;
-        if (branchId === "" || branchId === null) user.branchId = undefined;
-        else if (typeof branchId === "string") user.branchId = branchId;
+        // save() rather than findByIdAndUpdate() so the pre-save hook hashes a
+        // changed password; an omitted/blank one leaves the existing hash alone.
+        Object.assign(updatedUser, updateData);
+        if (password) updatedUser.password = password;
+        await updatedUser.save();
 
-        if (password) {
-            const passwordError = validatePassword(password);
-            if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 });
-            user.password = password;
-        }
+        await recordAdminLog({
+            req,
+            action: "update_user",
+            description: `แก้ไขข้อมูลพนักงาน "${updatedUser.name}" (@${updatedUser.username})`,
+            targetId: id,
+            targetType: "AdminUser",
+            details: updateData
+        });
 
-        await user.save();
-        const updatedUser = user.toObject();
-        delete updatedUser.password;
-
-        return NextResponse.json(updatedUser);
+        const { password: _omit, ...safeUser } = updatedUser.toObject();
+        return NextResponse.json(safeUser);
     } catch (error) {
         console.error("Update User Error:", error);
         return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
     }
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "delete_admin_users");
+        if (!authorized) return error;
+
         await dbConnect();
         const { searchParams } = new URL(req.url);
         const id = searchParams.get("id");

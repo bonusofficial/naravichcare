@@ -4,65 +4,67 @@ import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-    LayoutDashboard, ShieldCheck, Users,
-    ClipboardList, FileText, LogOut, Percent,
-    UserCog, ChevronDown, Settings, Bell, Zap,
-    Circle, ChevronsLeft, ChevronsRight, History, LayoutTemplate, MessageCircle, Shield, RefreshCcw, Building2,
+    LayoutDashboard, Smartphone, ShieldCheck, Users,
+    ClipboardList, FileText, LogOut, TrendingDown, Percent,
+    UserCog, UserCircle, ChevronDown, Settings, Bell, Zap,
+    Circle, ChevronsLeft, ChevronsRight, History, LayoutTemplate, MessageCircle, Shield,
+    DollarSign,
 } from "lucide-react";
-import { AdminSessionUser, useAdminSession } from "./AdminSession";
+import { useCurrentAdmin } from "@/hooks/useCurrentAdmin";
+import { ROLE_LABELS, ROLE_COLORS } from "@/lib/permissions";
 
-type NavItem = { title: string; icon: React.ReactNode; href: string; badge?: string | number; roles?: AdminSessionUser["role"][] };
+type NavItem = { title: string; icon: React.ReactNode; href: string; badge?: string | number; permission?: string };
 type NavGroup = { group: string; items: NavItem[] };
 
 const navGroups: NavGroup[] = [
     {
         group: "ภาพรวม",
-        items: [{ title: "Dashboard", icon: <LayoutDashboard size={18} />, href: "/admin" }],
+        items: [{ title: "Dashboard", icon: <LayoutDashboard size={18} />, href: "/admin", permission: "view_dashboard" }],
     },
     {
         group: "การดำเนินงาน",
         items: [
-            { title: "รายการลงทะเบียน", icon: <ClipboardList size={18} />, href: "/admin/registrations" },
-            { title: "จัดการแพ็กเกจ", icon: <Zap size={18} />, href: "/admin/packages" },
-            { title: "จัดการแผน (Step 3)", icon: <ShieldCheck size={18} />, href: "/admin/coverage-plans" },
-            { title: "งานเคลม", icon: <ClipboardList size={18} />, href: "/admin/claims", badge: "ใหม่" },
-            { title: "ประวัติการเคลม", icon: <History size={18} />, href: "/admin/claims-history" },
-            { title: "ซื้อคืนแพ็กคุ้มครอง", icon: <RefreshCcw size={18} />, href: "/admin/buybacks", roles: ["admin", "super_admin"] },
+            { title: "รายการลงทะเบียน", icon: <ClipboardList size={18} />, href: "/admin/registrations", permission: "view_registrations" },
+            { title: "จัดการแพ็กเกจ", icon: <Zap size={18} />, href: "/admin/packages", permission: "view_packages" },
+            { title: "จัดการแผน (Step 3)", icon: <ShieldCheck size={18} />, href: "/admin/coverage-plans", permission: "view_coverage_plans" },
+            { title: "งานเคลม", icon: <ClipboardList size={18} />, href: "/admin/claims", badge: "ใหม่", permission: "view_claims" },
+            { title: "ประวัติการเคลม", icon: <History size={18} />, href: "/admin/claims-history", permission: "view_claims" },
         ],
     },
     {
         group: "ระบบงานซ่อม & เคลม",
         items: [
-            { title: "แดชบอร์ดซ่อม", icon: <LayoutDashboard size={18} />, href: "/admin/repair" },
-            { title: "รับเครื่องซ่อม/เคลม", icon: <Zap size={18} />, href: "/admin/repair/jobs/new" },
-            { title: "รายการงานซ่อม", icon: <ClipboardList size={18} />, href: "/admin/repair/jobs" },
-            { title: "จัดการพนักงานซ่อม", icon: <UserCog size={18} />, href: "/admin/repair/users" },
+            { title: "แดชบอร์ดซ่อม", icon: <LayoutDashboard size={18} />, href: "/admin/repair", permission: "view_repair_jobs" },
+            { title: "รับเครื่องซ่อม/เคลม", icon: <Zap size={18} />, href: "/admin/repair/jobs/new", permission: "create_repair_jobs" },
+            { title: "รายการงานซ่อม", icon: <ClipboardList size={18} />, href: "/admin/repair/jobs", permission: "view_repair_jobs" },
+            { title: "จัดการพนักงานซ่อม", icon: <UserCog size={18} />, href: "/admin/repair/users", permission: "view_admin_users" },
         ],
     },
     {
         group: "บุคลากร",
         items: [
-            { title: "จัดการแอดมิน", icon: <UserCog size={18} />, href: "/admin/users", roles: ["super_admin"] },
-            { title: "ตัวแทน (Agents)", icon: <Users size={18} />, href: "/admin/agents" },
-            { title: "จัดการสาขา", icon: <Building2 size={18} />, href: "/admin/branches", roles: ["super_admin"] },
+            { title: "จัดการแอดมิน", icon: <UserCog size={18} />, href: "/admin/users", permission: "view_admin_users" },
+            { title: "จัดการสิทธิ์ (Roles)", icon: <Shield size={18} />, href: "/admin/roles", permission: "view_roles" },
+            { title: "ตัวแทน (Agents)", icon: <Users size={18} />, href: "/admin/agents", permission: "view_agents" },
         ],
     },
     {
         group: "รายงาน & บัญชี",
         items: [
-            { title: "กำไรจริง (Amortization)", icon: <Percent size={18} />, href: "/admin/accounting" },
-            { title: "บันทึกการใช้งาน (Logs)", icon: <History size={18} />, href: "/admin/logs" },
+            { title: "กำไรสุทธิ", icon: <DollarSign size={18} />, href: "/admin/profit-report", permission: "view_profit_report" },
+            { title: "กำไรจริง (Amortization)", icon: <Percent size={18} />, href: "/admin/accounting", permission: "view_accounting" },
+            { title: "บันทึกการใช้งาน (Logs)", icon: <History size={18} />, href: "/admin/logs", permission: "view_logs" },
         ],
     },
     {
         group: "เนื้อหาเว็บไซต์",
         items: [
-            { title: "Hero Banner", icon: <LayoutTemplate size={18} />, href: "/admin/hero-banner" },
-            { title: "Footer", icon: <LayoutTemplate size={18} />, href: "/admin/footer" },
-            { title: "Floating Chat", icon: <MessageCircle size={18} />, href: "/admin/floating-chat" },
-            { title: "นโยบาย & เงื่อนไข", icon: <Shield size={18} />, href: "/admin/legal-pages" },
-            { title: "เงื่อนไข & ข้อตกลง", icon: <FileText size={18} />, href: "/admin/terms" },
-            { title: "ตารางคำขอรับบริการ", icon: <History size={18} />, href: "/admin/service-request" },
+            { title: "Hero Banner", icon: <LayoutTemplate size={18} />, href: "/admin/hero-banner", permission: "edit_hero_banner" },
+            { title: "Footer", icon: <LayoutTemplate size={18} />, href: "/admin/footer", permission: "edit_footer" },
+            { title: "Floating Chat", icon: <MessageCircle size={18} />, href: "/admin/floating-chat", permission: "edit_floating_chat" },
+            { title: "นโยบาย & เงื่อนไข", icon: <Shield size={18} />, href: "/admin/legal-pages", permission: "edit_legal_pages" },
+            { title: "เงื่อนไข & ข้อตกลง", icon: <FileText size={18} />, href: "/admin/terms", permission: "edit_terms" },
+            { title: "ตารางคำขอรับบริการ", icon: <History size={18} />, href: "/admin/service-request", permission: "edit_service_request" },
         ],
     },
 ];
@@ -77,8 +79,15 @@ interface AdminSidebarProps {
 export function AdminSidebar({ collapsed, mobileOpen, onMobileClose, onToggle }: AdminSidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
-    const { user } = useAdminSession();
-    const contentCollapsed = collapsed && !mobileOpen;
+    // Permissions arrive with the user from /api/auth/me. Fetching them from
+    // /api/admin/roles instead required view_roles, which technician and staff
+    // don't have, so their sidebar rendered empty.
+    const { user, permissions: userPermissions, loading } = useCurrentAdmin();
+
+    // Don't render until the current user is known
+    if (loading) {
+        return null;
+    }
 
     const handleLogout = async () => {
         if (!confirm("คุณต้องการออกจากระบบใช่หรือไม่?")) return;
@@ -92,6 +101,27 @@ export function AdminSidebar({ collapsed, mobileOpen, onMobileClose, onToggle }:
             console.error(error);
         }
     };
+
+    const roleColors = user ? ROLE_COLORS[user.role] || ROLE_COLORS.staff : ROLE_COLORS.staff;
+    const roleLabel = user ? ROLE_LABELS[user.role] || user.role : "Loading...";
+    const userName = user?.name || user?.username || "User";
+    const userEmail = user?.email || "user@naravich.com";
+    const initials = userName.substring(0, 1).toUpperCase();
+
+    // Filter nav items based on user permissions
+    const filteredNavGroups = navGroups
+        .map(group => ({
+            ...group,
+            items: group.items.filter(item => {
+                // If no permission specified, show to everyone
+                if (!item.permission) return true;
+                // Check if user has the required permission
+                return userPermissions.includes(item.permission);
+            })
+        }))
+        // Remove groups that have no visible items
+        .filter(group => group.items.length > 0);
+
     return (
         <aside
             className={`fixed left-0 top-0 z-50 flex h-dvh w-[calc(100vw-2rem)] max-w-72 flex-col border-r border-gray-200 bg-white shadow-2xl transition-all duration-300 ease-in-out lg:w-[var(--admin-sidebar-width)] lg:shadow-none ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
@@ -128,14 +158,16 @@ export function AdminSidebar({ collapsed, mobileOpen, onMobileClose, onToggle }:
             {/* Profile */}
             {!contentCollapsed ? (
                 <div className="px-4 pt-4 shrink-0">
-                    <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 cursor-pointer group">
+                    <div className={`flex items-center gap-3 px-3 py-3 rounded-xl ${roleColors.bg} hover:opacity-90 border border-gray-200 cursor-pointer group`}>
                         <div className="relative shrink-0">
-                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white text-[13px] font-black">{user?.name?.charAt(0).toUpperCase() || "A"}</div>
+                            <div className={`w-9 h-9 rounded-xl ${user?.role === 'super_admin' ? 'bg-gradient-to-br from-purple-600 to-purple-800' : user?.role === 'admin' ? 'bg-gradient-to-br from-blue-600 to-indigo-600' : 'bg-gradient-to-br from-gray-600 to-gray-800'} flex items-center justify-center text-white text-[13px] font-black`}>
+                                {initials}
+                            </div>
                             <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white"></div>
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-semibold text-gray-800 truncate">{user?.name || "Admin"}</p>
-                            <p className="text-[11px] text-gray-400 mt-0.5 truncate">{user?.branch?.name || "ยังไม่ผูกสาขา"}</p>
+                            <p className="text-[13px] font-semibold text-gray-800 truncate">{userName}</p>
+                            <p className={`text-[11px] mt-0.5 truncate font-semibold ${roleColors.text}`}>{roleLabel}</p>
                         </div>
                         <ChevronDown size={14} className="text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
                     </div>
@@ -143,7 +175,9 @@ export function AdminSidebar({ collapsed, mobileOpen, onMobileClose, onToggle }:
             ) : (
                 <div className="flex justify-center pt-4 shrink-0">
                     <div className="relative">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white text-[13px] font-black cursor-pointer">{user?.name?.charAt(0).toUpperCase() || "A"}</div>
+                        <div className={`w-9 h-9 rounded-xl ${user?.role === 'super_admin' ? 'bg-gradient-to-br from-purple-600 to-purple-800' : user?.role === 'admin' ? 'bg-gradient-to-br from-blue-600 to-indigo-600' : 'bg-gradient-to-br from-gray-600 to-gray-800'} flex items-center justify-center text-white text-[13px] font-black cursor-pointer`}>
+                            {initials}
+                        </div>
                         <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white"></div>
                     </div>
                 </div>
@@ -152,12 +186,14 @@ export function AdminSidebar({ collapsed, mobileOpen, onMobileClose, onToggle }:
             {/* Nav */}
             <nav className="flex-1 px-3 py-4 overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: "none" }}>
                 <style jsx>{`nav::-webkit-scrollbar { display: none; }`}</style>
-                {navGroups.map((group) => (
+                {filteredNavGroups.map((group) => (
                     <div key={group.group} className="mb-4">
-                        {!contentCollapsed
-                            ? <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 px-3 mb-2">{group.group}</p>
-                            : <div className="w-full h-px bg-gray-100 my-2" />
-                        }
+                        {!collapsed && (
+                            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 px-3 mb-2">
+                                {group.group}
+                            </p>
+                        )}
+                        {collapsed && <div className="w-full h-px bg-gray-100 my-2" />}
                         <div className="space-y-0.5">
                             {group.items.filter((item) => !item.roles || (user && item.roles.includes(user.role))).map((item) => {
                                 const isActive = pathname === item.href;

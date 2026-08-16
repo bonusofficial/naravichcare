@@ -22,6 +22,11 @@ const PackageSchema = new Schema(
             type: Number,
             required: [true, "Please provide a yearly price"],
         },
+        costPrice: {
+            type: Number,
+            default: 0,
+            required: false,
+        },
         isActive: {
             type: Boolean,
             default: true,

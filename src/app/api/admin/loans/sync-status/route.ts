@@ -1,9 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Loan from "@/models/Loan";
+import { checkPermission } from "@/lib/check-permission";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
+        // Writes loan status back to the DB, so it needs the edit permission.
+        const { authorized, error } = await checkPermission(req, "edit_loans");
+        if (!authorized) return error;
+
         await dbConnect();
         const now = new Date();
         const loans = await Loan.find({ status: { $ne: "closed" } });

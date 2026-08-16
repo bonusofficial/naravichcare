@@ -1,10 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import RepairCustomer from "@/models/RepairCustomer";
 import { recordAdminLog } from "@/lib/admin-log";
+import { checkPermission } from "@/lib/check-permission";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "view_repair_jobs");
+        if (!authorized) return error;
+
         await dbConnect();
         const { searchParams } = new URL(req.url);
         const query = searchParams.get("q");
@@ -31,11 +35,14 @@ export async function GET(req: Request) {
     }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "create_repair_jobs");
+        if (!authorized) return error;
+
         await dbConnect();
         const data = await req.json();
-        
+
         // Basic validation
         if (!data.firstName || !data.lastName || !data.phone) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -62,8 +69,11 @@ export async function POST(req: Request) {
     }
 }
 
-export async function PATCH(req: Request) {
+export async function PATCH(req: NextRequest) {
     try {
+        const { authorized, error } = await checkPermission(req, "edit_repair_jobs");
+        if (!authorized) return error;
+
         await dbConnect();
         const data = await req.json();
         const { id, ...updateData } = data;
