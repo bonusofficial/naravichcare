@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
 import AdminUser from "@/models/AdminUser";
+import Branch from "@/models/Branch";
 import { checkPermission } from "@/lib/check-permission";
+import { validatePassword } from "@/lib/password-policy";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const { authorized, user, error } = await checkPermission(req, "edit_admin_users");
+        const { authorized, error } = await checkPermission(req, "edit_admin_users");
         if (!authorized) return error;
 
         await dbConnect();
@@ -15,33 +18,32 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         const updatedUser = await AdminUser.findById(id);
         if (!updatedUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-        // Assign and save() rather than findByIdAndUpdate() so the pre-save hook
-        // hashes a new password. findByIdAndUpdate skips the hook, which stored
-        // whatever plaintext the client sent. An omitted/blank password means
-        // "leave the existing one alone".
-        const { password, ...rest } = data;
-        Object.assign(updatedUser, rest);
-        if (password) updatedUser.password = password;
-        await updatedUser.save();
+        const { name, role, email, isActive, branchId, password } = data;
 
-        const { name, role, email, isActive, branchId } = data;
         if (branchId && (!mongoose.isValidObjectId(branchId) || !(await Branch.exists({ _id: branchId, isActive: true })))) {
             return NextResponse.json({ error: "Branch not found or inactive" }, { status: 400 });
         }
-        if (typeof name === "string") user.name = name;
-        if (typeof role === "string") user.role = role;
-        if (typeof email === "string") user.email = email;
-        if (typeof isActive === "boolean") user.isActive = isActive;
-        if (branchId === "" || branchId === null) user.branchId = undefined;
-        else if (typeof branchId === "string" && mongoose.isValidObjectId(branchId)) user.branchId = new mongoose.Types.ObjectId(branchId);
 
-        if (data.password) {
-            const passwordError = validatePassword(data.password);
-            if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 });
-            user.password = data.password;
+        // Whitelist the editable fields rather than assigning the raw body, so a
+        // client cannot set arbitrary schema paths.
+        if (typeof name === "string") updatedUser.name = name;
+        if (typeof role === "string") updatedUser.role = role;
+        if (typeof email === "string") updatedUser.email = email;
+        if (typeof isActive === "boolean") updatedUser.isActive = isActive;
+        if (branchId === "" || branchId === null) updatedUser.branchId = undefined;
+        else if (typeof branchId === "string" && mongoose.isValidObjectId(branchId)) {
+            updatedUser.branchId = new mongoose.Types.ObjectId(branchId);
         }
 
-        await user.save();
+        if (password) {
+            const passwordError = validatePassword(password);
+            if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 });
+            updatedUser.password = password;
+        }
+
+        // save() rather than findByIdAndUpdate() so the pre-save hook hashes a
+        // changed password; findByIdAndUpdate skips it and stored plaintext.
+        await updatedUser.save();
 
         // Record Admin Log
         const { recordAdminLog } = await import("@/lib/admin-log");
