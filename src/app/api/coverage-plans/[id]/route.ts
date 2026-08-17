@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import CoveragePlan from "@/models/CoveragePlan";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
+import { isCoveragePlanDeviceType } from "@/lib/coverage-plan";
 
 // Public: the registration flow reads a single coverage plan before login.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {

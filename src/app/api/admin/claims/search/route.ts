@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import Registration from "@/models/Registration";
 import CoveragePlan from "@/models/CoveragePlan";
 import Claim from "@/models/Claim";
+import Buyback from "@/models/Buyback";
 import { checkPermission } from "@/lib/check-permission";
 
 export async function POST(req: NextRequest) {

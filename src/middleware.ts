@@ -2,6 +2,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { JWT_SECRET } from "@/lib/jwt";
 
+function unauthorized(request: NextRequest) {
+    const { pathname } = request.nextUrl;
+    if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return NextResponse.redirect(new URL("/admin/login", request.url));
+}
+
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const adminToken = request.cookies.get("admin_token")?.value;

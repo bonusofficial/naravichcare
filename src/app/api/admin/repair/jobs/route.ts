@@ -4,6 +4,7 @@ import RepairJob from "@/models/RepairJob";
 import RepairCustomer from "@/models/RepairCustomer";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
+import { assertClaimEligible, ClaimEligibilityError } from "@/lib/claim-eligibility";
 
 export async function GET(req: NextRequest) {
     try {

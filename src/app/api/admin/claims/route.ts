@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import Claim from "@/models/Claim";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
+import { assertClaimEligible, ClaimEligibilityError } from "@/lib/claim-eligibility";
 
 // GET all claims
 export async function GET(req: NextRequest) {
