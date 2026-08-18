@@ -32,6 +32,14 @@ const RegistrationSchema = new mongoose.Schema(
             type: String,
             required: false,
         },
+        // The price quoted to the customer at step 3 (devicePrice × priceMultiplier).
+        // Stored at registration time so the quote can never drift if the plan's
+        // multiplier is edited later.
+        packagePrice: {
+            type: Number,
+            required: false,
+            default: 0,
+        },
         images: {
             type: Object,
             required: false,
@@ -144,14 +152,16 @@ const RegistrationSchema = new mongoose.Schema(
     }
 );
 
-// Pre-save hook to calculate profit automatically
-RegistrationSchema.pre("save", function (this: any, next: any) {
+// Pre-save hook to calculate profit automatically.
+// Mongoose 9 no longer passes `next` into middleware — it awaits the returned
+// value instead. Calling next() here threw "next is not a function" and broke
+// every customer registration.
+RegistrationSchema.pre("save", function (this: any) {
     if (this.salePrice !== undefined && this.packageCost !== undefined) {
         this.totalCost = (this.packageCost || 0) + (this.agentCommission || 0) + (this.otherExpenses || 0);
         this.netProfit = (this.salePrice || 0) - (this.totalCost || 0);
         this.profitMargin = (this.salePrice || 0) > 0 ? (((this.netProfit || 0) / (this.salePrice || 1)) * 100) : 0;
     }
-    next();
 });
 
 const Registration = mongoose.models.Registration || mongoose.model("Registration", RegistrationSchema);

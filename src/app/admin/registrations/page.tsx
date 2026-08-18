@@ -18,6 +18,7 @@ type Registration = {
     model: string;
     devicePrice: number;
     packageType: string;
+    packagePrice?: number;
     status: "pending" | "paid" | "approved" | "rejected";
     createdAt: string;
     approvedAt?: string;
@@ -32,6 +33,18 @@ type Registration = {
     policyNumber?: string;
     referenceNumber?: string;
     paymentReceipt?: string;
+};
+
+// Coverage plans and packages are two different collections that both back the
+// `packageType` field, so the certificate reads whichever one matched.
+type PlanDetail = {
+    _id: string;
+    name: string;
+    subTitle?: string;
+    durationText?: string;
+    coverageDurationMonths?: number;
+    highlights?: string[];
+    quotas?: { name?: string; maxLimit?: number }[];
 };
 
 const STATUS_CONFIG = {
@@ -58,6 +71,9 @@ export default function AdminRegistrations() {
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<{ type: "bulk"; count: number; error?: string } | { type: "one"; reg: Registration; error?: string } | null>(null);
     const [packageMapping, setPackageMapping] = useState<Record<string, string>>({});
+    // Full plan/package records keyed by _id, so the certificate can print the
+    // benefits the customer actually bought instead of a hardcoded list.
+    const [planDetails, setPlanDetails] = useState<Record<string, PlanDetail>>({});
     const certRef = useRef<HTMLDivElement>(null);
 
     const toggleSelect = (id: string) => {
@@ -164,9 +180,12 @@ export default function AdminRegistrations() {
                 const plans = await planRes.json();
 
                 const mapping: Record<string, string> = {};
-                if (Array.isArray(pkgs)) pkgs.forEach((p: any) => mapping[p._id] = p.name);
-                if (Array.isArray(plans)) plans.forEach((p: any) => mapping[p._id] = p.name);
+                const details: Record<string, PlanDetail> = {};
+                const collect = (p: PlanDetail) => { mapping[p._id] = p.name; details[p._id] = p; };
+                if (Array.isArray(pkgs)) pkgs.forEach(collect);
+                if (Array.isArray(plans)) plans.forEach(collect);
                 setPackageMapping(mapping);
+                setPlanDetails(details);
             } catch (e) {
                 console.error("Failed to fetch package mapping:", e);
             }
@@ -249,6 +268,9 @@ export default function AdminRegistrations() {
 
     // ---- Certificate Overlay ----
     if (showCertificate && selected) {
+        const plan = planDetails[selected.packageType];
+        const benefits = plan?.highlights?.filter(Boolean) ?? [];
+        const quotas = plan?.quotas?.filter(q => q?.name) ?? [];
         return (
             <div className="fixed inset-0 z-[100] bg-slate-100 flex flex-col items-center py-10 overflow-auto print:bg-white print:py-0">
                 <div className="mb-6 flex flex-wrap justify-center gap-3 print:hidden">
@@ -369,6 +391,13 @@ export default function AdminRegistrations() {
                                     { label: "IMEI", value: selected.imei, mono: true },
                                     { label: "ราคาเครื่อง", value: `${selected.devicePrice?.toLocaleString()} บาท` },
                                     { label: "แพ็กเกจ", value: packageMapping[selected.packageType] || selected.packageType || "—" },
+                                    {
+                                        label: "ระยะเวลาคุ้มครอง",
+                                        value: plan?.coverageDurationMonths
+                                            ? `${plan.coverageDurationMonths} เดือน`
+                                            : plan?.durationText || "—",
+                                    },
+                                    { label: "ค่าเบี้ยแพ็กเกจ", value: selected.packagePrice ? `${selected.packagePrice.toLocaleString()} บาท` : "—" },
                                 ].map(item => (
                                     <div key={item.label}>
                                         <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">{item.label}</div>
@@ -378,27 +407,44 @@ export default function AdminRegistrations() {
                             </div>
                         </div>
 
-                        {/* Policy Terms Box */}
+                        {/* Policy Terms Box — benefits come from the plan the customer bought */}
                         <div className="border border-gray-200 rounded-sm p-6 bg-gray-50 space-y-3">
                             <div className="flex items-center gap-2 mb-4">
                                 <Shield size={16} className="text-gray-500" />
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">เงื่อนไขความคุ้มครองเบื้องต้น</h3>
+                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    ความคุ้มครองและสิทธิประโยชน์{plan?.name ? ` — ${plan.name}` : ""}
+                                </h3>
                             </div>
-                            <div className="grid grid-cols-2 gap-x-10 gap-y-2 text-[11px] text-gray-600">
-                                {[
-                                    "ความคุ้มครองอุบัติเหตุจากการตกกระแทก",
-                                    "ความคุ้มครองจอแตกแบบไม่ตั้งใจ",
-                                    "ความคุ้มครองน้ำเข้าเครื่อง (ตามเงื่อนไข)",
-                                    "ไม่คุ้มครองความเสียหายจากเจตนา",
-                                    "ไม่คุ้มครองกรณีขาดทุน/การสูญหาย",
-                                    "ต้องแจ้งเคลมภายใน 48 ชั่วโมง",
-                                ].map((term, i) => (
-                                    <div key={i} className="flex items-start gap-2">
-                                        <span className="text-gray-400 mt-0.5">•</span>
-                                        <span>{term}</span>
+                            {benefits.length > 0 ? (
+                                <div className="grid grid-cols-2 gap-x-10 gap-y-2 text-[11px] text-gray-600">
+                                    {benefits.map((term, i) => (
+                                        <div key={i} className="flex items-start gap-2">
+                                            <span className="text-gray-400 mt-0.5">•</span>
+                                            <span>{term}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-[11px] text-gray-400 italic">
+                                    ยังไม่ได้ระบุสิทธิประโยชน์ในแผนนี้ — กรุณาเพิ่มที่หน้าจัดการแผน
+                                </div>
+                            )}
+
+                            {quotas.length > 0 && (
+                                <div className="pt-4 mt-4 border-t border-gray-200">
+                                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">โควตาการเคลม</div>
+                                    <div className="grid grid-cols-2 gap-x-10 gap-y-2 text-[11px] text-gray-600">
+                                        {quotas.map((q, i) => (
+                                            <div key={i} className="flex items-center justify-between gap-3 border-b border-dotted border-gray-200 pb-1">
+                                                <span>{q.name}</span>
+                                                <span className="font-bold text-gray-800 shrink-0">
+                                                    {q.maxLimit != null ? `${q.maxLimit} ครั้ง` : "—"}
+                                                </span>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Dates */}
@@ -722,6 +768,7 @@ export default function AdminRegistrations() {
                                                 { label: "IMEI", value: selected.imei, mono: true },
                                                 { label: "แพ็กเกจ", value: packageMapping[selected.packageType] || selected.packageType || "—" },
                                                 { label: "ราคาเครื่อง", value: `${selected.devicePrice?.toLocaleString()} บาท` },
+                                                { label: "ค่าเบี้ยแพ็กเกจ", value: selected.packagePrice ? `${selected.packagePrice.toLocaleString()} บาท` : "—" },
                                             ].map(item => (
                                                 <div key={item.label} className="space-y-1 p-4 bg-gray-50 rounded-lg">
                                                     <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{item.label}</div>

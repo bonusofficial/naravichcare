@@ -102,7 +102,10 @@ export async function PATCH(req: NextRequest) {
                     ? await Agent.findOne({ agentCode: registration.agentCode })
                     : null;
 
-                registration.salePrice = pkg?.yearlyPrice || 0;
+                // packagePrice is the figure quoted to the customer at step 3
+                // (devicePrice x the plan's multiplier). Coverage plans have no
+                // fixed yearlyPrice, so without this every such sale priced at 0.
+                registration.salePrice = registration.packagePrice || pkg?.yearlyPrice || 0;
                 registration.packageCost = pkg?.costPrice || 0;
                 // No agent on the sale means no commission is owed.
                 registration.agentCommission =

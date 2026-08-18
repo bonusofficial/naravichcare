@@ -17,6 +17,8 @@ interface RegisterContextType {
     setDeviceType: (v: string) => void;
     packageType: string;
     setPackageType: (v: string) => void;
+    packagePrice: number;
+    setPackagePrice: (v: number) => void;
     deviceImages: { [key: string]: string | null };
     setDeviceImages: (key: string, v: string | null) => void;
     receiptImage: string | null;
@@ -58,6 +60,7 @@ export function RegisterProvider({ children }: { children: React.ReactNode }) {
     const [devicePrice, setDevicePrice] = useState("");
     const [deviceType, setDeviceType] = useState("");
     const [packageType, setPackageType] = useState("");
+    const [packagePrice, setPackagePrice] = useState(0);
     const [deviceImages, setDeviceImagesState] = useState<{ [key: string]: string | null }>({
         front: null, back: null, left: null, right: null, top: null, bottom: null
     });
@@ -87,6 +90,7 @@ export function RegisterProvider({ children }: { children: React.ReactNode }) {
                 if (data.devicePrice) setDevicePrice(data.devicePrice);
                 if (data.deviceType) setDeviceType(data.deviceType);
                 if (data.packageType) setPackageType(data.packageType);
+                if (data.packagePrice) setPackagePrice(Number(data.packagePrice) || 0);
                 if (data.firstName) setFirstName(data.firstName);
                 if (data.lastName) setLastName(data.lastName);
                 if (data.idCard) setIdCard(data.idCard);
@@ -106,7 +110,7 @@ export function RegisterProvider({ children }: { children: React.ReactNode }) {
     // Save Text only (Avoid images in localStorage because they are huge)
     useEffect(() => {
         const state = {
-            phone, imei, brand, model, devicePrice, deviceType, packageType,
+            phone, imei, brand, model, devicePrice, deviceType, packageType, packagePrice,
             firstName, lastName, idCard, email, postCode, province, district, subDistrict, addressDetails, agentCode
         };
         try {
@@ -114,7 +118,7 @@ export function RegisterProvider({ children }: { children: React.ReactNode }) {
         } catch (e) {
             console.error("Quota exceeded for text only state", e);
         }
-    }, [phone, imei, brand, model, devicePrice, deviceType, packageType, firstName, lastName, idCard, email, postCode, province, district, subDistrict, addressDetails, agentCode]);
+    }, [phone, imei, brand, model, devicePrice, deviceType, packageType, packagePrice, firstName, lastName, idCard, email, postCode, province, district, subDistrict, addressDetails, agentCode]);
 
     const setDeviceImages = (key: string, v: string | null) => {
         setDeviceImagesState(prev => ({ ...prev, [key]: v }));
@@ -124,6 +128,7 @@ export function RegisterProvider({ children }: { children: React.ReactNode }) {
         <RegisterContext.Provider value={{
             phone, setPhone, imei, setImei, brand, setBrand, model, setModel,
             devicePrice, setDevicePrice, deviceType, setDeviceType, packageType, setPackageType,
+            packagePrice, setPackagePrice,
             deviceImages, setDeviceImages, receiptImage, setReceiptImage,
             firstName, setFirstName, lastName, setLastName, idCard, setIdCard, email, setEmail,
             postCode, setPostCode, province, setProvince, district, setDistrict, subDistrict, setSubDistrict, addressDetails, setAddressDetails,
