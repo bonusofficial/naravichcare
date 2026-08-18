@@ -41,10 +41,19 @@ const navGroups: NavGroup[] = [
         ],
     },
     {
+        group: "ซื้อคืนแพ็ก (Buyback)",
+        items: [
+            { title: "รายการซื้อคืน", icon: <TrendingDown size={18} />, href: "/admin/buybacks", permission: "view_buybacks" },
+            { title: "เปิดรายการซื้อคืน", icon: <Zap size={18} />, href: "/admin/buybacks/new", permission: "create_buybacks" },
+            { title: "แก้ข้อมูลแพ็กเก่า", icon: <Settings size={18} />, href: "/admin/buybacks/coverage-data", permission: "edit_coverage_data" },
+        ],
+    },
+    {
         group: "บุคลากร",
         items: [
             { title: "จัดการแอดมิน", icon: <UserCog size={18} />, href: "/admin/users", permission: "view_admin_users" },
             { title: "จัดการสิทธิ์ (Roles)", icon: <Shield size={18} />, href: "/admin/roles", permission: "view_roles" },
+            { title: "จัดการสาขา", icon: <LayoutTemplate size={18} />, href: "/admin/branches", permission: "view_branches" },
             { title: "ตัวแทน (Agents)", icon: <Users size={18} />, href: "/admin/agents", permission: "view_agents" },
         ],
     },

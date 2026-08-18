@@ -100,6 +100,22 @@ export const PERMISSION_CATALOG = [
     ],
   },
   {
+    category: "ซื้อคืนแพ็ก (Buyback)",
+    items: [
+      { value: "view_buybacks", label: "ดูรายการซื้อคืน" },
+      { value: "create_buybacks", label: "เปิดรายการซื้อคืน" },
+      { value: "approve_buybacks", label: "อนุมัติ/ปฏิเสธการซื้อคืน" },
+      { value: "edit_coverage_data", label: "แก้ข้อมูลช่วงคุ้มครอง" },
+    ],
+  },
+  {
+    category: "จัดการสาขา",
+    items: [
+      { value: "view_branches", label: "ดูสาขา" },
+      { value: "edit_branches", label: "เพิ่ม/แก้ไข/ลบสาขา" },
+    ],
+  },
+  {
     category: "รายงาน & บัญชี",
     items: [
       { value: "view_profit_report", label: "ดูรายงานกำไรสุทธิ" },
@@ -152,6 +168,8 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "view_agents", "create_agents", "edit_agents", "delete_agents",
     "view_loans", "create_loans", "edit_loans",
     "view_payments", "create_payments", "view_insurance",
+    "view_buybacks", "create_buybacks", "approve_buybacks", "edit_coverage_data",
+    "view_branches",
     // read-only visibility of people management; no create/edit/delete
     "view_admin_users",
     "view_roles",
@@ -172,6 +190,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "view_loans",
     "view_payments",
     "view_insurance",
+    "view_buybacks",
     "view_logs",
   ],
 

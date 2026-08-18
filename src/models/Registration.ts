@@ -124,6 +124,26 @@ const RegistrationSchema = new mongoose.Schema(
             required: false,
             default: 0,
         },
+        // Coverage period. The buyback flow, claim search and /check-policy all
+        // read these; the fe993d6 merge kept those call sites but dropped the
+        // schema definitions, so every read silently returned undefined.
+        coverageStatus: {
+            type: String,
+            enum: ["active", "expired", "bought_back"],
+            required: false,
+            index: true,
+        },
+        coverageSnapshot: {
+            planId: { type: String, required: false },
+            planName: { type: String, required: false },
+            packagePriceSatang: { type: Number, required: false, min: 0 },
+            // Set by the admin, not derived from the approval date, so a policy
+            // that starts later than it was approved can be recorded correctly.
+            coverageStartAt: { type: Date, required: false },
+            coverageEndAt: { type: Date, required: false },
+            totalCoverageDays: { type: Number, required: false, min: 1 },
+            snapshottedAt: { type: Date, required: false },
+        },
         // Cancellation/Refund fields
         isCancelled: {
             type: Boolean,
