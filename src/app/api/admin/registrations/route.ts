@@ -4,8 +4,14 @@ import connectToDatabase from "@/lib/mongodb";
 import Registration from "@/models/Registration";
 import Package from "@/models/Package";
 import Agent from "@/models/Agent";
+import CoveragePlan from "@/models/CoveragePlan";
 import { checkPermission } from "@/lib/check-permission";
-import { formatSatang } from "@/lib/buyback";
+import {
+    calculateCoverageSnapshot,
+    differenceInBangkokCalendarDays,
+    formatSatang,
+    parseBahtToSatang,
+} from "@/lib/buyback";
 
 // Restored from 6bd21e5; the merge in fe993d6 kept the call sites but dropped
 // these definitions.
@@ -41,7 +47,7 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
     try {
         const body = await req.json();
-        const { id, status, paymentReceipt, policyNumber, referenceNumber } = body;
+        const { id, status, paymentReceipt, policyNumber, referenceNumber, coverageStartDate } = body;
 
         // Check permission based on status action
         if (status === "approved") {
@@ -90,6 +96,44 @@ export async function PATCH(req: NextRequest) {
             }
 
             registration.approvedAt = new Date();
+
+            // Coverage period. The admin picks the start date by hand (การทำประกัน
+            // ย้อนหลังได้); the end date is derived from the plan's duration. Only
+            // recompute when a start date is supplied or none exists yet, so
+            // re-saving an approved policy (e.g. just editing the policy number)
+            // never silently resets the coverage window.
+            const startProvided = typeof coverageStartDate === "string" && coverageStartDate.length > 0;
+            const hasSnapshot = Boolean(registration.coverageSnapshot?.coverageStartAt);
+            if (startProvided || !hasSnapshot) {
+                const coverageStart = startProvided
+                    ? new Date(`${coverageStartDate}T00:00:00+07:00`)
+                    : new Date();
+                if (Number.isFinite(coverageStart.getTime())) {
+                    try {
+                        const plan = mongoose.isValidObjectId(registration.packageType)
+                            ? await CoveragePlan.findById(registration.packageType).select("coverageDurationMonths name").lean<{ coverageDurationMonths?: number; name?: string }>()
+                            : null;
+                        const rawMonths = Number(plan?.coverageDurationMonths);
+                        const durationMonths = Number.isInteger(rawMonths) && rawMonths >= 1 ? rawMonths : 12;
+                        const snap = calculateCoverageSnapshot(coverageStart, durationMonths);
+                        const priceSatang = parseBahtToSatang(registration.packagePrice || registration.salePrice || 0) ?? 0;
+                        registration.coverageStatus =
+                            differenceInBangkokCalendarDays(snap.coverageEndAt, new Date()) > 0 ? "active" : "expired";
+                        registration.coverageSnapshot = {
+                            planId: registration.packageType || undefined,
+                            planName: plan?.name || "",
+                            packagePriceSatang: priceSatang,
+                            coverageStartAt: snap.coverageStartAt,
+                            coverageEndAt: snap.coverageEndAt,
+                            totalCoverageDays: snap.totalCoverageDays,
+                            snapshottedAt: new Date(),
+                        };
+                    } catch (snapErr) {
+                        // A bad plan duration must not block the approval itself.
+                        console.error("Coverage snapshot skipped:", snapErr);
+                    }
+                }
+            }
 
             // Snapshot the profit figures at approval time. Only fill them when the
             // sale has never been priced, so manual corrections made later through
