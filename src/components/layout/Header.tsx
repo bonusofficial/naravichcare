@@ -39,10 +39,16 @@ export function Header() {
                 </nav>
 
                 {/* Actions */}
-                <div className="flex items-center shrink-0 ml-auto">
+                <div className="flex items-center gap-4 shrink-0 ml-auto">
                     <button className="text-gray-500 hover:text-purple-600 transition-colors" aria-label="Search">
                         <Search className="w-6 h-6" strokeWidth={2.5} />
                     </button>
+                    <Link
+                        href="/register"
+                        className="rounded-full bg-gradient-to-r from-cyan-400 to-purple-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-purple-500/20 transition-all hover:shadow-lg hover:shadow-purple-500/30 hover:brightness-105 active:scale-95"
+                    >
+                        สมัครบริการ
+                    </Link>
                 </div>
             </div>
         </header>
