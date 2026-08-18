@@ -6,7 +6,7 @@ import { supportsDeviceType } from "@/lib/coverage-plan";
 
 export default function Step3() {
     const router = useRouter();
-    const { devicePrice, deviceType, packageType, setPackageType } = useRegister();
+    const { devicePrice, deviceType, packageType, setPackageType, setPackagePrice } = useRegister();
     const [packages, setPackages] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(true);
     const priceNum = Number(devicePrice) || 0;
@@ -56,7 +56,7 @@ export default function Step3() {
                         {/* Price Bar */}
                         <div className="bg-cyan-50 py-3 text-center border-b border-cyan-100">
                             <p className="text-xl font-black text-slate-800">
-                                {(priceNum * pkg.priceMultiplier).toLocaleString(undefined, { minimumFractionDigits: 0 })} {pkg.durationUnit}
+                                {Math.round(priceNum * pkg.priceMultiplier).toLocaleString()} {pkg.durationUnit}
                             </p>
                         </div>
 
@@ -84,7 +84,12 @@ export default function Step3() {
 
                         <div className="p-6 pt-0 flex flex-col items-center">
                             <button
-                                onClick={() => setPackageType(pkg._id)}
+                                onClick={() => {
+                                    setPackageType(pkg._id);
+                                    // Capture the exact figure shown on the card, so the
+                                    // admin sees the price the customer was quoted.
+                                    setPackagePrice(Math.round(priceNum * pkg.priceMultiplier));
+                                }}
                                 className={`w-full py-3 rounded-full text-sm font-black text-white transition-all transform active:scale-95 shadow-md ${packageType === pkg._id ? 'bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-500' : 'bg-gradient-to-r from-blue-600 to-cyan-400 hover:from-blue-700 hover:to-cyan-500'}`}
                             >
                                 {packageType === pkg._id ? 'เลือกแล้ว' : 'เลือก'}
