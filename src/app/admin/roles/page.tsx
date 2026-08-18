@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Shield, Plus, Edit2, Trash2, X, Save, AlertCircle } from "lucide-react";
+import { Shield, Plus, Edit2, Trash2, X, Save, AlertCircle, Lock, Eye } from "lucide-react";
+
+// Super Admin holds every permission, so narrowing it could lock the last
+// account able to restore access. Every other role is editable.
+const LOCKED_ROLE = "super_admin";
 
 interface Role {
   _id: string;
@@ -24,6 +28,9 @@ export default function RolesManagementPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
+  // Super Admin opens in view-only mode: the detail is useful to read, but
+  // nothing in it may be changed.
+  const [readOnly, setReadOnly] = useState(false);
   const [error, setError] = useState("");
 
   const [formData, setFormData] = useState({
@@ -63,6 +70,7 @@ export default function RolesManagementPage() {
 
   const openCreateModal = () => {
     setEditingRole(null);
+    setReadOnly(false);
     setFormData({
       name: "",
       displayName: "",
@@ -76,6 +84,7 @@ export default function RolesManagementPage() {
 
   const openEditModal = (role: Role) => {
     setEditingRole(role);
+    setReadOnly(role.name === LOCKED_ROLE);
     setFormData({
       name: role.name,
       displayName: role.displayName,
@@ -89,6 +98,8 @@ export default function RolesManagementPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Pressing Enter inside the form would otherwise submit past the hidden button.
+    if (readOnly) return;
     setError("");
 
     try {
@@ -227,22 +238,28 @@ export default function RolesManagementPage() {
                     @{role.name}
                   </p>
                 </div>
-                {!role.isSystem && (
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => openEditModal(role)}
-                      className="p-1.5 hover:bg-white/50 rounded-lg transition-colors"
-                    >
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => openEditModal(role)}
+                    title={role.name === LOCKED_ROLE ? "ดูรายละเอียด" : "แก้ไข"}
+                    className="p-1.5 hover:bg-white/50 rounded-lg transition-colors"
+                  >
+                    {role.name === LOCKED_ROLE ? (
+                      <Eye size={14} className="text-gray-600" />
+                    ) : (
                       <Edit2 size={14} className="text-gray-600" />
-                    </button>
+                    )}
+                  </button>
+                  {!role.isSystem && (
                     <button
                       onClick={() => handleDelete(role._id)}
+                      title="ลบ"
                       className="p-1.5 hover:bg-red-100 rounded-lg transition-colors"
                     >
                       <Trash2 size={14} className="text-red-600" />
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               {role.description && (
@@ -253,11 +270,15 @@ export default function RolesManagementPage() {
                 <span className="text-gray-500">
                   {role.permissions.length} สิทธิ์
                 </span>
-                {role.isSystem && (
+                {role.name === LOCKED_ROLE ? (
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-800 text-white rounded font-semibold">
+                    <Lock size={10} /> ล็อกไว้
+                  </span>
+                ) : role.isSystem ? (
                   <span className="px-2 py-0.5 bg-gray-200 text-gray-600 rounded font-semibold">
                     System Role
                   </span>
-                )}
+                ) : null}
               </div>
             </div>
           );
@@ -271,7 +292,11 @@ export default function RolesManagementPage() {
             {/* Modal Header */}
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-800">
-                {editingRole ? "แก้ไข Role" : "สร้าง Role ใหม่"}
+                {readOnly
+                  ? `รายละเอียด Role: ${editingRole?.displayName ?? ""}`
+                  : editingRole
+                    ? "แก้ไข Role"
+                    : "สร้าง Role ใหม่"}
               </h2>
               <button
                 onClick={() => setShowModal(false)}
@@ -287,6 +312,26 @@ export default function RolesManagementPage() {
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
                   <AlertCircle size={16} />
                   {error}
+                </div>
+              )}
+
+              {readOnly && (
+                <div className="mb-4 p-3 bg-gray-100 border border-gray-200 rounded-lg flex items-start gap-2 text-gray-600 text-sm">
+                  <Lock size={16} className="mt-0.5 shrink-0" />
+                  <span>
+                    Super Admin ถือสิทธิ์ทั้งหมดของระบบ จึงแก้ไขไม่ได้ — ป้องกันการตัดสิทธิ์
+                    จนไม่เหลือใครกู้ระบบคืนได้ ดูรายละเอียดได้อย่างเดียว
+                  </span>
+                </div>
+              )}
+
+              {!readOnly && editingRole?.isSystem && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2 text-amber-800 text-sm">
+                  <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                  <span>
+                    นี่คือ System Role ที่ระบบสร้างไว้ — แก้สิทธิ์ได้ แต่ลบไม่ได้
+                    การเปลี่ยนแปลงมีผลกับผู้ใช้ทุกคนที่อยู่ใน Role นี้ทันที
+                  </span>
                 </div>
               )}
 
@@ -318,8 +363,9 @@ export default function RolesManagementPage() {
                     type="text"
                     value={formData.displayName}
                     onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                    disabled={readOnly}
                     placeholder="เช่น ผู้จัดการฝ่ายขาย"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed"
                     required
                   />
                 </div>
@@ -332,8 +378,9 @@ export default function RolesManagementPage() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  disabled={readOnly}
                   placeholder="อธิบายหน้าที่ของ Role นี้"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                   rows={2}
                 />
               </div>
@@ -346,7 +393,8 @@ export default function RolesManagementPage() {
                       key={color}
                       type="button"
                       onClick={() => setFormData({ ...formData, color })}
-                      className={`w-10 h-10 rounded-lg border-2 ${
+                      disabled={readOnly}
+                      className={`w-10 h-10 rounded-lg border-2 disabled:cursor-not-allowed disabled:opacity-50 ${
                         roleColorClasses[color].bg
                       } ${
                         formData.color === color
@@ -374,25 +422,30 @@ export default function RolesManagementPage() {
                       <div key={category.category} className="border border-gray-200 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="font-semibold text-gray-800">{category.category}</h4>
-                          <button
-                            type="button"
-                            onClick={() => selectAllInCategory(category)}
-                            className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
-                          >
-                            {allSelected ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมด"}
-                          </button>
+                          {!readOnly && (
+                            <button
+                              type="button"
+                              onClick={() => selectAllInCategory(category)}
+                              className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
+                            >
+                              {allSelected ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมด"}
+                            </button>
+                          )}
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           {category.items.map((item) => (
                             <label
                               key={item.value}
-                              className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg"
+                              className={`flex items-center gap-2 p-2 rounded-lg ${
+                                readOnly ? "cursor-default" : "cursor-pointer hover:bg-gray-50"
+                              }`}
                             >
                               <input
                                 type="checkbox"
                                 checked={formData.permissions.includes(item.value)}
                                 onChange={() => togglePermission(item.value)}
-                                className="w-4 h-4 text-blue-600 rounded border-gray-300"
+                                disabled={readOnly}
+                                className="w-4 h-4 text-blue-600 rounded border-gray-300 disabled:cursor-not-allowed"
                               />
                               <span className="text-sm text-gray-700">{item.label}</span>
                             </label>
@@ -412,15 +465,17 @@ export default function RolesManagementPage() {
                 onClick={() => setShowModal(false)}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                ยกเลิก
+                {readOnly ? "ปิด" : "ยกเลิก"}
               </button>
-              <button
-                onClick={handleSubmit}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Save size={18} />
-                {editingRole ? "บันทึกการแก้ไข" : "สร้าง Role"}
-              </button>
+              {!readOnly && (
+                <button
+                  onClick={handleSubmit}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Save size={18} />
+                  {editingRole ? "บันทึกการแก้ไข" : "สร้าง Role"}
+                </button>
+              )}
             </div>
           </div>
         </div>
