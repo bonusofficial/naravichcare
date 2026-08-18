@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Role from "@/models/Role";
+import AdminUser from "@/models/AdminUser";
 import { checkPermission } from "@/lib/check-permission";
+import { recordAdminLog } from "@/lib/admin-log";
 
 // GET /api/admin/roles/[id] - Get single role
 export async function GET(
@@ -49,10 +51,12 @@ export async function PUT(
       return NextResponse.json({ error: "Role not found" }, { status: 404 });
     }
 
-    // Prevent editing system roles' core properties
-    if (role.isSystem) {
+    // super_admin is the only locked role: it is the account that grants every
+    // other permission, so letting it be narrowed could strip the last user
+    // able to restore access. Other system roles stay editable.
+    if (role.name === "super_admin") {
       return NextResponse.json(
-        { error: "Cannot edit system role" },
+        { error: "ไม่สามารถแก้ไข Super Admin ได้" },
         { status: 400 }
       );
     }
@@ -64,6 +68,15 @@ export async function PUT(
     role.color = color || role.color;
 
     await role.save();
+
+    await recordAdminLog({
+      req: request,
+      action: "update_role",
+      description: `แก้ไข Role: ${role.displayName} (@${role.name})`,
+      targetId: role._id.toString(),
+      targetType: "Role",
+      details: { permissionCount: role.permissions.length, isSystem: role.isSystem },
+    });
 
     return NextResponse.json({ role });
   } catch (error) {
@@ -90,15 +103,32 @@ export async function DELETE(
       return NextResponse.json({ error: "Role not found" }, { status: 404 });
     }
 
-    // Prevent deleting system roles
+    // System roles stay undeletable even though they are now editable: existing
+    // accounts reference them by name, and seed-roles would recreate them anyway.
     if (role.isSystem) {
       return NextResponse.json(
-        { error: "Cannot delete system role" },
+        { error: "ไม่สามารถลบ System Role ได้ (แก้ไขสิทธิ์ได้แทน)" },
         { status: 400 }
       );
     }
 
+    const inUse = await AdminUser.countDocuments({ role: role.name });
+    if (inUse > 0) {
+      return NextResponse.json(
+        { error: `ยังมีผู้ใช้ ${inUse} บัญชีใช้ Role นี้อยู่ กรุณาย้ายผู้ใช้ก่อนลบ` },
+        { status: 409 }
+      );
+    }
+
     await Role.findByIdAndDelete(id);
+
+    await recordAdminLog({
+      req: request,
+      action: "delete_role",
+      description: `ลบ Role: ${role.displayName} (@${role.name})`,
+      targetId: id,
+      targetType: "Role",
+    });
 
     return NextResponse.json({ message: "Role deleted successfully" });
   } catch (error) {
