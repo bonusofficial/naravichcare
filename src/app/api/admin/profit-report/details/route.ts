@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
 import Registration from "@/models/Registration";
 import Package from "@/models/Package";
+import CoveragePlan from "@/models/CoveragePlan";
 import Agent from "@/models/Agent";
 import { checkPermission } from "@/lib/check-permission";
 import { buildProfitMatch, PROFIT_EFFECTIVE_STAGES } from "@/lib/profit-report";
@@ -67,13 +68,15 @@ export async function GET(req: NextRequest) {
             Registration.countDocuments(filter),
         ]);
 
-        // Resolve ids/codes to names, same as the summary endpoint does.
-        const [packages, agents] = await Promise.all([
-            Package.find({}).lean(),
+        // Resolve ids/codes to names, same as the summary endpoint does. packageType
+        // may reference either collection, so both are looked up.
+        const [packages, plans, agents] = await Promise.all([
+            Package.find({}).select("name").lean(),
+            CoveragePlan.find({}).select("name").lean(),
             Agent.find({}).lean(),
         ]);
 
-        const packageMap = packages.reduce((acc: any, pkg: any) => {
+        const packageMap = [...packages, ...plans].reduce((acc: any, pkg: any) => {
             acc[pkg._id.toString()] = pkg.name;
             return acc;
         }, {});

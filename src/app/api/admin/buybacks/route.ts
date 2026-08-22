@@ -78,6 +78,16 @@ export async function POST(req: Request) {
         if (registration.status !== "approved" || registration.coverageStatus === "bought_back") {
             return NextResponse.json({ error: "แพ็กนี้ไม่อยู่ในสถานะที่ซื้อคืนได้" }, { status: 409 });
         }
+        // A rejected buyback must not block a fresh one, but an open one must.
+        // The partial unique index enforces this too; this check just returns a
+        // clear message instead of a raw duplicate-key error.
+        const openBuyback = await Buyback.exists({
+            registrationId: registration._id,
+            status: { $in: ["pending_approval", "processing", "approved"] },
+        });
+        if (openBuyback) {
+            return NextResponse.json({ error: "แพ็กนี้มีรายการซื้อคืนที่ยังไม่ปิดอยู่แล้ว" }, { status: 409 });
+        }
         const snapshot = registration.coverageSnapshot;
         if (!snapshot?.coverageEndAt || !snapshot.coverageStartAt || !snapshot.totalCoverageDays || !Number.isSafeInteger(snapshot.packagePriceSatang)) {
             return NextResponse.json({ error: "ข้อมูลราคาและช่วงคุ้มครองไม่ครบ กรุณาให้ super_admin แก้ไขข้อมูลแพ็ก" }, { status: 422 });
@@ -164,6 +174,6 @@ export async function POST(req: Request) {
         await Promise.all(savedFiles.map((file) => deleteBuybackFile(file.relativePath).catch(() => false)));
         const auth = authErrorResponse(error);
         const status = auth?.status || (isDuplicateKeyError(error) ? 409 : error instanceof BuybackFileValidationError ? 400 : 500);
-        return NextResponse.json({ error: auth?.message || (status === 409 ? "แพ็กนี้มีรายการซื้อคืนแล้ว" : getErrorMessage(error)) }, { status });
+        return NextResponse.json({ error: auth?.message || (status === 409 ? "แพ็กนี้มีรายการซื้อคืนที่ยังไม่ปิดอยู่แล้ว" : getErrorMessage(error)) }, { status });
     }
 }

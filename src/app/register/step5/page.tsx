@@ -2,19 +2,19 @@
 import { useRouter } from "next/navigation";
 import { useRegister } from "../RegisterContext";
 import { Upload, Camera, ArrowRight } from "lucide-react";
+import { compressImageToDataUrl } from "@/lib/image-compress";
 
 export default function Step5() {
     const router = useRouter();
     const { receiptImage, setReceiptImage } = useRegister();
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setReceiptImage(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+        if (!file) return;
+        try {
+            setReceiptImage(await compressImageToDataUrl(file));
+        } catch {
+            alert("ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกรูปอื่น");
         }
     };
 

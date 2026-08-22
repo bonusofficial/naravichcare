@@ -31,8 +31,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const existing = await Buyback.findById(id);
         if (!existing) return NextResponse.json({ error: "ไม่พบรายการซื้อคืน" }, { status: 404 });
         if (existing.status === "approved") return NextResponse.json({ success: true, data: serializeBuyback(existing.toObject()) });
-        if (existing.status === "rejected") return NextResponse.json({ error: "รายการนี้ถูกปฏิเสธถาวรแล้ว" }, { status: 409 });
-        if (existing.createdBy.id.toString() === admin.id) {
+        if (existing.status === "rejected") return NextResponse.json({ error: "รายการนี้ถูกปฏิเสธแล้ว กรุณายื่นรายการซื้อคืนใหม่แทน" }, { status: 409 });
+        // Separation of duties: the creator can't approve their own request — except
+        // super_admin, who is trusted to act alone (often the only operator).
+        if (existing.createdBy.id.toString() === admin.id && admin.role !== "super_admin") {
             return NextResponse.json({ error: "ผู้สร้างรายการไม่สามารถอนุมัติรายการของตนเองได้" }, { status: 403 });
         }
 

@@ -27,7 +27,7 @@ export async function GET(req: Request) {
         const imeis = [...new Set(registrations.map((registration) => registration.imei).filter(Boolean))];
         const policies = [...new Set(registrations.map((registration) => registration.policyNumber).filter(Boolean))];
         const [buybacks, claims, repairClaims] = await Promise.all([
-            Buyback.find({ registrationId: { $in: ids } }).lean(),
+            Buyback.find({ registrationId: { $in: ids } }).sort({ createdAt: -1 }).lean(),
             Claim.find({ $or: [{ registrationId: { $in: ids } }, { imei: { $in: imeis } }, { policyNumber: { $in: policies } }] })
                 .select("registrationId customerName imei policyNumber status consumedQuotaName deductibleAmount createdAt updatedAt cancellationReason")
                 .sort({ createdAt: -1 })
@@ -37,17 +37,30 @@ export async function GET(req: Request) {
                 .sort({ createdAt: -1 })
                 .lean(),
         ]);
-        const buybackByRegistration = new Map(buybacks.map((item) => [item.registrationId.toString(), item]));
+        // Only an open buyback blocks a re-submission; a rejected one must not.
+        // Track the newest live one for eligibility, and the newest of any status
+        // for display, so the UI can still show the rejection that happened before.
+        const ACTIVE_BUYBACK_STATUSES = ["pending_approval", "processing", "approved"];
+        const activeByRegistration = new Map<string, (typeof buybacks)[number]>();
+        const latestByRegistration = new Map<string, (typeof buybacks)[number]>();
+        for (const item of buybacks) {
+            const rid = item.registrationId.toString();
+            if (!latestByRegistration.has(rid)) latestByRegistration.set(rid, item);
+            if (ACTIVE_BUYBACK_STATUSES.includes(item.status) && !activeByRegistration.has(rid)) {
+                activeByRegistration.set(rid, item);
+            }
+        }
         const now = new Date();
         const results = registrations.map((registration) => {
             const id = registration._id.toString();
-            const buyback = buybackByRegistration.get(id);
+            const activeBuyback = activeByRegistration.get(id);
+            const buyback = activeBuyback || latestByRegistration.get(id);
             const snapshot = registration.coverageSnapshot;
             const calculation = snapshot?.coverageEndAt && snapshot.totalCoverageDays && Number.isSafeInteger(snapshot.packagePriceSatang)
                 ? calculateBuybackRecommendation(snapshot.packagePriceSatang, snapshot.totalCoverageDays, new Date(snapshot.coverageEndAt), now)
                 : null;
             let ineligibleReason: string | null = null;
-            if (buyback) ineligibleReason = `แพ็กนี้มีรายการซื้อคืนสถานะ ${buyback.status}`;
+            if (activeBuyback) ineligibleReason = `แพ็กนี้มีรายการซื้อคืนสถานะ ${activeBuyback.status}`;
             else if (registration.status !== "approved" || registration.coverageStatus === "bought_back") ineligibleReason = "แพ็กไม่ได้เปิดสิทธิ์คุ้มครอง";
             else if (!`${registration.firstName || ""} ${registration.lastName || ""}`.trim() || !registration.idCard || !registration.policyNumber || !registration.imei) ineligibleReason = "ข้อมูลชื่อ เลขบัตรประชาชน เลขแพ็ก หรือ IMEI ไม่ครบ";
             else if (!calculation) ineligibleReason = "ข้อมูลราคาและช่วงคุ้มครองไม่ครบ";

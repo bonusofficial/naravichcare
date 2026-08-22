@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import { checkPermission } from "@/lib/check-permission";
+import { buildProfitMatch, PROFIT_EFFECTIVE_STAGES } from "@/lib/profit-report";
 import Loan from "@/models/Loan";
 import Payment from "@/models/Payment";
 import Claim from "@/models/Claim";
@@ -34,18 +35,23 @@ export async function GET(req: NextRequest) {
         const payments = await Payment.find().lean();
         const totalFromPayments = payments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
 
-        // --- Revenue จาก Registration (สมัครที่ชำระ/อนุมัติแล้ว ใช้ devicePrice เป็นมูลค่า) ---
-        const regsPaid = await Registration.find({ status: { $in: ["paid", "approved"] } }).select("devicePrice").lean();
-        const totalFromRegistrations = regsPaid.reduce((sum: number, r: any) => sum + (r.devicePrice || 0), 0);
+        // --- Revenue & profit จากประกัน ---
+        // ใช้ค่าเบี้ยที่ล็อกไว้ (salePrice) และกำไรจริง (รายได้ - ต้นทุน - คอม) ผ่าน
+        // logic เดียวกับหน้ารายงานกำไรและหน้าบัญชี เพื่อให้ทุกหน้าตรงกัน — ไม่ใช่
+        // devicePrice (ราคาเครื่อง) และไม่ใช่การเดาต้นทุน 10% แบบเดิม
+        const insuranceAgg = await Registration.aggregate([
+            { $match: buildProfitMatch({}) },
+            ...PROFIT_EFFECTIVE_STAGES,
+            { $group: { _id: null, revenue: { $sum: "$effectiveRevenue" }, profit: { $sum: "$effectiveProfit" } } },
+        ]);
+        const insuranceRevenue = insuranceAgg[0]?.revenue || 0;
+        const insuranceProfit = insuranceAgg[0]?.profit || 0;
 
-        const totalCollected = totalFromPayments + totalFromRegistrations;
-
-        // กำไรสุทธิประมาณการ: ยอดเก็บ - ต้นทุนประมาณการ 10%
-        const estimatedCost = totalCollected * 0.1;
-        const netProfit = Math.max(0, totalCollected - estimatedCost);
+        const totalCollected = totalFromPayments + insuranceRevenue;
+        const netProfit = Math.max(0, totalFromPayments + insuranceProfit);
 
         // รายได้รายเดือน (12 เดือนปีปัจจุบัน: จาก Payment + จาก Registration ที่ approved ในเดือนนั้น)
-        const regsForMonth = await Registration.find({ status: { $in: ["paid", "approved"] } }).select("devicePrice approvedAt createdAt").lean();
+        const regsForMonth = await Registration.find({ status: "approved" }).select("salePrice approvedAt createdAt").lean();
         const monthlyRevenue: number[] = [];
         for (let m = 1; m <= 12; m++) {
             const monthStart = new Date(currentYear, m - 1, 1);
@@ -59,7 +65,7 @@ export async function GET(req: NextRequest) {
                 return d >= monthStart && d <= monthEnd;
             });
             const paySum = paymentsInMonth.reduce((s: number, p: any) => s + (p.amount || 0), 0);
-            const regSum = regsInMonth.reduce((s: number, r: any) => s + (r.devicePrice || 0), 0);
+            const regSum = regsInMonth.reduce((s: number, r: any) => s + (r.salePrice || 0), 0);
             monthlyRevenue.push(paySum + regSum);
         }
         const maxMonthly = Math.max(...monthlyRevenue, 1);

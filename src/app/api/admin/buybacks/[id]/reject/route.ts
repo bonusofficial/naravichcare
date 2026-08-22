@@ -16,7 +16,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (!reason) return NextResponse.json({ error: "กรุณาระบุเหตุผลที่ปฏิเสธ" }, { status: 400 });
         const existing = await Buyback.findById(id);
         if (!existing) return NextResponse.json({ error: "ไม่พบรายการซื้อคืน" }, { status: 404 });
-        if (existing.createdBy.id.toString() === admin.id) {
+        // Separation of duties: the creator can't reject their own request — except
+        // super_admin, who is trusted to act alone (often the only operator).
+        if (existing.createdBy.id.toString() === admin.id && admin.role !== "super_admin") {
             return NextResponse.json({ error: "ผู้สร้างรายการไม่สามารถปฏิเสธรายการของตนเองได้" }, { status: 403 });
         }
         const rejectedAt = new Date();

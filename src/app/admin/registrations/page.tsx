@@ -19,6 +19,12 @@ type Registration = {
     devicePrice: number;
     packageType: string;
     packagePrice?: number;
+    salePrice?: number;
+    coverageSnapshot?: {
+        coverageStartAt?: string;
+        coverageEndAt?: string;
+        totalCoverageDays?: number;
+    };
     status: "pending" | "paid" | "approved" | "rejected";
     createdAt: string;
     approvedAt?: string;
@@ -63,6 +69,8 @@ export default function AdminRegistrations() {
     const [policyNumber, setPolicyNumber] = useState("");
     const [referenceNumber, setReferenceNumber] = useState("");
     const [receiptFile, setReceiptFile] = useState<string | null>(null);
+    // Coverage start date the admin sets by hand at approval (defaults to today).
+    const [coverageStartDate, setCoverageStartDate] = useState("");
     const [actionLoading, setActionLoading] = useState(false);
     const [showCertificate, setShowCertificate] = useState(false);
     const [showTransaction, setShowTransaction] = useState(false);
@@ -151,6 +159,14 @@ export default function AdminRegistrations() {
                 setPolicyNumber(json.data.policyNumber || "");
                 setReferenceNumber(json.data.referenceNumber || "");
                 setReceiptFile(null);
+                // Prefill with the already-recorded start date, else today (en-CA
+                // renders yyyy-mm-dd in the admin's local time for <input type=date>).
+                const snapStart = json.data.coverageSnapshot?.coverageStartAt;
+                setCoverageStartDate(
+                    snapStart
+                        ? new Date(snapStart).toLocaleDateString("en-CA")
+                        : new Date().toLocaleDateString("en-CA")
+                );
                 onLoaded?.(json.data);
             }
         } catch (e) {
@@ -203,7 +219,7 @@ export default function AdminRegistrations() {
             const res = await fetch("/api/admin/registrations", {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id: selected._id, status, paymentReceipt: receiptFile, policyNumber, referenceNumber })
+                body: JSON.stringify({ id: selected._id, status, paymentReceipt: receiptFile, policyNumber, referenceNumber, coverageStartDate })
             });
             if (res.ok) {
                 const data = await res.json();
@@ -608,10 +624,15 @@ export default function AdminRegistrations() {
                                             <td className="px-6 py-4">
                                                 <div className="font-medium text-gray-800 uppercase text-xs tracking-wide">{r.brand} {r.model}</div>
                                                 <div className="text-xs text-gray-400 font-mono mt-0.5">{r.imei}</div>
+                                                <div className="text-xs text-gray-400 mt-0.5">ราคาเครื่อง {r.devicePrice?.toLocaleString() || "—"} บาท</div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="text-gray-700 font-medium">{packageMapping[r.packageType] || r.packageType || "—"}</div>
-                                                <div className="text-xs text-gray-400">{r.devicePrice?.toLocaleString()} บาท</div>
+                                                {(r.packagePrice || r.salePrice) ? (
+                                                    <div className="text-xs font-semibold text-emerald-600 mt-0.5">ค่าเบี้ย {(r.packagePrice || r.salePrice)!.toLocaleString()} บาท</div>
+                                                ) : (
+                                                    <div className="text-xs text-gray-400 mt-0.5">ยังไม่ระบุค่าเบี้ย</div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-xs text-gray-500 whitespace-nowrap">
                                                 {new Date(r.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
@@ -879,6 +900,24 @@ export default function AdminRegistrations() {
                                                     value={policyNumber}
                                                     onChange={e => setPolicyNumber(e.target.value)}
                                                 />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">วันเริ่มคุ้มครอง</label>
+                                                <input
+                                                    type="date"
+                                                    className="w-full px-4 py-3 rounded-md border border-gray-200 bg-white text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    value={coverageStartDate}
+                                                    onChange={e => setCoverageStartDate(e.target.value)}
+                                                />
+                                                <p className="text-[11px] text-gray-400">
+                                                    กำหนดเองได้ (ทำประกันย้อนหลังได้) — ระบบจะคำนวณวันสิ้นสุดจากระยะเวลาของแพ็ก
+                                                    {selected.coverageSnapshot?.coverageEndAt && (
+                                                        <span className="block mt-0.5 font-semibold text-gray-600">
+                                                            คุ้มครองถึง: {new Date(selected.coverageSnapshot.coverageEndAt).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })}
+                                                        </span>
+                                                    )}
+                                                </p>
                                             </div>
                                         </div>
 
