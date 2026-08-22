@@ -23,7 +23,10 @@ const FileSchema = new Schema(
 
 const BuybackSchema = new Schema(
     {
-        registrationId: { type: Schema.Types.ObjectId, ref: "Registration", required: true, index: true },
+        // No `index: true` here — the partial unique index declared at the bottom
+        // covers this field. Declaring both makes Mongoose emit two definitions
+        // that auto-generate the same name and collide on syncIndexes().
+        registrationId: { type: Schema.Types.ObjectId, ref: "Registration", required: true },
         status: {
             type: String,
             enum: ["pending_approval", "processing", "approved", "rejected"],
@@ -100,6 +103,10 @@ BuybackSchema.index({ "branchSnapshot.id": 1, createdAt: -1 });
 BuybackSchema.index(
     { registrationId: 1 },
     {
+        // Explicitly named so it never collides with the plain `registrationId_1`
+        // that the old unique-field definition left behind; syncIndexes() drops
+        // that stale one instead of failing on a same-name conflict.
+        name: "registrationId_open_unique",
         unique: true,
         partialFilterExpression: { status: { $in: ["pending_approval", "processing", "approved"] } },
     }
