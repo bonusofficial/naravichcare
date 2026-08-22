@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Registration from "@/models/Registration";
 import Claim from "@/models/Claim";
-import CoveragePlan from "@/models/CoveragePlan";
 import { checkPermission } from "@/lib/check-permission";
+import { buildProfitMatch, PROFIT_EFFECTIVE_STAGES } from "@/lib/profit-report";
 
 export async function GET(req: NextRequest) {
     try {
@@ -12,20 +12,18 @@ export async function GET(req: NextRequest) {
 
         await dbConnect();
 
-        // 1. Calculate Insurance Sales (Income)
-        // Fetch only needed fields and use lean() for faster processing
-        const registrations = await Registration.find({ status: { $in: ["approved", "paid"] } })
-            .select("devicePrice packageType")
-            .lean();
-
-        const plans = await CoveragePlan.find({}).select("_id priceMultiplier").lean();
-        const planMap = new Map(plans.map((p: any) => [p._id.toString(), p.priceMultiplier]));
-
-        let totalInsuranceSales = 0;
-        registrations.forEach((r: any) => {
-            const multiplier = planMap.get(r.packageType) || 0;
-            totalInsuranceSales += (r.devicePrice || 0) * multiplier;
-        });
+        // 1. Insurance Sales (Income)
+        // Use the exact same source and rules as /api/admin/profit-report so the two
+        // pages can never disagree. Income is the recorded salePrice of each sale
+        // (locked at approval), not devicePrice x the current multiplier — otherwise
+        // editing a plan's multiplier later would silently rewrite past revenue, and
+        // this page also used to count unapproved "paid" rows the report never did.
+        const salesAgg = await Registration.aggregate([
+            { $match: buildProfitMatch({}) },
+            ...PROFIT_EFFECTIVE_STAGES,
+            { $group: { _id: null, totalRevenue: { $sum: "$effectiveRevenue" } } },
+        ]);
+        const totalInsuranceSales = salesAgg[0]?.totalRevenue || 0;
 
         // 2. Calculate Claims (Expense)
         // Fetch only needed fields and use lean()
