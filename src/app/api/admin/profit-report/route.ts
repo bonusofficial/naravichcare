@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
 import Registration from "@/models/Registration";
 import Package from "@/models/Package";
+import CoveragePlan from "@/models/CoveragePlan";
 import Agent from "@/models/Agent";
 import { checkPermission } from "@/lib/check-permission";
 import { buildProfitMatch, PROFIT_EFFECTIVE_STAGES } from "@/lib/profit-report";
@@ -97,11 +98,16 @@ export async function GET(req: NextRequest) {
 
         const results = await Registration.aggregate(pipeline);
 
-        // Fetch package names and agent names
-        const packages = await Package.find({}).lean();
-        const agents = await Agent.find({}).lean();
+        // packageType points at either a Package or a CoveragePlan, so both have to
+        // be looked up — resolving only Packages left plan-based sales showing their
+        // raw ObjectId instead of a name.
+        const [packages, plans, agents] = await Promise.all([
+            Package.find({}).select("name").lean(),
+            CoveragePlan.find({}).select("name").lean(),
+            Agent.find({}).lean(),
+        ]);
 
-        const packageMap = packages.reduce((acc: any, pkg: any) => {
+        const packageMap = [...packages, ...plans].reduce((acc: any, pkg: any) => {
             acc[pkg._id.toString()] = pkg.name;
             return acc;
         }, {});

@@ -27,6 +27,16 @@ export async function POST(req: Request) {
             errors: error.errors // for Mongoose ValidationError
         });
 
+        // Oversized payloads surface as a RangeError from Node's buffer handling
+        // ("The value of \"offset\" is out of range"), which is meaningless to a
+        // customer; tell them what to actually do instead.
+        if (error instanceof RangeError || /offset|out of range/i.test(error.message || "")) {
+            return NextResponse.json(
+                { message: "ไฟล์รูปมีขนาดใหญ่เกินไป กรุณาถ่ายใหม่หรือเลือกรูปที่เล็กลง" },
+                { status: 413 }
+            );
+        }
+
         if (error.name === 'ValidationError') {
             const messages = Object.values(error.errors || {}).map((err: any) => err.message);
             return NextResponse.json(

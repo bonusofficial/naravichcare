@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useRegister } from "../RegisterContext";
 import { Upload, Camera, ArrowLeft, ArrowRight, Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
+import { compressImageToDataUrl } from "@/lib/image-compress";
 
 export default function Step4() {
     const router = useRouter();
@@ -17,14 +18,15 @@ export default function Step4() {
         { key: 'bottom', label: 'ด้านล่าง' }
     ];
 
-    const handleFileChange = (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setDeviceImages(key, reader.result as string);
-            };
-            reader.readAsDataURL(file);
+        if (!file) return;
+        try {
+            // Shrink before storing: six full-size phone photos overflowed the
+            // request body and the submit failed at the last step.
+            setDeviceImages(key, await compressImageToDataUrl(file));
+        } catch {
+            alert("ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกรูปอื่น");
         }
     };
 
