@@ -19,6 +19,7 @@ type Registration = {
     devicePrice: number;
     packageType: string;
     packagePrice?: number;
+    salePrice?: number;
     coverageSnapshot?: {
         coverageStartAt?: string;
         coverageEndAt?: string;
@@ -623,10 +624,15 @@ export default function AdminRegistrations() {
                                             <td className="px-6 py-4">
                                                 <div className="font-medium text-gray-800 uppercase text-xs tracking-wide">{r.brand} {r.model}</div>
                                                 <div className="text-xs text-gray-400 font-mono mt-0.5">{r.imei}</div>
+                                                <div className="text-xs text-gray-400 mt-0.5">ราคาเครื่อง {r.devicePrice?.toLocaleString() || "—"} บาท</div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="text-gray-700 font-medium">{packageMapping[r.packageType] || r.packageType || "—"}</div>
-                                                <div className="text-xs text-gray-400">{r.devicePrice?.toLocaleString()} บาท</div>
+                                                {(r.packagePrice || r.salePrice) ? (
+                                                    <div className="text-xs font-semibold text-emerald-600 mt-0.5">ค่าเบี้ย {(r.packagePrice || r.salePrice)!.toLocaleString()} บาท</div>
+                                                ) : (
+                                                    <div className="text-xs text-gray-400 mt-0.5">ยังไม่ระบุค่าเบี้ย</div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-xs text-gray-500 whitespace-nowrap">
                                                 {new Date(r.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
