@@ -23,7 +23,7 @@ const FileSchema = new Schema(
 
 const BuybackSchema = new Schema(
     {
-        registrationId: { type: Schema.Types.ObjectId, ref: "Registration", required: true, unique: true },
+        registrationId: { type: Schema.Types.ObjectId, ref: "Registration", required: true, index: true },
         status: {
             type: String,
             enum: ["pending_approval", "processing", "approved", "rejected"],
@@ -93,5 +93,16 @@ const BuybackSchema = new Schema(
 
 BuybackSchema.index({ "createdBy.id": 1, createdAt: -1 });
 BuybackSchema.index({ "branchSnapshot.id": 1, createdAt: -1 });
+
+// A registration may only have ONE live buyback at a time, but a rejected one
+// must not block re-submitting. So the uniqueness is partial: it applies only to
+// the still-open statuses, leaving rejected rows free to coexist with a new one.
+BuybackSchema.index(
+    { registrationId: 1 },
+    {
+        unique: true,
+        partialFilterExpression: { status: { $in: ["pending_approval", "processing", "approved"] } },
+    }
+);
 
 export default mongoose.models.Buyback || mongoose.model("Buyback", BuybackSchema);
