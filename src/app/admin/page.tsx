@@ -1,9 +1,29 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { TrendingUp, TrendingDown, ShieldCheck, Users, Smartphone, AlertCircle, ArrowUpRight, ArrowDownRight, Clock, Activity, CreditCard, ArrowRight, Calendar, ChevronRight, Search, Loader2 } from "lucide-react";
+import { Activity, ArrowUpRight, Calendar, Clock, CreditCard, Loader2, ShieldCheck, Smartphone } from "lucide-react";
+
+type DashboardStats = {
+    netProfit?: string;
+    totalCollected?: string;
+    activeLoansCount?: number;
+    regApproved?: number;
+};
+
+type RecentClaim = {
+    device: string;
+    type: string;
+    status: string;
+};
+
+type DashboardResponse = {
+    success: boolean;
+    stats?: DashboardStats;
+    recentClaims?: RecentClaim[];
+    monthlyRevenue?: number[];
+};
 
 export default function AdminDashboard() {
-    const [dashboardData, setDashboardData] = useState<any>(null);
+    const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -13,7 +33,7 @@ export default function AdminDashboard() {
     const fetchDashboard = async () => {
         try {
             const res = await fetch("/api/admin/dashboard");
-            const result = await res.json();
+            const result = await res.json() as DashboardResponse;
             if (result.success) {
                 setDashboardData(result);
             }
@@ -33,11 +53,10 @@ export default function AdminDashboard() {
         );
     }
 
-    const { stats = {}, agentPerformance = [], recentClaims = [], monthlyRevenue } = dashboardData || {};
+    const { stats = {}, recentClaims = [], monthlyRevenue } = dashboardData || {};
     const safeStats = {
         netProfit: stats.netProfit ?? "฿0",
         totalCollected: stats.totalCollected ?? "฿0",
-        nplValue: stats.nplValue ?? "฿0",
         activeLoansCount: stats.activeLoansCount ?? 0,
         regApproved: stats.regApproved ?? 0,
     };
@@ -48,8 +67,7 @@ export default function AdminDashboard() {
     const kpiStats = [
         { label: "กำไรสุทธิจริง", value: safeStats.netProfit, delta: "+0%", up: true, icon: <Activity size={18} />, color: "text-emerald-500", bg: "bg-emerald-500/10", description: "กำไรหลังหักต้นทุนประมาณการ" },
         { label: "ยอดรับชำระสะสม", value: safeStats.totalCollected, delta: "+0%", up: true, icon: <CreditCard size={18} />, color: "text-blue-500", bg: "bg-blue-500/10", description: "ยอดรวมจากชำระเงิน + สมัครที่อนุมัติ" },
-        { label: "พอร์ตสินเชื่อปกติ", value: safeStats.activeLoansCount > 0 ? safeStats.activeLoansCount : safeStats.regApproved, delta: "Active", up: true, icon: <Smartphone size={18} />, color: "text-indigo-500", bg: "bg-indigo-500/10", description: safeStats.activeLoansCount > 0 ? "จำนวนสัญญาที่ยังไม่ปิด" : "จำนวนสมัครที่อนุมัติ" },
-        { label: "หนี้ค้างชำระ (NPL)", value: safeStats.nplValue, delta: "0%", up: false, icon: <TrendingDown size={18} />, color: "text-red-500", bg: "bg-red-500/10", description: "รวมยอดค้างชำระสถานะ Warning/Critical" }
+        { label: "พอร์ตสินเชื่อปกติ", value: safeStats.activeLoansCount > 0 ? safeStats.activeLoansCount : safeStats.regApproved, delta: "Active", up: true, icon: <Smartphone size={18} />, color: "text-indigo-500", bg: "bg-indigo-500/10", description: safeStats.activeLoansCount > 0 ? "จำนวนสัญญาที่ยังไม่ปิด" : "จำนวนสมัครที่อนุมัติ" }
     ];
 
     return (
@@ -75,7 +93,7 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {kpiStats.map((s) => (
                     <div key={s.label} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all group overflow-hidden relative">
                         <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-5 transition-transform group-hover:scale-150 duration-700 ${s.bg}`}></div>
@@ -124,29 +142,8 @@ export default function AdminDashboard() {
                     </div>
                 </div>
 
-                <div className="lg:col-span-4 flex flex-col gap-6">
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col h-1/2">
-                        <div className="p-6 border-b border-slate-50 flex items-center justify-between">
-                            <h4 className="font-black text-slate-900 text-sm uppercase">NPL แยกตาม Agent</h4>
-                            <Users size={18} className="text-slate-300" />
-                        </div>
-                        <div className="divide-y divide-slate-50 overflow-y-auto">
-                            {agentPerformance.map((a: any) => (
-                                <div key={a.agent} className="p-4 hover:bg-slate-50 transition-colors flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center text-[10px] font-black">{a.avatar}</div>
-                                        <div>
-                                            <p className="text-sm font-black text-slate-900 uppercase">{a.agent}</p>
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase">{a.loans} Loans • NPL {a.npl}</p>
-                                        </div>
-                                    </div>
-                                    <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-red-50 text-red-600">{a.rate}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl shadow-slate-200 h-1/2 flex flex-col">
+                <div className="lg:col-span-4">
+                    <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl shadow-slate-200 h-full min-h-72 flex flex-col">
                         <div className="flex items-center justify-between mb-6">
                             <h4 className="font-black text-white text-sm tracking-tight flex items-center gap-2 uppercase">
                                 <ShieldCheck size={18} className="text-blue-400" />
@@ -157,7 +154,7 @@ export default function AdminDashboard() {
                         <div className="space-y-3 overflow-y-auto">
                             {recentClaims.length === 0 ? (
                                 <p className="text-center text-slate-500 py-10 text-[10px] font-black uppercase">No recent claims</p>
-                            ) : recentClaims.map((c: any, i: number) => (
+                            ) : recentClaims.map((c: RecentClaim, i: number) => (
                                 <div key={i} className="bg-white/5 border border-white/5 p-3 rounded-xl flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center"><Smartphone size={16} /></div>
                                     <div className="flex-1 min-w-0">

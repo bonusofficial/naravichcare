@@ -30,7 +30,8 @@ export interface IClaim extends Document {
     postRepairNote: string;
     postRepairImages: string[];
     // Status
-    status: "completed" | "pending" | "rejected";
+    status: "completed" | "pending" | "rejected" | "draft";
+    consumedQuotaName?: string;
     createdBy: string; // admin username
     createdAt: Date;
     updatedAt: Date;

@@ -5,7 +5,6 @@ import { buildProfitMatch, PROFIT_EFFECTIVE_STAGES } from "@/lib/profit-report";
 import Loan from "@/models/Loan";
 import Payment from "@/models/Payment";
 import Claim from "@/models/Claim";
-import Agent from "@/models/Agent";
 import Registration from "@/models/Registration";
 
 export async function GET(req: NextRequest) {
@@ -20,20 +19,11 @@ export async function GET(req: NextRequest) {
 
         // --- Loans ---
         const allLoans = await Loan.find().lean();
-        const activeLoans = allLoans.filter((l: any) => l.status !== "closed");
-        const totalPrincipal = allLoans.reduce((sum: number, l: any) => sum + (l.loanAmount || 0), 0);
-
-        // NPL: ใช้ loanAmount ของสัญญา warning/critical (ประมาณยอดค้าง)
-        const nplLoans = allLoans.filter((l: any) => l.status === "warning" || l.status === "critical");
-        const nplValueSum = nplLoans.reduce((sum: number, l: any) => {
-            const paid = (l.paidInstallments || 0) * (l.monthlyPayment || 0);
-            const remaining = Math.max(0, (l.loanAmount || 0) - paid);
-            return sum + remaining;
-        }, 0);
+        const activeLoans = allLoans.filter((loan) => loan.status !== "closed");
 
         // --- Payments (ยอดรับชำระจากสัญญา Loan) ---
         const payments = await Payment.find().lean();
-        const totalFromPayments = payments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+        const totalFromPayments = payments.reduce((sum: number, payment) => sum + (payment.amount || 0), 0);
 
         // --- Revenue & profit จากประกัน ---
         // ใช้ค่าเบี้ยที่ล็อกไว้ (salePrice) และกำไรจริง (รายได้ - ต้นทุน - คอม) ผ่าน
@@ -56,16 +46,16 @@ export async function GET(req: NextRequest) {
         for (let m = 1; m <= 12; m++) {
             const monthStart = new Date(currentYear, m - 1, 1);
             const monthEnd = new Date(currentYear, m, 0, 23, 59, 59);
-            const paymentsInMonth = payments.filter((p: any) => {
-                const d = new Date(p.paymentDate || p.createdAt);
+            const paymentsInMonth = payments.filter((payment) => {
+                const d = new Date(payment.paymentDate || payment.createdAt);
                 return d >= monthStart && d <= monthEnd;
             });
-            const regsInMonth = regsForMonth.filter((r: any) => {
-                const d = new Date(r.approvedAt || r.createdAt);
+            const regsInMonth = regsForMonth.filter((registration) => {
+                const d = new Date(registration.approvedAt || registration.createdAt);
                 return d >= monthStart && d <= monthEnd;
             });
-            const paySum = paymentsInMonth.reduce((s: number, p: any) => s + (p.amount || 0), 0);
-            const regSum = regsInMonth.reduce((s: number, r: any) => s + (r.salePrice || 0), 0);
+            const paySum = paymentsInMonth.reduce((sum: number, payment) => sum + (payment.amount || 0), 0);
+            const regSum = regsInMonth.reduce((sum: number, registration) => sum + (registration.salePrice || 0), 0);
             monthlyRevenue.push(paySum + regSum);
         }
         const maxMonthly = Math.max(...monthlyRevenue, 1);
@@ -77,31 +67,11 @@ export async function GET(req: NextRequest) {
             .limit(5)
             .lean();
 
-        const recentClaims = recentClaimsRaw.map((c: any) => ({
-            device: c.deviceModel || c.imei || "—",
-            type: c.consumedQuotaName || "เคลม",
-            status: c.status === "completed" ? "เสร็จสมบูรณ์" : c.status === "rejected" ? "ปฏิเสธ" : "รอดำเนินการ",
+        const recentClaims = recentClaimsRaw.map((claim) => ({
+            device: claim.deviceModel || claim.imei || "—",
+            type: claim.consumedQuotaName || "เคลม",
+            status: claim.status === "completed" ? "เสร็จสมบูรณ์" : claim.status === "rejected" ? "ปฏิเสธ" : "รอดำเนินการ",
         }));
-
-        // --- Agent NPL ---
-        const agents = await Agent.find({ isActive: true }).lean();
-        const agentPerformance = await Promise.all(
-            agents.map(async (agent: any) => {
-                const agentLoans = await Loan.countDocuments({ agentId: agent._id });
-                const agentNpl = await Loan.countDocuments({
-                    agentId: agent._id,
-                    status: { $in: ["warning", "critical"] },
-                });
-                const name = agent.name || agent.agentCode || "—";
-                return {
-                    agent: name,
-                    loans: agentLoans,
-                    npl: agentNpl,
-                    rate: agentLoans > 0 ? ((agentNpl / agentLoans) * 100).toFixed(1) + "%" : "0%",
-                    avatar: name.substring(0, 2).toUpperCase(),
-                };
-            })
-        );
 
         // สถิติเพิ่มจาก Registration (ถ้าต้องการแสดงด้านสมัคร)
         const regCount = await Registration.countDocuments();
@@ -112,18 +82,17 @@ export async function GET(req: NextRequest) {
             stats: {
                 netProfit: "฿" + Math.round(netProfit).toLocaleString(),
                 totalCollected: "฿" + Math.round(totalCollected).toLocaleString(),
-                nplValue: "฿" + Math.round(nplValueSum).toLocaleString(),
                 activeLoansCount: activeLoans.length,
                 regApproved,
             },
             monthlyRevenue: monthlyRevenuePercent,
             monthlyRevenueRaw: monthlyRevenue,
-            agentPerformance,
             recentClaims,
             regCount,
             regApproved,
         });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to load dashboard";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
