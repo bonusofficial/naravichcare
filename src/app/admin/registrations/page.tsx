@@ -463,8 +463,35 @@ export default function AdminRegistrations() {
                             )}
                         </div>
 
-                        {/* Dates */}
-                        <div className="grid grid-cols-4 gap-6 pt-4">
+                        {/* Coverage window — the dates the customer actually needs, set by
+                            the admin at approval. Falls back to the approval date only when
+                            no coverage window was ever recorded (older policies). */}
+                        <div className="grid grid-cols-2 gap-6 pt-4">
+                            {[
+                                {
+                                    label: "วันเริ่มคุ้มครอง",
+                                    value: selected.coverageSnapshot?.coverageStartAt
+                                        ? new Date(selected.coverageSnapshot.coverageStartAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })
+                                        : selected.approvedAt
+                                            ? new Date(selected.approvedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })
+                                            : "—",
+                                },
+                                {
+                                    label: "วันสิ้นสุดคุ้มครอง",
+                                    value: selected.coverageSnapshot?.coverageEndAt
+                                        ? new Date(selected.coverageSnapshot.coverageEndAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })
+                                        : "—",
+                                },
+                            ].map(item => (
+                                <div key={item.label} className="text-center p-4 border-2 border-gray-300 rounded-sm bg-gray-50">
+                                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{item.label}</div>
+                                    <div className="text-base font-bold text-gray-900">{item.value}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Reference numbers and application dates */}
+                        <div className="grid grid-cols-4 gap-6">
                             {[
                                 { label: "วันที่สมัคร", value: new Date(selected.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) },
                                 { label: "วันที่อนุมัติ", value: selected.approvedAt ? new Date(selected.approvedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) },

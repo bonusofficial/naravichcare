@@ -371,7 +371,10 @@ function ClaimsContent() {
                                                     <p>แพ็กเกจ: <span className="text-blue-600 font-bold">{customerData.coveragePlan?.name || "ไม่ทราบชื่อแพ็กเกจ"}</span></p>
                                                 </div>
                                                 <p className="text-xs text-emerald-600 font-bold mt-2 bg-emerald-50 inline-block px-3 py-1 rounded-md border border-emerald-100">
-                                                    ✓ ประกันใช้งานปกติ (เริ่มคุ้มครอง: {new Date(customerData.approvedAt || customerData.createdAt).toLocaleDateString("th-TH")})
+                                                    {/* The coverage window is the one the admin set at approval, not the
+                                                        approval date itself — a policy can be backdated or start later. */}
+                                                    ✓ ประกันใช้งานปกติ (คุ้มครอง: {new Date(customerData.coverageSnapshot?.coverageStartAt || customerData.approvedAt || customerData.createdAt).toLocaleDateString("th-TH")}
+                                                    {customerData.coverageSnapshot?.coverageEndAt && ` – ${new Date(customerData.coverageSnapshot.coverageEndAt).toLocaleDateString("th-TH")}`})
                                                 </p>
                                             </div>
                                         </div>
