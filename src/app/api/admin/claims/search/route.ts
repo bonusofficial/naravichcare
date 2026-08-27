@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
                 { idCard: cleanQuery }
             ]
         })
-            .select("firstName lastName imei idCard brand model policyNumber packageType status coverageStatus coverageSnapshot.coverageEndAt approvedAt createdAt")
+            .select("firstName lastName imei idCard brand model policyNumber packageType status coverageStatus coverageSnapshot approvedAt createdAt")
             .sort({ createdAt: -1 })
             .lean();
 
