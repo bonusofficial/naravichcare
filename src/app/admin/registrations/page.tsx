@@ -288,7 +288,7 @@ export default function AdminRegistrations() {
         const benefits = plan?.highlights?.filter(Boolean) ?? [];
         const quotas = plan?.quotas?.filter(q => q?.name) ?? [];
         return (
-            <div className="fixed inset-0 z-[100] bg-slate-100 flex flex-col items-center py-10 overflow-auto print:bg-white print:py-0">
+            <div className="print-document-root fixed inset-0 z-[100] bg-slate-100 flex flex-col items-center py-10 overflow-auto print:bg-white print:py-0">
                 <div className="mb-6 flex flex-wrap justify-center gap-3 print:hidden">
                     <button
                         onClick={() => setShowCertificate(false)}
@@ -313,7 +313,7 @@ export default function AdminRegistrations() {
                 {/* Certificate Document */}
                 <div
                     ref={certRef}
-                    className="w-[794px] bg-white shadow-2xl print:shadow-none print:w-full"
+                    className="print-document w-[794px] bg-white shadow-2xl print:shadow-none print:w-full"
                     style={{ minHeight: "1123px" }}
                 >
                     {/* Header Bar */}
@@ -424,7 +424,7 @@ export default function AdminRegistrations() {
                         </div>
 
                         {/* Policy Terms Box — benefits come from the plan the customer bought */}
-                        <div className="border border-gray-200 rounded-sm p-6 bg-gray-50 space-y-3">
+                        <div className="print-keep-together border border-gray-200 rounded-sm p-6 bg-gray-50 space-y-3">
                             <div className="flex items-center gap-2 mb-4">
                                 <Shield size={16} className="text-gray-500" />
                                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -506,7 +506,7 @@ export default function AdminRegistrations() {
                         </div>
 
                         {/* Signatures */}
-                        <div className="grid grid-cols-2 gap-20 pt-10">
+                        <div className="print-keep-together grid grid-cols-2 gap-20 pt-10">
                             <div className="text-center">
                                 <div className="border-t border-gray-300 pt-3">
                                     <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-3">ลายมือชื่อผู้รับความคุ้มครอง</div>

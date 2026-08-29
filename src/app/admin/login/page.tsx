@@ -1,17 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Lock, User, Eye, EyeOff, Loader2, ArrowRight, ShieldCheck, Globe } from "lucide-react";
+
+// Only the username is remembered. Storing the password in the browser would
+// leave admin credentials readable to anything with access to the device.
+const REMEMBERED_USERNAME_KEY = "admin_remembered_username";
 
 export default function AdminLoginPage() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const router = useRouter();
+
+    // Restore the saved username on load. Wrapped because storage throws in
+    // private windows and when site data is blocked.
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(REMEMBERED_USERNAME_KEY);
+            if (saved) {
+                setUsername(saved);
+                setRememberMe(true);
+            }
+        } catch {
+            // No stored value available; fall back to an empty form.
+        }
+    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -28,6 +47,14 @@ export default function AdminLoginPage() {
             const data = await res.json();
 
             if (res.ok) {
+                // Persist the choice only once the credentials are known good, so a
+                // typo in the username is never the value that gets remembered.
+                try {
+                    if (rememberMe) localStorage.setItem(REMEMBERED_USERNAME_KEY, username);
+                    else localStorage.removeItem(REMEMBERED_USERNAME_KEY);
+                } catch {
+                    // Storage unavailable; sign-in still succeeds.
+                }
                 router.push("/admin");
                 router.refresh();
             } else {
@@ -149,10 +176,12 @@ export default function AdminLoginPage() {
                             <label className="flex items-center gap-3 cursor-pointer group/check">
                                 <input
                                     type="checkbox"
+                                    checked={rememberMe}
+                                    onChange={(e) => setRememberMe(e.target.checked)}
                                     className="w-5 h-5 rounded-lg border-2 border-gray-200 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
                                 />
                                 <span className="text-sm font-bold text-gray-500 group-hover/check:text-gray-800 transition-colors">
-                                    จดจำบัญชีนี้ในอุปกรณ์
+                                    จดจำชื่อผู้ใช้ในอุปกรณ์นี้
                                 </span>
                             </label>
                         </div>
