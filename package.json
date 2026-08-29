@@ -10,6 +10,7 @@
     "push-schema": "tsx push-schema.ts",
     "list-admins": "tsx list-admins.ts",
     "create-admin": "tsx create-admin.ts",
+    "set-admin-role": "tsx set-admin-role.ts",
     "migrate-profit": "tsx migrate-profit-data.ts",
     "seed-roles": "tsx seed-roles.ts"
   },
