@@ -126,10 +126,13 @@
   }
 }
 /* Printing the policy certificate.
-   The certificate renders inside a `fixed inset-0 overflow-auto` overlay, which
-   in print collapses to a single viewport-tall page and silently drops the
-   coverage dates and signatures below the fold. Releasing the overlay from
-   fixed positioning lets the browser paginate the full document. */
+   The certificate renders inside a `fixed inset-0 overflow-auto` overlay nested
+   in the admin shell, which also wraps pages in scroll containers. In print all
+   of that collapsed to a single viewport-tall sheet and silently dropped the
+   coverage dates, signatures and footer.
+
+   Uses the visibility technique: hide everything, reveal only the certificate,
+   and take it out of the fixed/scrolling context so the browser can paginate. */
 @media print {
   @page {
     size: A4;
@@ -143,15 +146,29 @@
     background: #fff !important;
   }
 
-  /* Any ancestor that scrolls or is pinned would clip the page to one sheet. */
+  /* Hidden rather than removed, so the certificate keeps its position in flow. */
+  body * {
+    visibility: hidden;
+    overflow: visible !important;
+  }
+
+  .print-document-root,
+  .print-document-root * {
+    visibility: visible;
+  }
+
+  /* Absolute (not fixed) so the content can run past one page. */
   .print-document-root {
-    position: static !important;
+    position: absolute !important;
     inset: auto !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
     height: auto !important;
     max-height: none !important;
-    overflow: visible !important;
     display: block !important;
     padding: 0 !important;
+    margin: 0 !important;
   }
 
   .print-document {
