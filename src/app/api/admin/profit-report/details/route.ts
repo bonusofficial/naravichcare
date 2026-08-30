@@ -17,8 +17,11 @@ export async function GET(req: NextRequest) {
         await connectToDatabase();
 
         const { searchParams } = new URL(req.url);
-        const page = parseInt(searchParams.get("page") || "1");
-        const limit = parseInt(searchParams.get("limit") || "50");
+        // Clamped so a malformed or oversized limit can't turn one request into a
+        // full-collection scan; 10000 covers a CSV export of every filtered sale.
+        const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+        const requestedLimit = parseInt(searchParams.get("limit") || "50") || 50;
+        const limit = Math.min(Math.max(1, requestedLimit), 10000);
 
         const filter = buildProfitMatch({
             startDate: searchParams.get("startDate"),

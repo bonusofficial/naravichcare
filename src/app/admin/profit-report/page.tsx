@@ -92,6 +92,7 @@ export default function ProfitReportPage() {
     const [drillData, setDrillData] = useState<ProfitData[]>([]);
     const [drillSales, setDrillSales] = useState<SaleRow[]>([]);
     const [drillLoading, setDrillLoading] = useState(false);
+    const [exporting, setExporting] = useState(false);
 
     // Inline correction of a single sale
     const [editing, setEditing] = useState<SaleRow | null>(null);
@@ -221,14 +222,27 @@ export default function ProfitReportPage() {
         setDrillSales([]);
     };
 
-    const exportCsv = () => {
+    const toCsv = (table: (string | number)[][]) =>
+        table.map(cols => cols.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+
+    const download = (csv: string, filename: string) => {
+        // BOM so Excel reads the Thai column headers correctly.
+        const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const summaryTable = () => {
         const headers = [
             ...(groupBy !== "agent" ? ["แพ็กเกจ"] : []),
             ...(groupBy !== "package" ? ["เอเจนต์"] : []),
             "ยอดขาย", "ยกเลิก", "คืนเงิน", "รายได้", "ต้นทุนรวม",
             "ต้นทุนแพ็ก", "ค่าคอมมิชชั่น", "ค่าใช้จ่ายอื่น", "กำไรสุทธิ", "กำไรเฉลี่ย/รายการ", "% Margin",
         ];
-
         const rows = data.map(row => [
             ...(groupBy !== "agent" ? [row.packageName ?? ""] : []),
             ...(groupBy !== "package" ? [row.agentName ?? ""] : []),
@@ -237,19 +251,59 @@ export default function ProfitReportPage() {
             row.totalCommission, row.totalOtherExpenses, row.totalProfit,
             Math.round(row.avgProfitPerSale), row.profitMargin.toFixed(2),
         ]);
+        return [headers, ...rows];
+    };
 
-        const csv = [headers, ...rows]
-            .map(cols => cols.map(c => `"${String(c).replace(/"/g, '""')}"`).join(","))
-            .join("\n");
+    // Exports the individual sales, not just the per-package totals — the totals
+    // alone are not enough to reconcile a month against the policies behind it.
+    const exportSalesCsv = async () => {
+        setExporting(true);
+        try {
+            const params = baseParams();
+            params.append("page", "1");
+            // One page big enough to hold the whole filtered result set; the
+            // endpoint defaults to 50, which silently truncated the export.
+            params.append("limit", "10000");
+            const response = await fetch(`/api/admin/profit-report/details?${params.toString()}`);
+            const json = await response.json();
+            const sales: SaleRow[] = json?.data ?? [];
 
-        // BOM so Excel reads the Thai column headers correctly.
-        const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `profit-report-${groupBy}-${new Date().toISOString().slice(0, 10)}.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
+            if (sales.length === 0) {
+                alert("ไม่มีรายการขายในช่วงที่เลือก");
+                return;
+            }
+
+            // Same columns, same order, same wording as the on-screen sales table,
+            // so a row in the file can be matched against the screen at a glance.
+            const headers = [
+                "วันที่ขาย", "เลขกรมธรรม์", "ลูกค้า", "แพ็ก", "เอเจนต์",
+                "ราคาขาย", "ต้นทุนแพ็ก", "ค่าคอม", "อื่น ๆ", "กำไร", "สถานะ",
+            ];
+            const rows = sales.map(sale => [
+                formatDate(sale.approvedAt),
+                sale.policyNumber || sale.referenceNumber || "-",
+                sale.customerName ?? "",
+                sale.packageName ?? "",
+                sale.agentName ?? "",
+                sale.salePrice, sale.packageCost, sale.agentCommission,
+                sale.otherExpenses, sale.netProfit,
+                STATUS_LABELS[sale.status] || sale.status,
+            ]);
+
+            // Both views in one file: the per-sale detail, then the totals below it.
+            const csv = [
+                ...[headers, ...rows],
+                [],
+                ["สรุปตามกลุ่ม"],
+                ...summaryTable(),
+            ];
+            download(toCsv(csv), `profit-report-${new Date().toISOString().slice(0, 10)}.csv`);
+        } catch (error) {
+            console.error(error);
+            alert("ส่งออกข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+        } finally {
+            setExporting(false);
+        }
     };
 
     const startEdit = (sale: SaleRow) => {
@@ -301,12 +355,12 @@ export default function ProfitReportPage() {
                     <p className="text-sm text-gray-500 mt-1">สรุปกำไร-ขาดทุนจากการขายประกัน</p>
                 </div>
                 <button
-                    onClick={exportCsv}
-                    disabled={data.length === 0}
+                    onClick={exportSalesCsv}
+                    disabled={data.length === 0 || exporting}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Download size={16} />
-                    <span className="font-medium">ส่งออก CSV</span>
+                    <span className="font-medium">{exporting ? "กำลังส่งออก..." : "ส่งออก CSV"}</span>
                 </button>
             </div>
 
