@@ -273,20 +273,21 @@ export default function ProfitReportPage() {
                 return;
             }
 
+            // Same columns, same order, same wording as the on-screen sales table,
+            // so a row in the file can be matched against the screen at a glance.
             const headers = [
-                "วันที่ขาย", "เลขกรมธรรม์", "เลขอ้างอิง", "ลูกค้า", "แพ็กเกจ", "เอเจนต์",
-                "ราคาขาย", "ต้นทุนแพ็ก", "ค่าคอมมิชชั่น", "ค่าใช้จ่ายอื่น", "กำไรสุทธิ", "สถานะ",
+                "วันที่ขาย", "เลขกรมธรรม์", "ลูกค้า", "แพ็ก", "เอเจนต์",
+                "ราคาขาย", "ต้นทุนแพ็ก", "ค่าคอม", "อื่น ๆ", "กำไร", "สถานะ",
             ];
             const rows = sales.map(sale => [
-                sale.approvedAt ? new Date(sale.approvedAt).toLocaleDateString("th-TH") : "",
-                sale.policyNumber ?? "",
-                sale.referenceNumber ?? "",
+                formatDate(sale.approvedAt),
+                sale.policyNumber || sale.referenceNumber || "-",
                 sale.customerName ?? "",
                 sale.packageName ?? "",
                 sale.agentName ?? "",
                 sale.salePrice, sale.packageCost, sale.agentCommission,
                 sale.otherExpenses, sale.netProfit,
-                sale.isVoid ? "ยกเลิก/คืนเงิน" : "สำเร็จ",
+                STATUS_LABELS[sale.status] || sale.status,
             ]);
 
             // Both views in one file: the per-sale detail, then the totals below it.
