@@ -171,10 +171,24 @@
     margin: 0 !important;
   }
 
+  /* Keep the on-screen A4 width and let the @page margin do the insetting, so
+     the printed layout matches the preview column-for-column instead of being
+     stretched to the sheet. minHeight is dropped so a short policy does not
+     reserve a blank second page. */
   .print-document {
-    width: 100% !important;
-    max-width: 100% !important;
+    width: 794px !important;
+    max-width: 794px !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
     box-shadow: none !important;
+  }
+
+  /* Chrome drops background colours when printing unless asked to keep them;
+     without this the dark header bar and gold rule print as blank white. */
+  .print-document-root,
+  .print-document-root * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Keep related blocks from being split across a page break. */
