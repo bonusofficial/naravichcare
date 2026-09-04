@@ -1,30 +1,27 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { Activity, ArrowUpRight, Calendar, Clock, CreditCard, Loader2, ShieldCheck, Smartphone } from "lucide-react";
-
-type DashboardStats = {
-    netProfit?: string;
-    totalCollected?: string;
-    activeLoansCount?: number;
-    regApproved?: number;
-};
-
-type RecentClaim = {
-    device: string;
-    type: string;
-    status: string;
-};
+import {
+    buildDashboardCsv,
+    dashboardExportFilename,
+    type DashboardExportClaim,
+    type DashboardExportStats,
+} from "@/lib/dashboard-export";
 
 type DashboardResponse = {
     success: boolean;
-    stats?: DashboardStats;
-    recentClaims?: RecentClaim[];
+    stats?: DashboardExportStats;
+    recentClaims?: DashboardExportClaim[];
     monthlyRevenue?: number[];
+    monthlyRevenueRaw?: number[];
+    regCount?: number;
+    regApproved?: number;
 };
 
 export default function AdminDashboard() {
     const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
     const [loading, setLoading] = useState(true);
+    const [exporting, setExporting] = useState(false);
 
     useEffect(() => {
         fetchDashboard();
@@ -41,6 +38,30 @@ export default function AdminDashboard() {
             console.error("Dashboard fetch failed", err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const exportReport = () => {
+        if (!dashboardData) return;
+
+        setExporting(true);
+        try {
+            const csv = buildDashboardCsv(dashboardData);
+            // UTF-8 BOM keeps Thai text readable when the CSV is opened in Excel.
+            const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = dashboardExportFilename();
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Dashboard export failed", error);
+            window.alert("ไม่สามารถส่งออกรายงานได้ กรุณาลองใหม่อีกครั้ง");
+        } finally {
+            setExporting(false);
         }
     };
 
@@ -87,8 +108,14 @@ export default function AdminDashboard() {
                     <button onClick={fetchDashboard} className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-blue-600 transition-all shadow-sm">
                         <Activity size={18} />
                     </button>
-                    <button className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-black hover:bg-blue-600 transition-all shadow-lg shadow-slate-200 uppercase">
-                        Export Report <ArrowUpRight size={16} />
+                    <button
+                        type="button"
+                        onClick={exportReport}
+                        disabled={!dashboardData || exporting}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-black hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50 transition-all shadow-lg shadow-slate-200 uppercase"
+                    >
+                        {exporting ? "Exporting..." : "Export Report"}
+                        {exporting ? <Loader2 size={16} className="animate-spin" /> : <ArrowUpRight size={16} />}
                     </button>
                 </div>
             </div>
@@ -154,7 +181,7 @@ export default function AdminDashboard() {
                         <div className="space-y-3 overflow-y-auto">
                             {recentClaims.length === 0 ? (
                                 <p className="text-center text-slate-500 py-10 text-[10px] font-black uppercase">No recent claims</p>
-                            ) : recentClaims.map((c: RecentClaim, i: number) => (
+                            ) : recentClaims.map((c: DashboardExportClaim, i: number) => (
                                 <div key={i} className="bg-white/5 border border-white/5 p-3 rounded-xl flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center"><Smartphone size={16} /></div>
                                     <div className="flex-1 min-w-0">
