@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { Activity, ArrowUpRight, Calendar, Clock, CreditCard, Loader2, ShieldCheck, Smartphone } from "lucide-react";
 import {
-    buildDashboardCsv,
     dashboardExportFilename,
     type DashboardExportClaim,
     type DashboardExportStats,
@@ -41,14 +40,16 @@ export default function AdminDashboard() {
         }
     };
 
-    const exportReport = () => {
-        if (!dashboardData) return;
-
+    const exportReport = async () => {
         setExporting(true);
         try {
-            const csv = buildDashboardCsv(dashboardData);
-            // UTF-8 BOM keeps Thai text readable when the CSV is opened in Excel.
-            const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+            const response = await fetch("/api/admin/dashboard/export", { cache: "no-store" });
+            if (!response.ok) {
+                const result = await response.json().catch(() => null) as { error?: string } | null;
+                throw new Error(result?.error || "Export request failed");
+            }
+
+            const blob = await response.blob();
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.href = url;
@@ -56,7 +57,7 @@ export default function AdminDashboard() {
             document.body.appendChild(link);
             link.click();
             link.remove();
-            URL.revokeObjectURL(url);
+            window.setTimeout(() => URL.revokeObjectURL(url), 0);
         } catch (error) {
             console.error("Dashboard export failed", error);
             window.alert("ไม่สามารถส่งออกรายงานได้ กรุณาลองใหม่อีกครั้ง");
