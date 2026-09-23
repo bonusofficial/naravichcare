@@ -1,6 +1,8 @@
 services:
   mongodb:
-    image: mongo:8
+    # Pin the exact source-server version so backup/restore never crosses MongoDB
+    # release lines when a fresh server pulls the image later.
+    image: mongo:8.2.10
     container_name: navarichcare-mongo
     restart: unless-stopped
     environment:
