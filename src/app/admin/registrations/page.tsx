@@ -313,7 +313,7 @@ export default function AdminRegistrations() {
                 {/* Certificate Document */}
                 <div
                     ref={certRef}
-                    className="print-document w-[794px] bg-white shadow-2xl print:shadow-none print:w-full"
+                    className="print-document w-[794px] bg-white shadow-2xl print:shadow-none"
                     style={{ minHeight: "1123px" }}
                 >
                     {/* Header Bar */}
@@ -342,7 +342,7 @@ export default function AdminRegistrations() {
                                         value={referenceNumber}
                                         onChange={e => setReferenceNumber(e.target.value)}
                                         placeholder={`#${selected._id.toString().slice(-6).toUpperCase()}`}
-                                        className="text-sm font-bold text-gray-400 font-mono tracking-widest bg-transparent border-b border-dashed border-transparent hover:border-gray-500 focus:border-blue-400 focus:outline-none text-right w-24 transition-colors print:w-auto overflow-hidden print:border-none"
+                                        className="text-sm font-bold text-gray-400 font-mono tracking-widest bg-transparent border-b border-dashed border-transparent hover:border-gray-500 focus:border-blue-400 focus:outline-none text-right w-24 transition-colors overflow-hidden print:border-none"
                                     />
                                 </div>
                             </div>
@@ -364,7 +364,7 @@ export default function AdminRegistrations() {
                                         value={policyNumber}
                                         onChange={e => setPolicyNumber(e.target.value)}
                                         placeholder={`#${selected._id.toString().slice(-6).toUpperCase()}`}
-                                        className="text-lg font-black text-white font-mono tracking-widest bg-transparent border-b border-dashed border-transparent hover:border-gray-500 focus:border-blue-400 focus:outline-none text-right w-36 transition-colors print:w-auto overflow-hidden print:border-none"
+                                        className="text-lg font-black text-white font-mono tracking-widest bg-transparent border-b border-dashed border-transparent hover:border-gray-500 focus:border-blue-400 focus:outline-none text-right w-36 transition-colors overflow-hidden print:border-none"
                                     />
                                 </div>
                             </div>

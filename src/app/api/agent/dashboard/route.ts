@@ -4,6 +4,7 @@ import Loan from "@/models/Loan";
 import Registration from "@/models/Registration";
 import Agent from "@/models/Agent";
 import mongoose from "mongoose";
+import { getAgentBalance } from "@/lib/agent-portal";
 
 export async function GET(req: Request) {
     try {
@@ -33,8 +34,10 @@ export async function GET(req: Request) {
 
         const summary = stats[0] || { totalVolume: 0, customerCount: 0 };
 
-        // Calculate estimated commission (e.g., 500 per loan or % of volume)
-        const estimatedCommission = summary.customerCount * 500;
+        // Insurance commission is snapshotted on each sale at approval; loans
+        // carry no commission field yet, so they stay a flat estimate.
+        const { earned } = await getAgentBalance(agent._id, agent.agentCode);
+        const estimatedCommission = summary.customerCount * 500 + earned;
 
         const recentLoans = await Loan.find({ agentId })
             .sort({ createdAt: -1 })
