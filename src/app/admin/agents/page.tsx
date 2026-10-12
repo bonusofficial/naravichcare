@@ -240,7 +240,7 @@ export default function AgentsManagement() {
                                                     <span className="font-bold">{a.bankName}</span><br />
                                                     <span className="text-[10px] text-gray-400">{a.bankAccount}</span>
                                                 </>
-                                            ) : <span className="text-gray-300 italic">-</span>}
+                                            ) : <span className="text-gray-300">-</span>}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">

@@ -1,5 +1,0 @@
-/* หลังบ้านใช้ฟอนต์ Anuphan (@font-face โหลดจาก <link> ใน layout.tsx)
-   ตั้งที่ body เพื่อให้ dialog/portal ที่ render นอก layout ได้ฟอนต์เดียวกัน */
-body:has(.admin-root) {
-  --font-app: 'Anuphan', sans-serif;
-}

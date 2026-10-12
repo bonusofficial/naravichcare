@@ -153,7 +153,7 @@ export default function UserManagement() {
     if (loading) return (
         <div className="flex flex-col items-center justify-center py-32 text-gray-400">
             <Loader2 className="animate-spin mb-4" size={40} />
-            <p className="text-sm font-black uppercase tracking-widest italic tracking-tighter">Loading staff directory...</p>
+            <p className="text-sm font-black uppercase tracking-widest tracking-tighter">Loading staff directory...</p>
         </div>
     );
 
@@ -166,7 +166,7 @@ export default function UserManagement() {
                         <ArrowLeft size={16} />
                     </Link>
                     <div>
-                        <h1 className="text-xl font-black text-slate-800 tracking-tighter uppercase italic">Staff Management</h1>
+                        <h1 className="text-xl font-black text-slate-800 tracking-tighter uppercase">Staff Management</h1>
                         <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Manage access & roles / {users.length} Active accounts</p>
                     </div>
                 </div>
@@ -180,7 +180,7 @@ export default function UserManagement() {
                 {users.length === 0 ? (
                     <div className="bg-white border border-dashed border-gray-200 py-16 rounded-3xl text-center text-gray-300 flex flex-col items-center gap-3">
                         <ShieldAlert size={40} className="opacity-20" />
-                        <p className="text-xs font-black uppercase tracking-widest italic opacity-50">ยังไม่มีข้อมูลพนักงานในระบบซ่อม</p>
+                        <p className="text-xs font-black uppercase tracking-widest opacity-50">ยังไม่มีข้อมูลพนักงานในระบบซ่อม</p>
                         <p className="text-[9px] font-bold uppercase tracking-tighter text-gray-400">กรุณากดปุ่มเพิ่มพนักงานใหม่ที่มุมบนขวา</p>
                     </div>
                 ) : (
@@ -192,10 +192,10 @@ export default function UserManagement() {
                                  </div>
                                  <div>
                                      <div className="flex items-center gap-2">
-                                         <p className="text-sm font-black text-slate-800 uppercase italic leading-none">{user.name}</p>
+                                         <p className="text-sm font-black text-slate-800 uppercase leading-none">{user.name}</p>
                                          <span className="bg-slate-100 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest text-slate-500">{getRoleLabel(user.role)}</span>
                                      </div>
-                                     <p className="text-[10px] text-gray-400 font-bold uppercase mt-1 italic opacity-60">@{user.username} / {user.email || "-"}</p>
+                                     <p className="text-[10px] text-gray-400 font-bold uppercase mt-1 opacity-60">@{user.username} / {user.email || "-"}</p>
                                  </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -216,7 +216,7 @@ export default function UserManagement() {
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-[2px]">
                     <div className="animate-in zoom-in-95 relative w-full max-w-sm space-y-6 rounded-3xl bg-white p-5 shadow-2xl sm:p-8">
                         <div className="text-center">
-                            <h2 className="text-base font-black text-slate-800 uppercase tracking-tighter italic">
+                            <h2 className="text-base font-black text-slate-800 uppercase tracking-tighter">
                                 {editingUser ? "Edit Account" : "Access Creation"}
                             </h2>
                             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Configure staff credentials</p>
@@ -224,25 +224,25 @@ export default function UserManagement() {
 
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-1">
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1 leading-none">FullName / ชื่อพนักงาน</label>
-                                <input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black italic outline-none focus:border-blue-500" placeholder="John Doe" />
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 leading-none">FullName / ชื่อพนักงาน</label>
+                                <input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black outline-none focus:border-blue-500" placeholder="John Doe" />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1 leading-none">Username</label>
-                                <input type="text" required value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black italic outline-none focus:border-blue-500" placeholder="johndoe123" />
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 leading-none">Username</label>
+                                <input type="text" required value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black outline-none focus:border-blue-500" placeholder="johndoe123" />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1 leading-none">{editingUser ? "New Password (Optional)" : "Password"}</label>
-                                <input type="password" required={!editingUser} value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black italic outline-none focus:border-blue-500" placeholder="••••••••" />
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 leading-none">{editingUser ? "New Password (Optional)" : "Password"}</label>
+                                <input type="password" required={!editingUser} value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black outline-none focus:border-blue-500" placeholder="••••••••" />
                                 <p className="text-[9px] font-bold text-slate-400 ml-1">{PASSWORD_HINT}</p>
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1 leading-none">Email Address</label>
-                                <input type="email" required value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black italic outline-none focus:border-blue-500" placeholder="staff@naravich.com" />
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 leading-none">Email Address</label>
+                                <input type="email" required value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black outline-none focus:border-blue-500" placeholder="staff@naravich.com" />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1 leading-none">Role Access</label>
-                                <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] font-black uppercase tracking-widest outline-none focus:border-blue-500 italic">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 leading-none">Role Access</label>
+                                <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] font-black uppercase tracking-widest outline-none focus:border-blue-500">
                                      <option value="super_admin">Super Admin</option>
                                      <option value="admin">Admin / ผู้จัดการ</option>
                                      <option value="technician">Technician / ช่างซ่อม</option>

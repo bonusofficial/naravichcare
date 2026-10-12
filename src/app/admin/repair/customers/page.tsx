@@ -76,7 +76,7 @@ export default function RepairCustomersList() {
                     </div>
                 ) : customers.length === 0 ? (
                     <div className="col-span-full py-32 bg-white rounded-[2.5rem] border border-gray-100 text-center text-gray-300">
-                        <p className="text-sm font-black uppercase tracking-widest italic opacity-50">ยังไม่มีข้อมูลลูกค้าในฐานข้อมูล</p>
+                        <p className="text-sm font-black uppercase tracking-widest opacity-50">ยังไม่มีข้อมูลลูกค้าในฐานข้อมูล</p>
                     </div>
                 ) : (
                     customers.map((c) => (
@@ -87,7 +87,7 @@ export default function RepairCustomersList() {
                             <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-1000"></div>
                             
                             <div className="flex items-start justify-between relative z-10 mb-6">
-                                <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg font-black text-xl italic uppercase">
+                                <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg font-black text-xl uppercase">
                                     {c.firstName.charAt(0)}{c.lastName.charAt(0)}
                                 </div>
                                 <button className="p-2 text-gray-300 hover:text-gray-900 transition-colors">
@@ -96,7 +96,7 @@ export default function RepairCustomersList() {
                             </div>
 
                             <div className="relative z-10">
-                                <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1 italic leading-none">{c.customerId}</p>
+                                <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1 leading-none">{c.customerId}</p>
                                 <h3 className="text-xl font-black text-slate-900 tracking-tighter uppercase leading-none">{c.firstName} {c.lastName}</h3>
                                 
                                 <div className="h-px bg-slate-50 my-6"></div>
@@ -106,13 +106,13 @@ export default function RepairCustomersList() {
                                         <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400">
                                             <Phone size={14} />
                                         </div>
-                                        <p className="text-xs font-black text-slate-800 uppercase italic">{c.phone}</p>
+                                        <p className="text-xs font-black text-slate-800 uppercase">{c.phone}</p>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400">
                                             <MessageCircle size={14} />
                                         </div>
-                                        <p className="text-xs font-black text-slate-800 uppercase italic">{c.lineId || "ไม่มีข้อมูล LINE ID"}</p>
+                                        <p className="text-xs font-black text-slate-800 uppercase">{c.lineId || "ไม่มีข้อมูล LINE ID"}</p>
                                     </div>
                                 </div>
                             </div>

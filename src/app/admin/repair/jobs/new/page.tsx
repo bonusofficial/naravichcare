@@ -165,7 +165,7 @@ export default function NewRepairJob() {
                                 <UserPlus size={18} />
                             </div>
                             <div>
-                                <h3 className="text-base font-black text-gray-800 tracking-tight italic uppercase">ลงทะเบียนลูกค้าใหม่</h3>
+                                <h3 className="text-base font-black text-gray-800 tracking-tight uppercase">ลงทะเบียนลูกค้าใหม่</h3>
                                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-none mt-1">เบอร์โทร: {searchPhone}</p>
                             </div>
                         </div>
@@ -205,7 +205,7 @@ export default function NewRepairJob() {
                                         <CheckCircle2 size={16} />
                                     </div>
                                     <div>
-                                        <h4 className="text-sm font-black text-slate-800 uppercase italic leading-none">{customer.firstName} {customer.lastName}</h4>
+                                        <h4 className="text-sm font-black text-slate-800 uppercase leading-none">{customer.firstName} {customer.lastName}</h4>
                                         <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">ID: {customer.customerId}</p>
                                     </div>
                                 </div>
@@ -311,7 +311,7 @@ export default function NewRepairJob() {
                          </div>
 
                          <div className="flex flex-col gap-4 border-t border-gray-50 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-500 italic">
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-500">
                                 <ShieldCheck size={14} />
                                 <span>ออก Job ID อัตโนมัติ</span>
                             </div>

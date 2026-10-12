@@ -121,11 +121,11 @@ export default function CustomerPortal() {
                         <Calendar className="text-emerald-500 mb-4" size={24} />
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ยอดชำระถัดไป</p>
                         <h3 className="text-xl font-black text-slate-900 uppercase">฿{loan.installmentAmount.toLocaleString()}</h3>
-                        <p className="text-[10px] text-emerald-500 font-black mt-2 uppercase italic">ครบกำหนด: {new Date(loan.nextPaymentDate).toLocaleDateString()}</p>
+                        <p className="text-[10px] text-emerald-500 font-black mt-2 uppercase">ครบกำหนด: {new Date(loan.nextPaymentDate).toLocaleDateString()}</p>
                     </div>
 
                     <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">ประกันภัย 3 ปี (NC Care+)</p>
-                    <h3 className="text-xl font-black text-white uppercase italic">Active Coverage</h3>
+                    <h3 className="text-xl font-black text-white uppercase">Active Coverage</h3>
                     <button
                         onClick={() => setIsCertModalOpen(true)}
                         className="flex items-center gap-2 mt-3 text-[10px] font-black text-white uppercase tracking-widest bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/30 transition-all border border-white/20"
@@ -153,7 +153,7 @@ export default function CustomerPortal() {
                                         <span className="text-xs font-black text-slate-900">{p.installmentNumber}</span>
                                     </div>
                                     <div>
-                                        <p className="text-xs font-black text-slate-900 uppercase italic">งวดที่ {p.installmentNumber}</p>
+                                        <p className="text-xs font-black text-slate-900 uppercase">งวดที่ {p.installmentNumber}</p>
                                         <p className="text-[9px] text-slate-400 font-bold uppercase">{new Date(p.paymentDate).toLocaleDateString()}</p>
                                     </div>
                                 </div>
@@ -181,7 +181,7 @@ export default function CustomerPortal() {
                             <div key={q.label} className="space-y-3">
                                 <div className="flex justify-between items-end">
                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{q.label}</p>
-                                    <p className="text-xs font-black text-slate-900 uppercase">{q.total - q.used} / {q.total} <span className="text-[10px] text-slate-400 italic">Remaining</span></p>
+                                    <p className="text-xs font-black text-slate-900 uppercase">{q.total - q.used} / {q.total} <span className="text-[10px] text-slate-400">Remaining</span></p>
                                 </div>
                                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                                     <div
@@ -192,7 +192,7 @@ export default function CustomerPortal() {
                             </div>
                         ))}
                         <div className="pt-4 mt-6 border-t border-slate-50">
-                            <p className="text-[9px] text-slate-400 font-bold uppercase leading-relaxed italic text-center">
+                            <p className="text-[9px] text-slate-400 font-bold uppercase leading-relaxed text-center">
                                 ลูกค้าสามารถแจ้งซ่อม (แจ้งเคลม) ได้ที่ตัวแทนจำหน่ายที่จำหน่ายเครื่องให้ท่าน
                                 หรือติดต่อคอลเซ็นเตอร์นราวิชญ์ แคร์ เพื่อคำแนะนำ
                             </p>
@@ -212,7 +212,7 @@ export default function CustomerPortal() {
                         <div className="relative z-10 space-y-8">
                             <div className="flex justify-between items-start">
                                 <div className="space-y-1">
-                                    <h4 className="text-2xl font-black text-slate-900 tracking-tighter uppercase italic">Digital Certificate</h4>
+                                    <h4 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">Digital Certificate</h4>
                                     <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Naravich Care+ | Device Insurance</p>
                                 </div>
                                 <div className="text-right">

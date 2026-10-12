@@ -49,7 +49,7 @@ export default function SuccessPage() {
                     <div className="p-12 space-y-8 relative">
                         <div className="flex justify-between items-start">
                             <div className="space-y-1">
-                                <h1 className="text-4xl font-black text-[#0c4a6e] tracking-tight uppercase italic flex items-center gap-2">
+                                <h1 className="text-4xl font-black text-[#0c4a6e] tracking-tight uppercase flex items-center gap-2">
                                     CERTIFICATE <span className="text-[#d4ae6e]">นรวิชญ์ แคร์</span>
                                 </h1>
                                 <p className="text-[#d4ae6e] text-xs font-black tracking-[0.3em] uppercase">CERTIFICATE OF MOBILE INSURANCE</p>
@@ -91,7 +91,7 @@ export default function SuccessPage() {
                                 <p className="text-xs font-bold text-slate-700">({registrationResult.fullName || `${registrationResult.firstName} ${registrationResult.lastName}`})</p>
                             </div>
                             <div className="text-center space-y-2 border-t border-slate-200 pt-3 flex flex-col items-center">
-                                <div className="h-6 italic font-serif text-blue-900 font-bold -mb-4">Naravich S.</div>
+                                <div className="h-6 text-blue-900 font-bold -mb-4">Naravich S.</div>
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-4">ลงชื่อผู้ให้ความคุ้มครอง</p>
                                 <p className="text-xs font-bold text-slate-700">(Naravich Care Co., Ltd.)</p>
                             </div>
@@ -160,7 +160,7 @@ export default function SuccessPage() {
             <div className="bg-slate-50 p-8 rounded-[2.5rem] border-2 border-dashed border-slate-200">
                 <p className="text-lg text-slate-600 font-medium leading-relaxed">
                     เมื่อเจ้าหน้าที่ได้รับข้อมูลและยืนยันการชำระเงินแล้ว<br />
-                    <span className="text-blue-600 font-black italic">ความคุ้มครองของท่านจะเริ่มทำงานทันที!</span>
+                    <span className="text-blue-600 font-black">ความคุ้มครองของท่านจะเริ่มทำงานทันที!</span>
                 </p>
             </div>
 

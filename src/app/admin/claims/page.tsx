@@ -1049,7 +1049,7 @@ export default function ClaimsPage() {
         <Suspense fallback={
             <div className="flex flex-col items-center justify-center py-32 text-gray-400">
                 <Loader2 className="animate-spin mb-4" size={40} />
-                <p className="text-sm font-black uppercase tracking-widest italic italic-thai-fix">Loading Claims System...</p>
+                <p className="text-sm font-black uppercase tracking-widest">Loading Claims System...</p>
             </div>
         }>
             <ClaimsContent />

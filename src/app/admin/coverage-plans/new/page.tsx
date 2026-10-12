@@ -68,7 +68,7 @@ export default function NewCoveragePlan() {
                 >
                     <ArrowLeft size={16} /> กลับสู่รายการแผน
                 </Link>
-                <h1 className="text-3xl font-black text-slate-900 uppercase italic flex items-center gap-3">
+                <h1 className="text-3xl font-black text-slate-900 uppercase flex items-center gap-3">
                     <ShieldCheck className="text-blue-600" size={32} /> สร้างแผนความคุ้มครองใหม่
                 </h1>
             </div>
@@ -134,7 +134,7 @@ export default function NewCoveragePlan() {
                             onChange={e => setForm({ ...form, priceMultiplier: Number(e.target.value) })}
                             required
                         />
-                        <p className="text-[10px] text-slate-400 font-bold italic mt-1 px-1">ราคา = ราคาเครื่อง x {form.priceMultiplier}</p>
+                        <p className="text-[10px] text-slate-400 font-bold mt-1 px-1">ราคา = ราคาเครื่อง x {form.priceMultiplier}</p>
                     </div>
 
                     <div className="space-y-1.5">

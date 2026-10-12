@@ -441,7 +441,7 @@ export default function AdminRegistrations() {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="text-[11px] text-gray-400 italic">
+                                <div className="text-[11px] text-gray-400">
                                     ยังไม่ได้ระบุสิทธิประโยชน์ในแผนนี้ — กรุณาเพิ่มที่หน้าจัดการแผน
                                 </div>
                             )}
@@ -514,7 +514,7 @@ export default function AdminRegistrations() {
                                 </div>
                             </div>
                             <div className="text-center">
-                                <div className="italic font-serif text-blue-900 text-base font-bold -mb-1">Naravich S.</div>
+                                <div className="text-blue-900 text-base font-bold -mb-1">Naravich S.</div>
                                 <div className="border-t border-gray-300 pt-3">
                                     <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-3">ลายมือชื่อผู้ให้ความคุ้มครอง</div>
                                     <div className="text-xs text-gray-500 mt-1">(Naravich Care Co., Ltd.)</div>
@@ -705,7 +705,7 @@ export default function AdminRegistrations() {
                                                             ดูสลิป <CreditCard size={13} />
                                                         </button>
                                                     ) : r.status === "pending" ? (
-                                                        <div className="px-3 py-1.5 text-xs font-medium text-amber-400 italic">รอชำระ</div>
+                                                        <div className="px-3 py-1.5 text-xs font-medium text-amber-400">รอชำระ</div>
                                                     ) : null}
                                                 </div>
                                             </td>

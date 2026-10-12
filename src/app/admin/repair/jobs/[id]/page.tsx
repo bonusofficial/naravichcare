@@ -247,14 +247,14 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
     if (loading) return (
         <div className="flex flex-col items-center justify-center py-32 text-gray-400">
             <Loader2 className="animate-spin mb-4" size={40} />
-            <p className="text-sm font-black uppercase tracking-widest italic tracking-tighter">Loading data...</p>
+            <p className="text-sm font-black uppercase tracking-widest tracking-tighter">Loading data...</p>
         </div>
     );
 
     if (!job) return (
         <div className="flex flex-col items-center justify-center py-32 text-gray-400">
             <AlertCircle className="mb-4 opacity-50" size={60} />
-            <p className="text-sm font-black uppercase tracking-widest italic tracking-tighter">Job not found</p>
+            <p className="text-sm font-black uppercase tracking-widest tracking-tighter">Job not found</p>
             <Link href="/admin/repair/jobs" className="mt-4 text-[10px] font-black uppercase bg-slate-100 px-4 py-2 rounded-lg text-slate-500 hover:bg-slate-200 transition-all">Go Back</Link>
         </div>
     );
@@ -286,7 +286,6 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                     @page { margin: 0; size: A4; }
                 }
                 #printable-area { display: none; }
-                .italic-thai-fix { font-style: italic; }
             `}</style>
 
             {/* Hidden File Input */}
@@ -301,7 +300,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                              <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white">
                                  <Wrench size={24} />
                              </div>
-                             <h1 className="text-3xl font-black tracking-tighter italic">NAVAVICH CARE</h1>
+                             <h1 className="text-3xl font-black tracking-tighter">NAVAVICH CARE</h1>
                         </div>
                         <p className="text-[12px] font-black uppercase tracking-[0.3em] text-slate-500">Service Center & Claims Management</p>
                         <div className="flex flex-col gap-1 mt-4 text-[11px] font-bold text-slate-700">
@@ -310,12 +309,12 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                         </div>
                     </div>
                     <div className="text-right flex flex-col items-end">
-                        <div className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black text-3xl mb-3 italic">
+                        <div className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black text-3xl mb-3">
                              {printMode === "receipt" ? "RECEIPT" : (job.totalPrice > 0 ? "QUOTATION" : "JOB SHEET")}
                         </div>
                         <div className="space-y-1">
                              <p className="text-[14px] font-black uppercase text-black">NO: <span className="text-blue-600">{job.jobId}</span></p>
-                             <p className="text-[10px] font-bold text-slate-400 uppercase italic whitespace-nowrap">Date: {new Date().toLocaleString('th-TH')}</p>
+                             <p className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">Date: {new Date().toLocaleString('th-TH')}</p>
                         </div>
                     </div>
                 </div>
@@ -323,27 +322,27 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                 {/* Customer & Device */}
                 <div className="grid grid-cols-2 gap-6 mb-8 text-black">
                     <div className="border-2 border-slate-100 rounded-2xl p-6 bg-slate-50/20">
-                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2 italic text-blue-600">CUSTOMER INFO</h3>
+                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2 text-blue-600">CUSTOMER INFO</h3>
                          <p className="text-lg font-black text-slate-900 uppercase tracking-tight">{job.customer?.firstName} {job.customer?.lastName}</p>
                          <p className="text-[11px] font-bold text-slate-600 mt-1">TEL: {job.customer?.phone}</p>
                     </div>
                     <div className="border-2 border-slate-100 rounded-2xl p-6 bg-slate-50/20">
-                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2 italic text-blue-600">DEVICE DETAILS</h3>
+                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2 text-blue-600">DEVICE DETAILS</h3>
                          <p className="text-lg font-black text-slate-900 uppercase tracking-tight">{job.brand} {job.deviceModel}</p>
-                         <p className="text-[11px] font-bold text-slate-700 italic mt-1">S/N: {job.imei || "Not Found"}</p>
+                         <p className="text-[11px] font-bold text-slate-700 mt-1">S/N: {job.imei || "Not Found"}</p>
                     </div>
                 </div>
 
                 {/* Content Table */}
                 <div className="border-2 border-slate-900 rounded-2xl overflow-hidden mb-8 text-black bg-white">
                     <table className="w-full text-left text-[12px]">
-                         <thead className="bg-slate-900 text-white uppercase font-black italic">
+                         <thead className="bg-slate-900 text-white uppercase font-black">
                              <tr>
                                  <th className="px-6 py-4">Description / รายการแจ้ง</th>
                                  <th className="px-6 py-4 text-right">Amount / จำนวนเงิน</th>
                              </tr>
                          </thead>
-                         <tbody className="font-bold text-slate-800 italic">
+                         <tbody className="font-bold text-slate-800">
                              <tr className="border-b border-slate-100">
                                  <td className="px-6 py-6">
                                      <p className="text-slate-900 uppercase tracking-tight">Reported Problem: {job.reportedSymptom}</p>
@@ -376,9 +375,9 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                     <div className="mb-10 p-6 border-2 border-dashed border-slate-200 rounded-2xl bg-blue-50/30 text-black">
                          <div className="flex items-center gap-3 mb-3">
                               <ShieldCheck size={20} className="text-blue-600" />
-                              <h4 className="text-sm font-black text-slate-900 uppercase italic">Warranty Information / รายละเอียดการรับประกัน</h4>
+                              <h4 className="text-sm font-black text-slate-900 uppercase">Warranty Information / รายละเอียดการรับประกัน</h4>
                          </div>
-                         <div className="grid grid-cols-2 gap-4 text-[11px] font-bold italic">
+                         <div className="grid grid-cols-2 gap-4 text-[11px] font-bold">
                               <p className="text-slate-600">WARRANTY EXPIRES: <span className="text-red-600 underline">{new Date(job.warrantyExpireDate).toLocaleDateString('th-TH')}</span></p>
                               <p className="text-slate-600 text-right">VOID CODE: <span className="text-blue-600">{job.voidStickerCode || "-"}</span></p>
                          </div>
@@ -392,13 +391,13 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                 <div className="grid grid-cols-2 gap-32 pt-16 border-t-2 border-slate-900 mt-auto text-black bg-white">
                     <div className="text-center space-y-6">
                          <div className="h-12 border-b-2 border-slate-300 w-full"></div>
-                         <p className="text-[11px] font-black uppercase italic tracking-widest text-slate-400">Customer Signature / ลูกค้า</p>
+                         <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">Customer Signature / ลูกค้า</p>
                     </div>
                     <div className="text-center space-y-6">
                          <div className="h-12 border-b-2 border-slate-300 w-full relative flex items-center justify-center">
                               <span className="text-blue-600/10 font-black text-3xl uppercase tracking-[0.5em] absolute rotate-[-15deg]">NAVAVICH</span>
                          </div>
-                         <p className="text-[11px] font-black uppercase italic tracking-widest text-slate-400">Authorized Signature / เจ้าหน้าที่</p>
+                         <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">Authorized Signature / เจ้าหน้าที่</p>
                     </div>
                 </div>
             </div>
@@ -411,7 +410,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                     </Link>
                     <div>
                         <div className="flex items-center gap-2">
-                             <h1 className="text-lg font-black text-slate-800 tracking-tight uppercase italic">{job.jobId}</h1>
+                             <h1 className="text-lg font-black text-slate-800 tracking-tight uppercase">{job.jobId}</h1>
                              <span className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-widest ${getStatusStyle(job.status)}`}>{getStatusLabel(job.status)}</span>
                         </div>
                     </div>
@@ -436,20 +435,20 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                                  <Smartphone size={14} className="text-slate-400" />
                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Device Info</span>
                              </div>
-                             <p className="text-base font-black text-slate-900 uppercase italic tracking-tight">{job.brand} {job.deviceModel}</p>
-                             <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase italic tracking-tighter opacity-80">IMEI: {job.imei || "Not Found"}</p>
+                             <p className="text-base font-black text-slate-900 uppercase tracking-tight">{job.brand} {job.deviceModel}</p>
+                             <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase tracking-tighter opacity-80">IMEI: {job.imei || "Not Found"}</p>
                         </div>
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-all hover:border-slate-300">
                              <div className="flex items-center gap-2 mb-4">
                                  <User size={14} className="text-slate-400" />
                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Customer</span>
                              </div>
-                             <p className="text-base font-black text-slate-900 uppercase italic tracking-tight">{job.customer?.firstName} {job.customer?.lastName}</p>
-                             <p className="text-[10px] font-bold text-blue-600 mt-1 uppercase italic tracking-tighter opacity-80">TEL: {job.customer?.phone}</p>
+                             <p className="text-base font-black text-slate-900 uppercase tracking-tight">{job.customer?.firstName} {job.customer?.lastName}</p>
+                             <p className="text-[10px] font-bold text-blue-600 mt-1 uppercase tracking-tighter opacity-80">TEL: {job.customer?.phone}</p>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 italic">
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                          <h4 className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-4 flex items-center gap-2 underline decoration-red-100 underline-offset-4">
                              <AlertCircle size={14} /> Reported Symptom
                          </h4>
@@ -461,13 +460,13 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                         <div className="bg-slate-900 px-6 py-3 flex items-center justify-between">
                              <div className="flex items-center gap-2 text-white">
                                   <ImagePlus size={14} className="text-blue-400" />
-                                  <span className="text-[10px] font-black uppercase tracking-widest italic">Photo Gallery (Before/After)</span>
+                                  <span className="text-[10px] font-black uppercase tracking-widest">Photo Gallery (Before/After)</span>
                              </div>
                              {uploadingPhoto && <Loader2 size={12} className="animate-spin text-blue-400" />}
                         </div>
                         <div className="p-6">
                              {/* Before Repair */}
-                             <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 italic mb-3">🛠️ รูปภาพก่อนซ่อม (Before)</h5>
+                             <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">🛠️ รูปภาพก่อนซ่อม (Before)</h5>
                              <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
                                  {job.photosBefore?.map((p: string, i: number) => (
                                      <div key={i} className="aspect-square bg-slate-50 border border-slate-100 rounded-xl overflow-hidden relative group">
@@ -483,7 +482,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                              </div>
 
                              {/* After Repair */}
-                             <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 italic mb-3">✅ รูปภาพหลังซ่อม (After)</h5>
+                             <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">✅ รูปภาพหลังซ่อม (After)</h5>
                              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                                  {job.photosAfter?.map((p: string, i: number) => (
                                      <div key={i} className="aspect-square bg-slate-50 border border-slate-100 rounded-xl overflow-hidden relative group">
@@ -501,11 +500,11 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                     </div>
 
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                         <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 uppercase text-[10px] font-black tracking-widest italic text-slate-400">Workflow Timeline</div>
+                         <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 uppercase text-[10px] font-black tracking-widest text-slate-400">Workflow Timeline</div>
                          <div className="p-6 space-y-4">
                             {job.statusHistory?.map((h: any, i: number) => (
                                 <div key={i} className="flex gap-4 group">
-                                     <div className="flex-1 pb-4 border-b border-gray-50 last:border-0 italic font-bold">
+                                     <div className="flex-1 pb-4 border-b border-gray-50 last:border-0 font-bold">
                                           <span className="text-[10px] text-blue-600 underline">{getStatusLabel(h.status)}</span>
                                           <p className="text-xs text-slate-500 mt-1">"{h.note || "No comments"}"</p>
                                      </div>
@@ -518,7 +517,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                 {/* Sidebar ACTIONS */}
                 <div className="lg:col-span-4 space-y-6">
                     <div className="bg-slate-900 rounded-2xl p-6 shadow-xl">
-                        <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em] italic mb-4">Management Controls</h3>
+                        <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-4">Management Controls</h3>
                         <div className="grid grid-cols-1 gap-1">
                             {["checking", "quoted", "in_progress", "ready_pickup", "completed", "cancelled"].map((st) => {
                                 const isActive = job.status === st;
@@ -547,29 +546,29 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
 
                     <div className="bg-white rounded-2xl border-2 border-slate-100 shadow-sm p-6 overflow-hidden">
                          <div className="flex items-center justify-between mb-6 border-b border-slate-50 pb-3">
-                              <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest italic">Quote & Profitability</h4>
+                              <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Quote & Profitability</h4>
                          </div>
                          <div className="space-y-4">
                              <div className="space-y-1.5">
-                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic leading-none ml-1">Labor Fee</label>
-                                 <input type="number" value={laborCost} onChange={(e) => setLaborCost(Number(e.target.value))} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black italic focus:border-blue-500 outline-none transition-all" />
+                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none ml-1">Labor Fee</label>
+                                 <input type="number" value={laborCost} onChange={(e) => setLaborCost(Number(e.target.value))} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black focus:border-blue-500 outline-none transition-all" />
                              </div>
                              <div className="space-y-1.5">
-                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic leading-none ml-1">Parts Sale</label>
-                                 <input type="number" value={partsCost} onChange={(e) => setPartsCost(Number(e.target.value))} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black italic focus:border-blue-500 outline-none transition-all" />
+                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none ml-1">Parts Sale</label>
+                                 <input type="number" value={partsCost} onChange={(e) => setPartsCost(Number(e.target.value))} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black focus:border-blue-500 outline-none transition-all" />
                              </div>
                              <div className="space-y-1.5 pt-4 border-t border-slate-50">
-                                 <label className="text-[9px] font-black text-red-400 uppercase tracking-widest italic leading-none ml-1">Purchase Cost (Net)</label>
-                                 <input type="number" value={partsPurchaseCost} onChange={(e) => setPartsPurchaseCost(Number(e.target.value))} className="w-full bg-red-50/20 border border-red-100 rounded-xl p-3 text-xs font-black italic focus:border-red-500 outline-none transition-all text-red-600" />
+                                 <label className="text-[9px] font-black text-red-400 uppercase tracking-widest leading-none ml-1">Purchase Cost (Net)</label>
+                                 <input type="number" value={partsPurchaseCost} onChange={(e) => setPartsPurchaseCost(Number(e.target.value))} className="w-full bg-red-50/20 border border-red-100 rounded-xl p-3 text-xs font-black focus:border-red-500 outline-none transition-all text-red-600" />
                              </div>
                              <div className="pt-4 border-t border-slate-100 bg-slate-50 -mx-6 px-6 py-4 flex flex-col gap-2">
                                  <div className="flex items-center justify-between">
-                                     <span className="text-[10px] font-black text-slate-400 uppercase italic">Revenue</span>
-                                     <span className="text-sm font-black text-slate-900 italic">฿ {totalCalculate.toLocaleString()}</span>
+                                     <span className="text-[10px] font-black text-slate-400 uppercase">Revenue</span>
+                                     <span className="text-sm font-black text-slate-900">฿ {totalCalculate.toLocaleString()}</span>
                                  </div>
                                  <div className="flex items-center justify-between">
-                                     <span className="text-[10px] font-black text-slate-400 uppercase italic underline decoration-blue-100">PROFIT</span>
-                                     <span className={`text-lg font-black italic tracking-tighter ${profit >= 0 ? "text-emerald-500" : "text-red-500"}`}>
+                                     <span className="text-[10px] font-black text-slate-400 uppercase underline decoration-blue-100">PROFIT</span>
+                                     <span className={`text-lg font-black tracking-tighter ${profit >= 0 ? "text-emerald-500" : "text-red-500"}`}>
                                          ฿ {profit.toLocaleString()}
                                      </span>
                                  </div>
@@ -581,15 +580,15 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                     </div>
 
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                         <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest italic border-b border-slate-50 pb-3 mb-6">Warranty Control</h4>
+                         <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest border-b border-slate-50 pb-3 mb-6">Warranty Control</h4>
                          <div className="space-y-4">
-                             <input type="text" value={voidStickerCode} onChange={(e) => setVoidStickerCode(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black italic outline-none focus:border-blue-500 uppercase" placeholder="VOID CODE" />
+                             <input type="text" value={voidStickerCode} onChange={(e) => setVoidStickerCode(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black outline-none focus:border-blue-500 uppercase" placeholder="VOID CODE" />
                              <div className="grid grid-cols-2 gap-3">
                                  <input type="date" value={warrantyStartDate} onChange={(e) => setWarrantyStartDate(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-2 text-[10px] font-black" />
                                  <input type="date" value={warrantyExpireDate} onChange={(e) => setWarrantyExpireDate(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-2 text-[10px] font-black" />
                              </div>
                          </div>
-                         <button onClick={updateWarranty} disabled={updatingWarranty} className="w-full mt-6 py-3 bg-slate-100 text-slate-400 hover:text-blue-600 transition-all rounded-xl text-[9px] font-black uppercase tracking-widest font-black italic tracking-widest">
+                         <button onClick={updateWarranty} disabled={updatingWarranty} className="w-full mt-6 py-3 bg-slate-100 text-slate-400 hover:text-blue-600 transition-all rounded-xl text-[9px] font-black uppercase tracking-widest font-black tracking-widest">
                              {updatingWarranty ? <Loader2 size={12} className="animate-spin" /> : "Save Warranty Status"}
                          </button>
                     </div>
@@ -601,10 +600,10 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 no-print bg-slate-900/40 backdrop-blur-[2px]">
                     <div className="relative w-full max-w-md space-y-6 rounded-3xl bg-white p-5 shadow-2xl sm:p-8">
                         <div className="text-center">
-                            <h2 className="text-base font-black text-slate-800 uppercase tracking-tighter italic">Workflow Update</h2>
-                            <p className="text-[9px] text-slate-400 font-bold uppercase mt-1 italic">Moving task to: <span className="text-blue-600 underline">"{getStatusLabel(pendingStatus || "")}"</span></p>
+                            <h2 className="text-base font-black text-slate-800 uppercase tracking-tighter">Workflow Update</h2>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Moving task to: <span className="text-blue-600 underline">"{getStatusLabel(pendingStatus || "")}"</span></p>
                         </div>
-                        <textarea rows={3} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-xs font-bold text-gray-800 outline-none italic placeholder:text-gray-300" placeholder="Notes for history..." value={statusNote} onChange={(e) => setStatusNote(e.target.value)} />
+                        <textarea rows={3} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-xs font-bold text-gray-800 outline-none placeholder:text-gray-300" placeholder="Notes for history..." value={statusNote} onChange={(e) => setStatusNote(e.target.value)} />
                         <div className="flex gap-3">
                             <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest">Cancel</button>
                             <button onClick={confirmUpdateStatus} disabled={updatingStatus} className="flex-[2] py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
