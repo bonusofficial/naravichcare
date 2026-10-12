@@ -385,7 +385,7 @@ export default function AgentPortal() {
 
                         <div className="bg-blue-600 rounded-[2rem] p-8 text-white space-y-6 shadow-xl shadow-blue-100 relative overflow-hidden group">
                             <Zap size={80} className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-700" />
-                            <h3 className="text-lg font-black uppercase italic leading-tight relative z-10">คู่มือแนะนำ<br />การส่งใบสมัคร</h3>
+                            <h3 className="text-lg font-black uppercase leading-tight relative z-10">คู่มือแนะนำ<br />การส่งใบสมัคร</h3>
                             <ul className="space-y-4 relative z-10">
                                 {[
                                     "ตรวจสอบเลข IMEI ให้ถูกต้อง",

@@ -26,7 +26,7 @@ export default function AccountingPage() {
         <div className="space-y-8 animate-in fade-in duration-700">
             <div>
                 <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase underline decoration-blue-600/30">สรุปรายได้และค่าใช้จ่าย</h2>
-                <p className="text-slate-500 text-sm mt-1 font-black uppercase tracking-widest opacity-40 italic">Insurance Sales & Claims Accounting</p>
+                <p className="text-slate-500 text-sm mt-1 font-black uppercase tracking-widest opacity-40">Insurance Sales & Claims Accounting</p>
             </div>
 
             {/* Main Stats */}
@@ -45,7 +45,7 @@ export default function AccountingPage() {
                     <p className="text-3xl font-black text-rose-800 tracking-tight">
                         {data.netClaimExpense < 0 ? "+" : ""}฿{Math.abs(data.netClaimExpense).toLocaleString()}
                     </p>
-                    <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-rose-500 uppercase italic">
+                    <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-rose-500 uppercase">
                         <span>อะไหล่: {data.totalPartsCost.toLocaleString()} - รับเงิน: {data.totalDeductibleAmount.toLocaleString()}</span>
                     </div>
                 </div>
@@ -64,7 +64,7 @@ export default function AccountingPage() {
                 <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm space-y-6">
                     <div className="flex items-center gap-2 text-slate-800">
                         <Info size={18} />
-                        <h3 className="font-black uppercase italic">Accounting Logic</h3>
+                        <h3 className="font-black uppercase">Accounting Logic</h3>
                     </div>
                     <div className="space-y-4">
                         <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl">
@@ -84,7 +84,7 @@ export default function AccountingPage() {
 
                 {/* Recent Items */}
                 <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-2xl relative overflow-hidden">
-                    <h3 className="font-black mb-6 flex items-center gap-2 uppercase italic tracking-wider">
+                    <h3 className="font-black mb-6 flex items-center gap-2 uppercase tracking-wider">
                         <Receipt size={18} className="text-blue-400" /> เคสเคลมล่าสุด (Recent Claims)
                     </h3>
                     <div className="space-y-4 relative z-10">
@@ -95,7 +95,7 @@ export default function AccountingPage() {
                                         <Wrench size={20} />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-black uppercase italic">{item.deviceModel}</p>
+                                        <p className="text-sm font-black uppercase">{item.deviceModel}</p>
                                         <p className="text-[10px] text-slate-400 font-bold uppercase">{item.customerName} • {new Date(item.createdAt).toLocaleDateString()}</p>
                                     </div>
                                 </div>
@@ -106,7 +106,7 @@ export default function AccountingPage() {
                             </div>
                         ))}
                         {data.recentClaims.length === 0 && (
-                            <p className="text-center text-slate-500 italic py-10 font-bold">ยังไม่มีข้อมูลการเคลม</p>
+                            <p className="text-center text-slate-500 py-10 font-bold">ยังไม่มีข้อมูลการเคลม</p>
                         )}
                     </div>
                 </div>

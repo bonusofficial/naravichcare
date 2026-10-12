@@ -60,7 +60,7 @@ export default function CoveragePlansAdmin() {
         <div className="p-4 md:p-8 max-w-[1440px] mx-auto bg-gray-50 min-h-screen font-sans">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 uppercase italic flex items-center gap-3">
+                    <h1 className="text-3xl font-black text-slate-900 uppercase flex items-center gap-3">
                         <ShieldCheck className="text-blue-600" size={32} /> จัดการแผนความคุ้มครอง (Step 3)
                     </h1>
                     <p className="text-slate-400 font-bold text-sm mt-1">จัดการชื่อแผน, สิทธิประโยชน์ และตัวคูณราคาสำหรับหน้าสมัครสมาชิก</p>
@@ -103,14 +103,14 @@ export default function CoveragePlansAdmin() {
                             )}
 
                             <div className="bg-gradient-to-r from-blue-700 to-cyan-500 py-3 px-4 text-center">
-                                <p className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] mb-1 italic">ตัวคูณ: {pkg.priceMultiplier}</p>
+                                <p className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] mb-1">ตัวคูณ: {pkg.priceMultiplier}</p>
                                 <p className="text-[11px] font-black text-white uppercase tracking-widest flex items-center justify-center gap-2">
                                     <Smartphone size={14} /> แผนความคุ้มครอง
                                 </p>
                             </div>
 
                             <div className="bg-blue-50/50 py-3 text-center border-b border-blue-100">
-                                <p className="text-lg font-black text-slate-900 uppercase tracking-tighter italic">
+                                <p className="text-lg font-black text-slate-900 uppercase tracking-tighter">
                                     [คำนวณตามราคาเครื่อง]
                                 </p>
                                 <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mt-1.5">{pkg.durationUnit}</p>
@@ -118,7 +118,7 @@ export default function CoveragePlansAdmin() {
 
                             <div className="p-5 flex-1 space-y-4">
                                 <div className="space-y-2">
-                                    <h4 className="text-base font-black text-slate-900 leading-tight uppercase italic decoration-blue-500 decoration-2">
+                                    <h4 className="text-base font-black text-slate-900 leading-tight uppercase decoration-blue-500 decoration-2">
                                         {pkg.name}<br />
                                         <span className="text-slate-400 text-base">{pkg.subTitle}</span> <span className="text-blue-600">{pkg.durationText}</span>
                                     </h4>
@@ -153,7 +153,7 @@ export default function CoveragePlansAdmin() {
                             <ShieldCheck size={48} strokeWidth={1} />
                         </div>
                         <div className="space-y-2">
-                            <h3 className="text-xl font-black text-slate-400 uppercase tracking-widest italic">ยังไม่มีแผนในระบบ</h3>
+                            <h3 className="text-xl font-black text-slate-400 uppercase tracking-widest">ยังไม่มีแผนในระบบ</h3>
                             <p className="text-slate-300 font-bold text-sm">เริ่มสร้างแผนความคุ้มครองของคุณเพื่อแสดงผลในหน้าสมัครสมาชิก</p>
                         </div>
                         <Link

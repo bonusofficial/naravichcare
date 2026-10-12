@@ -112,7 +112,7 @@ export default function EditCoveragePlan() {
                     <ArrowLeft size={16} /> กลับสู่รายการแผน
                 </Link>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <h1 className="text-3xl font-black text-slate-900 uppercase italic flex items-center gap-3">
+                    <h1 className="text-3xl font-black text-slate-900 uppercase flex items-center gap-3">
                         <ShieldCheck className="text-blue-600" size={32} /> แก้ไขแผน: {form.name}
                     </h1>
                     <div className="flex items-center gap-4 px-4 py-2 bg-blue-50 rounded-2xl border border-blue-100">
@@ -189,7 +189,7 @@ export default function EditCoveragePlan() {
                             onChange={e => setForm({ ...form, priceMultiplier: Number(e.target.value) })}
                             required
                         />
-                        <p className="text-[10px] text-slate-400 font-bold italic mt-1 px-1">ราคา = ราคาเครื่อง x {form.priceMultiplier}</p>
+                        <p className="text-[10px] text-slate-400 font-bold mt-1 px-1">ราคา = ราคาเครื่อง x {form.priceMultiplier}</p>
                     </div>
 
                     <div className="space-y-1.5">

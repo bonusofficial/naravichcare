@@ -202,7 +202,7 @@ export default function CheckPolicy() {
                                 </div>
                             </div>
                             <div className="text-center">
-                                <div className="italic font-serif text-blue-900 text-base font-bold -mb-1">Naravich S.</div>
+                                <div className="text-blue-900 text-base font-bold -mb-1">Naravich S.</div>
                                 <div className="border-t border-gray-300 pt-3">
                                     <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-3">ลายมือชื่อผู้ให้ความคุ้มครอง</div>
                                     <div className="text-xs text-gray-500 mt-1">(Naravich Care Co., Ltd.)</div>
@@ -289,7 +289,7 @@ export default function CheckPolicy() {
                                     </div>
                                     <div>
                                         <h3 className="text-xl font-black text-slate-900 leading-tight">{result.firstName} {result.lastName}</h3>
-                                        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mt-1 italic">Coverage Active</p>
+                                        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mt-1">Coverage Active</p>
                                     </div>
                                 </div>
                                 <div className="text-right">

@@ -222,7 +222,7 @@ export default function Step2() {
                                 <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
                         </select>
-                        <p className="text-[10px] text-slate-400 font-bold italic ml-2">เลือกทั้งหมดเพื่อดูแผนที่เปิดใช้งานสำหรับอุปกรณ์ทุกประเภท</p>
+                        <p className="text-[10px] text-slate-400 font-bold ml-2">เลือกทั้งหมดเพื่อดูแผนที่เปิดใช้งานสำหรับอุปกรณ์ทุกประเภท</p>
                     </div>
                 )}
 
@@ -238,7 +238,7 @@ export default function Step2() {
                         value={devicePrice}
                         onChange={(e) => setDevicePrice(e.target.value)}
                     />
-                    <p className="text-[10px] text-slate-400 font-bold italic ml-2">หมายเหตุ: ราคาเครื่องจะถูกนำไปคำนวณแพ็กเกจในหน้าถัดไป</p>
+                    <p className="text-[10px] text-slate-400 font-bold ml-2">หมายเหตุ: ราคาเครื่องจะถูกนำไปคำนวณแพ็กเกจในหน้าถัดไป</p>
                 </div>
             </div>
 

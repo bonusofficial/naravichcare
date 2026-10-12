@@ -52,7 +52,7 @@ export default function RepairDashboard() {
     if (loading) return (
         <div className="flex flex-col items-center justify-center py-32 text-gray-400">
             <Loader2 className="animate-spin mb-4" size={40} />
-            <p className="text-sm font-black uppercase tracking-widest italic tracking-tighter">Aggregating real-time data...</p>
+            <p className="text-sm font-black uppercase tracking-widest tracking-tighter">Aggregating real-time data...</p>
         </div>
     );
 
@@ -61,7 +61,7 @@ export default function RepairDashboard() {
             {/* Header / Search */}
             <div className="flex items-center justify-between border-b border-gray-100 pb-5">
                 <div>
-                    <h1 className="text-2xl font-black text-slate-800 tracking-tighter uppercase italic">Repair Dashboard</h1>
+                    <h1 className="text-2xl font-black text-slate-800 tracking-tighter uppercase">Repair Dashboard</h1>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Real-time Service Analytics & Management</p>
                 </div>
                 <Link href="/admin/repair/jobs/new" className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2 shadow-lg shadow-slate-200">
@@ -84,7 +84,7 @@ export default function RepairDashboard() {
                                     <div className={`${stat.color} opacity-40 group-hover:opacity-100 transition-all`}>{stat.icon}</div>
                                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</span>
                                 </div>
-                                <div className={`text-2xl font-black ${stat.color} italic tracking-tighter`}>{stat.value}</div>
+                                <div className={`text-2xl font-black ${stat.color} tracking-tighter`}>{stat.value}</div>
                             </div>
                         ))}
                     </div>
@@ -95,37 +95,37 @@ export default function RepairDashboard() {
                          <div className="relative z-10 space-y-8">
                               <div className="flex items-center gap-2">
                                   <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></div>
-                                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-300 italic">Financial Summary / ข้อมูลการเงิน</span>
+                                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-300">Financial Summary / ข้อมูลการเงิน</span>
                               </div>
                               
                               <div className="grid md:grid-cols-2 gap-8">
                                   {/* Daily Section */}
                                   <div className="space-y-4">
                                       <div className="space-y-1">
-                                          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">Daily Revenue (รายได้วันนี้)</p>
-                                          <h3 className="text-3xl font-black tracking-tighter italic">฿ {(stats?.dailyRevenue || 0).toLocaleString()}</h3>
+                                          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Daily Revenue (รายได้วันนี้)</p>
+                                          <h3 className="text-3xl font-black tracking-tighter">฿ {(stats?.dailyRevenue || 0).toLocaleString()}</h3>
                                       </div>
                                       <div className="bg-white/5 border border-white/10 rounded-2xl p-4 transition-all hover:bg-emerald-500/10 hover:border-emerald-500/20">
-                                          <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest italic mb-1 shrink-0">Net Profit Today (กำไรสุทธิ)</p>
-                                          <h4 className="text-xl font-black text-emerald-400 tracking-tight italic">฿ {(stats?.dailyProfit || 0).toLocaleString()}</h4>
+                                          <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest mb-1 shrink-0">Net Profit Today (กำไรสุทธิ)</p>
+                                          <h4 className="text-xl font-black text-emerald-400 tracking-tight">฿ {(stats?.dailyProfit || 0).toLocaleString()}</h4>
                                       </div>
                                   </div>
 
                                   {/* Monthly Section */}
                                   <div className="space-y-4">
                                       <div className="space-y-1">
-                                          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">Monthly Sales (ยอดขายเดือนนี้)</p>
-                                          <h3 className="text-3xl font-black tracking-tighter italic text-blue-400">฿ {(stats?.monthlyRevenue || 0).toLocaleString()}</h3>
+                                          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Monthly Sales (ยอดขายเดือนนี้)</p>
+                                          <h3 className="text-3xl font-black tracking-tighter text-blue-400">฿ {(stats?.monthlyRevenue || 0).toLocaleString()}</h3>
                                       </div>
                                       <div className="bg-white/5 border border-white/10 rounded-2xl p-4 transition-all hover:bg-blue-500/10 hover:border-blue-500/20">
-                                          <p className="text-[8px] font-black text-blue-300 uppercase tracking-widest italic mb-1">Monthly Profit (กำไรสะสม)</p>
-                                          <h4 className="text-xl font-black text-blue-300 tracking-tight italic">฿ {(stats?.monthlyProfit || 0).toLocaleString()}</h4>
+                                          <p className="text-[8px] font-black text-blue-300 uppercase tracking-widest mb-1">Monthly Profit (กำไรสะสม)</p>
+                                          <h4 className="text-xl font-black text-blue-300 tracking-tight">฿ {(stats?.monthlyProfit || 0).toLocaleString()}</h4>
                                       </div>
                                   </div>
                               </div>
 
                               <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                                   <p className="text-[10px] font-bold text-gray-500 italic uppercase">Total {stats?.dailyCount || 0} Jobs Received Today</p>
+                                   <p className="text-[10px] font-bold text-gray-500 uppercase">Total {stats?.dailyCount || 0} Jobs Received Today</p>
                                    <div className="flex items-center gap-1 text-[8px] font-black text-emerald-400 uppercase tracking-widest">
                                         <TrendingUp size={10} /> Live Financial Syncing
                                    </div>
@@ -137,14 +137,14 @@ export default function RepairDashboard() {
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div className="bg-blue-600 rounded-2xl p-6 text-white relative overflow-hidden">
                              <div className="absolute right-0 top-0 w-24 h-24 bg-white/5 rounded-full -mr-10 -mt-10"></div>
-                             <h4 className="text-[11px] font-black uppercase tracking-widest mb-1 opacity-80 italic">Status Today</h4>
-                             <p className="text-2xl font-black mb-1 tracking-tighter italic">{stats?.dailyCount || 0} Jobs In</p>
+                             <h4 className="text-[11px] font-black uppercase tracking-widest mb-1 opacity-80">Status Today</h4>
+                             <p className="text-2xl font-black mb-1 tracking-tighter">{stats?.dailyCount || 0} Jobs In</p>
                              <p className="text-[9px] font-bold uppercase tracking-widest opacity-60">เคสที่รับเข้าใหม่วันนี้</p>
                         </div>
                         <div className="bg-white border border-gray-100 rounded-2xl p-6 flex flex-col justify-center">
-                             <h4 className="text-[11px] font-black uppercase tracking-widest mb-1 text-slate-400 italic">Warehouse Status</h4>
+                             <h4 className="text-[11px] font-black uppercase tracking-widest mb-1 text-slate-400">Warehouse Status</h4>
                              <p className="text-sm font-bold text-slate-600">Inventory Module Inactive</p>
-                             <div className="mt-2 text-[9px] font-black text-blue-600 uppercase tracking-widest opacity-50 cursor-not-allowed italic">Phase 2: Inventory System</div>
+                             <div className="mt-2 text-[9px] font-black text-blue-600 uppercase tracking-widest opacity-50 cursor-not-allowed">Phase 2: Inventory System</div>
                         </div>
                     </div>
                 </div>
@@ -152,7 +152,7 @@ export default function RepairDashboard() {
                 {/* Sidebar Manage (Right 4) */}
                 <div className="lg:col-span-4 space-y-4">
                      <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
-                          <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-6 italic flex items-center gap-2">
+                          <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2">
                                <Settings size={14} className="text-blue-500" /> Administrative Access
                           </h4>
                           <div className="grid grid-cols-1 gap-2">

@@ -136,7 +136,7 @@ export default function AdminDashboard() {
                         <div className="relative z-10">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>
                             <h3 className="text-3xl font-black text-slate-900 leading-none tracking-tight">{s.value}</h3>
-                            <p className="text-[10px] text-slate-400 font-bold mt-3 flex items-center gap-1 uppercase italic">
+                            <p className="text-[10px] text-slate-400 font-bold mt-3 flex items-center gap-1 uppercase">
                                 <Clock size={10} /> {s.description}
                             </p>
                         </div>

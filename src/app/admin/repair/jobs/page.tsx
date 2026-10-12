@@ -82,7 +82,7 @@ export default function RepairJobsList() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-black text-gray-800 tracking-tight">รายการงานซ่อม & เคลม</h1>
-                    <p className="text-sm text-gray-500 font-medium italic">จัดการและติดตามสถานะงานซ่อมทั้งหมดในระบบ</p>
+                    <p className="text-sm text-gray-500 font-medium">จัดการและติดตามสถานะงานซ่อมทั้งหมดในระบบ</p>
                 </div>
                 <Link href="/admin/repair/jobs/new" className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold text-sm tracking-widest uppercase hover:bg-blue-600 transition-all shadow-xl shadow-slate-200">
                     <PlusCircle size={18} />
@@ -125,7 +125,7 @@ export default function RepairJobsList() {
                 ) : jobs.length === 0 ? (
                     <div className="bg-white rounded-[2.5rem] py-32 flex flex-col items-center justify-center text-gray-300">
                         <Box className="mb-4 opacity-50" size={60} />
-                        <p className="text-sm font-black uppercase tracking-widest italic opacity-50">ไม่พบข้อมูลงานซ่อมในระบบ</p>
+                        <p className="text-sm font-black uppercase tracking-widest opacity-50">ไม่พบข้อมูลงานซ่อมในระบบ</p>
                     </div>
                 ) : (
                     jobs.map((job) => (
@@ -136,7 +136,7 @@ export default function RepairJobsList() {
                         >
                             {/* Job ID & Date */}
                             <div className="flex flex-col items-center md:items-start md:border-r border-gray-100 md:pr-10">
-                                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1 italic leading-none">{job.jobType === "repair" ? "ซ่อมทั่วไป" : "งานเคลม"}</span>
+                                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1 leading-none">{job.jobType === "repair" ? "ซ่อมทั่วไป" : "งานเคลม"}</span>
                                 <h3 className="text-xl font-black text-slate-900 tracking-tighter leading-none">{job.jobId}</h3>
                                 <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold mt-2 uppercase tracking-tighter">
                                     <Calendar size={12} /> {new Date(job.receivedAt).toLocaleDateString()}
@@ -151,14 +151,14 @@ export default function RepairJobsList() {
                                     </div>
                                     <p className="text-[13px] font-black text-slate-800 uppercase tracking-tight truncate">
                                         {job.brand} {job.deviceModel}
-                                        <span className="text-[10px] font-bold text-slate-400 ml-2 italic tracking-tighter">(IMEI: {job.imei || "N/A"})</span>
+                                        <span className="text-[10px] font-bold text-slate-400 ml-2 tracking-tighter">(IMEI: {job.imei || "N/A"})</span>
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2.5">
                                     <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                                         <User size={12} />
                                     </div>
-                                    <p className="text-[12px] font-bold text-gray-500 italic">
+                                    <p className="text-[12px] font-bold text-gray-500">
                                         {job.customer?.firstName} {job.customer?.lastName}
                                         <span className="text-[9px] font-black text-blue-300 ml-2 uppercase tracking-widest">{job.customer?.phone}</span>
                                     </p>
@@ -168,7 +168,7 @@ export default function RepairJobsList() {
                             {/* Symptom Snippet */}
                             <div className="hidden lg:block flex-[2] border-l border-gray-100 pl-8">
                                 <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">อาการที่แจ้ง</p>
-                                <p className="text-[11px] font-semibold text-gray-600 line-clamp-2 italic leading-relaxed">"{job.reportedSymptom}"</p>
+                                <p className="text-[11px] font-semibold text-gray-600 line-clamp-2 leading-relaxed">"{job.reportedSymptom}"</p>
                             </div>
 
                             {/* Status & Action */}
@@ -185,7 +185,7 @@ export default function RepairJobsList() {
                 )}
             </div>
 
-            <p className="text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest italic pt-6">
+            <p className="text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest pt-6">
                 แสดงผลทั้งหมด {jobs.length} รายการ
             </p>
         </div>

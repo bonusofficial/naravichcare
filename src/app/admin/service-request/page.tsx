@@ -122,7 +122,7 @@ export default function AdminServiceRequestPage() {
 
             {/* General Info */}
             <div className="space-y-6 rounded-3xl border-2 border-slate-100 bg-white p-4 shadow-sm sm:p-8">
-                <h3 className="text-lg font-black text-slate-800 uppercase italic border-b-2 border-slate-50 pb-3">หัวข้อและส่วนประกอบทั่วไป</h3>
+                <h3 className="text-lg font-black text-slate-800 uppercase border-b-2 border-slate-50 pb-3">หัวข้อและส่วนประกอบทั่วไป</h3>
                 <div className="grid gap-6 sm:grid-cols-2">
                     <div className="space-y-2">
                         <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Subtitle (เล็ก)</label>
@@ -153,7 +153,7 @@ export default function AdminServiceRequestPage() {
 
             {/* Columns Manage */}
             <div className="space-y-6 rounded-3xl border-2 border-slate-100 bg-white p-4 font-bold shadow-sm sm:p-8">
-                <h3 className="text-lg font-black text-slate-800 uppercase italic border-b-2 border-slate-50 pb-3">หัวข้อคอลัมน์ (3 คอลัมน์)</h3>
+                <h3 className="text-lg font-black text-slate-800 uppercase border-b-2 border-slate-50 pb-3">หัวข้อคอลัมน์ (3 คอลัมน์)</h3>
                 <div className="grid gap-4 sm:grid-cols-3">
                     {columns.map((col, i) => (
                         <div key={i} className="space-y-2">
@@ -172,7 +172,7 @@ export default function AdminServiceRequestPage() {
             {/* Rows Manage */}
             <div className="space-y-4">
                 <div className="flex flex-col gap-3 px-1 sm:flex-row sm:items-center sm:justify-between sm:px-4">
-                    <h3 className="text-lg font-black text-slate-800 uppercase italic tracking-wider">ข้อมูลแต่ละแถว (Rows)</h3>
+                    <h3 className="text-lg font-black text-slate-800 uppercase tracking-wider">ข้อมูลแต่ละแถว (Rows)</h3>
                     <button
                         onClick={addRow}
                         className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
