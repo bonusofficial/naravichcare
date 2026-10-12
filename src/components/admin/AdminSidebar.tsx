@@ -27,7 +27,7 @@ const navGroups: NavGroup[] = [
             { title: "รายการลงทะเบียน", icon: <ClipboardList size={18} />, href: "/admin/registrations", permission: "view_registrations" },
             { title: "จัดการแพ็กเกจ", icon: <Zap size={18} />, href: "/admin/packages", permission: "view_packages" },
             { title: "จัดการแผน (Step 3)", icon: <ShieldCheck size={18} />, href: "/admin/coverage-plans", permission: "view_coverage_plans" },
-            { title: "งานเคลม", icon: <ClipboardList size={18} />, href: "/admin/claims", badge: "ใหม่", permission: "view_claims" },
+            { title: "งานเคลม", icon: <ClipboardList size={18} />, href: "/admin/claims", permission: "view_claims" },
             { title: "ประวัติการเคลม", icon: <History size={18} />, href: "/admin/claims-history", permission: "view_claims" },
         ],
     },
@@ -233,11 +233,11 @@ export function AdminSidebar({ collapsed, mobileOpen, onMobileClose, onToggle }:
 
             {/* Footer */}
             <div className="px-3 py-3 space-y-0.5 shrink-0">
-                {[{ icon: <Bell size={18} />, label: "แจ้งเตือน", badge: "3", href: "/admin" }, { icon: <Settings size={18} />, label: "เปลี่ยนรหัสผ่าน", href: "/admin/change-password" }].map((a) => (
+                {[{ icon: <Bell size={18} />, label: "แจ้งเตือน", href: "/admin" }, { icon: <Settings size={18} />, label: "เปลี่ยนรหัสผ่าน", href: "/admin/change-password" }].map((a) => (
                     <Link key={a.label} href={a.href} onClick={onMobileClose} title={collapsed ? a.label : undefined}
                         className={`flex items-center rounded-lg text-[13.5px] font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-all group/item ${collapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5"}`}>
                         <span className="shrink-0 text-gray-400 group-hover/item:text-gray-600">{a.icon}</span>
-                        {!collapsed && <><span className="flex-1">{a.label}</span>{"badge" in a && a.badge && <span className="text-[10px] font-bold bg-red-100 text-red-500 px-2 py-0.5 rounded-full">{a.badge}</span>}</>}
+                        {!collapsed && <span className="flex-1">{a.label}</span>}
                     </Link>
                 ))}
                 <button

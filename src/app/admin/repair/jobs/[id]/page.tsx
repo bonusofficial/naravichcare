@@ -517,7 +517,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                 {/* Sidebar ACTIONS */}
                 <div className="lg:col-span-4 space-y-6">
                     <div className="bg-slate-900 rounded-2xl p-6 shadow-xl">
-                        <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-4">Management Controls</h3>
+                        <h3 className="text-sm font-bold text-white mb-4">จัดการสถานะงาน</h3>
                         <div className="grid grid-cols-1 gap-1">
                             {["checking", "quoted", "in_progress", "ready_pickup", "completed", "cancelled"].map((st) => {
                                 const isActive = job.status === st;
@@ -533,8 +533,8 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                                     >
                                         <div className="flex items-center gap-2">
                                             {isActive && <CheckCircle size={14} className="text-white animate-pulse" />}
-                                            <span className="text-[10px] font-black uppercase tracking-tight">
-                                                {getStatusLabel(st)} {isActive && "(CURRENT)"}
+                                            <span className="text-xs font-bold">
+                                                {getStatusLabel(st)} {isActive && "(สถานะปัจจุบัน)"}
                                             </span>
                                         </div>
                                         <ChevronRight size={14} className={isActive ? "text-white/50" : "text-slate-500 group-hover:text-blue-400"} />
@@ -546,50 +546,60 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
 
                     <div className="bg-white rounded-2xl border-2 border-slate-100 shadow-sm p-6 overflow-hidden">
                          <div className="flex items-center justify-between mb-6 border-b border-slate-50 pb-3">
-                              <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Quote & Profitability</h4>
+                              <h4 className="text-sm font-bold text-slate-900">ราคาเสนอลูกค้าและกำไร</h4>
                          </div>
                          <div className="space-y-4">
                              <div className="space-y-1.5">
-                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none ml-1">Labor Fee</label>
+                                 <label className="text-xs font-semibold text-slate-500 ml-1">ค่าแรง (เก็บจากลูกค้า)</label>
                                  <input type="number" value={laborCost} onChange={(e) => setLaborCost(Number(e.target.value))} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black focus:border-blue-500 outline-none transition-all" />
                              </div>
                              <div className="space-y-1.5">
-                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none ml-1">Parts Sale</label>
+                                 <label className="text-xs font-semibold text-slate-500 ml-1">ค่าอะไหล่ (ราคาขายลูกค้า)</label>
                                  <input type="number" value={partsCost} onChange={(e) => setPartsCost(Number(e.target.value))} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black focus:border-blue-500 outline-none transition-all" />
                              </div>
                              <div className="space-y-1.5 pt-4 border-t border-slate-50">
-                                 <label className="text-[9px] font-black text-red-400 uppercase tracking-widest leading-none ml-1">Purchase Cost (Net)</label>
+                                 <label className="text-xs font-semibold text-red-500 ml-1">ต้นทุนอะไหล่ (ราคาที่ร้านซื้อมา)</label>
                                  <input type="number" value={partsPurchaseCost} onChange={(e) => setPartsPurchaseCost(Number(e.target.value))} className="w-full bg-red-50/20 border border-red-100 rounded-xl p-3 text-xs font-black focus:border-red-500 outline-none transition-all text-red-600" />
+                                 <p className="text-[11px] text-slate-400 ml-1">ใช้คำนวณกำไรเท่านั้น ไม่แสดงในเอกสารลูกค้า</p>
                              </div>
                              <div className="pt-4 border-t border-slate-100 bg-slate-50 -mx-6 px-6 py-4 flex flex-col gap-2">
                                  <div className="flex items-center justify-between">
-                                     <span className="text-[10px] font-black text-slate-400 uppercase">Revenue</span>
+                                     <span className="text-xs font-semibold text-slate-500">ราคาเสนอลูกค้า (ค่าแรง + ค่าอะไหล่)</span>
                                      <span className="text-sm font-black text-slate-900">฿ {totalCalculate.toLocaleString()}</span>
                                  </div>
                                  <div className="flex items-center justify-between">
-                                     <span className="text-[10px] font-black text-slate-400 uppercase underline decoration-blue-100">PROFIT</span>
+                                     <span className="text-xs font-semibold text-slate-500">กำไร</span>
                                      <span className={`text-lg font-black tracking-tighter ${profit >= 0 ? "text-emerald-500" : "text-red-500"}`}>
                                          ฿ {profit.toLocaleString()}
                                      </span>
                                  </div>
                              </div>
                          </div>
-                         <button onClick={updatePrices} disabled={updatingPrice} className="w-full mt-6 py-4 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center justify-center gap-2 shadow-lg">
-                             {updatingPrice ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Update & Analyze
+                         <button onClick={updatePrices} disabled={updatingPrice} className="w-full mt-6 py-4 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-blue-600 transition-all flex items-center justify-center gap-2 shadow-lg">
+                             {updatingPrice ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} บันทึกราคา
                          </button>
                     </div>
 
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                         <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest border-b border-slate-50 pb-3 mb-6">Warranty Control</h4>
+                         <h4 className="text-sm font-bold text-slate-900 border-b border-slate-50 pb-3 mb-6">การรับประกัน</h4>
                          <div className="space-y-4">
-                             <input type="text" value={voidStickerCode} onChange={(e) => setVoidStickerCode(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black outline-none focus:border-blue-500 uppercase" placeholder="VOID CODE" />
+                             <div className="space-y-1.5">
+                                 <label className="text-xs font-semibold text-slate-500 ml-1">รหัสสติกเกอร์รับประกัน (Void)</label>
+                                 <input type="text" value={voidStickerCode} onChange={(e) => setVoidStickerCode(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black outline-none focus:border-blue-500 uppercase" placeholder="เช่น V12345" />
+                             </div>
                              <div className="grid grid-cols-2 gap-3">
-                                 <input type="date" value={warrantyStartDate} onChange={(e) => setWarrantyStartDate(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-2 text-[10px] font-black" />
-                                 <input type="date" value={warrantyExpireDate} onChange={(e) => setWarrantyExpireDate(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-2 text-[10px] font-black" />
+                                 <div className="space-y-1.5">
+                                     <label className="text-xs font-semibold text-slate-500 ml-1">วันเริ่มรับประกัน</label>
+                                     <input type="date" value={warrantyStartDate} onChange={(e) => setWarrantyStartDate(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-2 text-[10px] font-black" />
+                                 </div>
+                                 <div className="space-y-1.5">
+                                     <label className="text-xs font-semibold text-slate-500 ml-1">วันหมดประกัน</label>
+                                     <input type="date" value={warrantyExpireDate} onChange={(e) => setWarrantyExpireDate(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-2 text-[10px] font-black" />
+                                 </div>
                              </div>
                          </div>
-                         <button onClick={updateWarranty} disabled={updatingWarranty} className="w-full mt-6 py-3 bg-slate-100 text-slate-400 hover:text-blue-600 transition-all rounded-xl text-[9px] font-black uppercase tracking-widest font-black tracking-widest">
-                             {updatingWarranty ? <Loader2 size={12} className="animate-spin" /> : "Save Warranty Status"}
+                         <button onClick={updateWarranty} disabled={updatingWarranty} className="w-full mt-6 py-3 bg-slate-100 text-slate-500 hover:text-blue-600 transition-all rounded-xl text-sm font-bold flex items-center justify-center">
+                             {updatingWarranty ? <Loader2 size={12} className="animate-spin" /> : "บันทึกการรับประกัน"}
                          </button>
                     </div>
                 </div>
@@ -600,14 +610,14 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 no-print bg-slate-900/40 backdrop-blur-[2px]">
                     <div className="relative w-full max-w-md space-y-6 rounded-3xl bg-white p-5 shadow-2xl sm:p-8">
                         <div className="text-center">
-                            <h2 className="text-base font-black text-slate-800 uppercase tracking-tighter">Workflow Update</h2>
-                            <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Moving task to: <span className="text-blue-600 underline">"{getStatusLabel(pendingStatus || "")}"</span></p>
+                            <h2 className="text-base font-bold text-slate-800">เปลี่ยนสถานะงาน</h2>
+                            <p className="text-xs text-slate-500 font-semibold mt-1">เปลี่ยนเป็น: <span className="text-blue-600 underline">"{getStatusLabel(pendingStatus || "")}"</span></p>
                         </div>
-                        <textarea rows={3} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-xs font-bold text-gray-800 outline-none placeholder:text-gray-300" placeholder="Notes for history..." value={statusNote} onChange={(e) => setStatusNote(e.target.value)} />
+                        <textarea rows={3} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-xs font-bold text-gray-800 outline-none placeholder:text-gray-300" placeholder="หมายเหตุ (บันทึกในประวัติงาน)..." value={statusNote} onChange={(e) => setStatusNote(e.target.value)} />
                         <div className="flex gap-3">
-                            <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest">Cancel</button>
-                            <button onClick={confirmUpdateStatus} disabled={updatingStatus} className="flex-[2] py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
-                                {updatingStatus ? <Loader2 className="animate-spin" size={16} /> : "Update Status"}
+                            <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-500 rounded-xl text-sm font-bold">ยกเลิก</button>
+                            <button onClick={confirmUpdateStatus} disabled={updatingStatus} className="flex-[2] py-3 bg-slate-900 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                                {updatingStatus ? <Loader2 className="animate-spin" size={16} /> : "ยืนยันเปลี่ยนสถานะ"}
                             </button>
                         </div>
                     </div>
@@ -616,7 +626,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
             {showSuccessToast && (
                 <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[100] bg-emerald-600 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-10">
                     <CheckCircle size={18} />
-                    <p className="text-[10px] font-black uppercase tracking-widest">Action Success!</p>
+                    <p className="text-sm font-bold">บันทึกสำเร็จ</p>
                 </div>
             )}
         </div>
