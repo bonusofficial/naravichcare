@@ -1,6 +1,14 @@
 "use client";
 import React, { useState } from "react";
-import { Users, CreditCard, Plus, TrendingUp, Smartphone, CheckCircle2, Loader2, ShieldCheck, MapPin, LogOut, ChevronRight, Search, LayoutDashboard, History, Zap, Bell, Settings } from "lucide-react";
+import { Users, CreditCard, Plus, TrendingUp, Smartphone, CheckCircle2, Loader2, ShieldCheck, MapPin, LogOut, ChevronRight, Search, LayoutDashboard, History, Zap, Bell, Settings, Wallet, X } from "lucide-react";
+
+const WITHDRAWAL_STATUS: Record<string, { label: string; className: string }> = {
+    pending: { label: "รอโอน", className: "bg-amber-50 text-amber-600" },
+    paid: { label: "โอนแล้ว", className: "bg-emerald-50 text-emerald-600" },
+    rejected: { label: "ไม่อนุมัติ", className: "bg-red-50 text-red-500" },
+};
+
+const formatBaht = (n: number) => `฿${(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
 export default function AgentPortal() {
     const [step, setStep] = useState<"login" | "dashboard">("login");
@@ -10,6 +18,55 @@ export default function AgentPortal() {
     const [stats, setStats] = useState({ totalVolume: 0, customerCount: 0, commission: 0 });
     const [recentLoans, setRecentLoans] = useState<any[]>([]);
     const [recentRegistrations, setRecentRegistrations] = useState<any[]>([]);
+    const [balance, setBalance] = useState({ earned: 0, withdrawn: 0, available: 0 });
+    const [withdrawals, setWithdrawals] = useState<any[]>([]);
+    const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+    const [withdrawAmount, setWithdrawAmount] = useState("");
+    const [withdrawError, setWithdrawError] = useState("");
+    const [withdrawing, setWithdrawing] = useState(false);
+
+    const hasPendingWithdrawal = withdrawals.some((w) => w.status === "pending");
+
+    const fetchWithdrawals = async (id: string) => {
+        try {
+            const res = await fetch(`/api/agent/withdrawals?agentId=${id}`);
+            const data = await res.json();
+            if (data.success) {
+                setBalance(data.balance);
+                setWithdrawals(data.withdrawals || []);
+            }
+        } catch (e) { console.error(e); }
+    };
+
+    const openWithdraw = () => {
+        setWithdrawAmount(String(balance.available));
+        setWithdrawError("");
+        setIsWithdrawOpen(true);
+    };
+
+    const handleWithdraw = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setWithdrawError("");
+        setWithdrawing(true);
+        try {
+            const res = await fetch("/api/agent/withdrawals", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ agentId: agentData._id, amount: Number(withdrawAmount) }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) {
+                setIsWithdrawOpen(false);
+                fetchWithdrawals(agentData._id);
+            } else {
+                setWithdrawError(data.error || "ส่งคำขอถอนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+            }
+        } catch {
+            setWithdrawError("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+        } finally {
+            setWithdrawing(false);
+        }
+    };
 
     const fetchAgentStats = async (id: string) => {
         try {
@@ -27,17 +84,19 @@ export default function AgentPortal() {
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await fetch(`/api/admin/agents`);
-            const data = await res.json();
+            const res = await fetch("/api/agent/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ agentCode }),
+            });
+            const data = await res.json().catch(() => ({}));
             if (data.success) {
-                const found = data.agents.find((a: any) => a.agentCode === agentCode);
-                if (found) {
-                    setAgentData(found);
-                    setStep("dashboard");
-                    fetchAgentStats(found._id);
-                } else {
-                    alert("ไม่พบรหัสตัวแทนนี้ในระบบ");
-                }
+                setAgentData(data.agent);
+                setStep("dashboard");
+                fetchAgentStats(data.agent._id);
+                fetchWithdrawals(data.agent._id);
+            } else {
+                alert(data.error || "ไม่สามารถตรวจสอบรหัสตัวแทนได้ กรุณาติดต่อเจ้าหน้าที่");
             }
         } catch (err) {
             alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
@@ -80,7 +139,7 @@ export default function AgentPortal() {
                                         required
                                         placeholder="AG-XXXX"
                                         value={agentCode}
-                                        onChange={(e) => setAgentCode(e.target.value)}
+                                        onChange={(e) => setAgentCode(e.target.value.toUpperCase())}
                                         className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4.5 pl-14 pr-6 text-lg font-black text-slate-900 outline-none focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-50 transition-all placeholder:text-slate-300 uppercase tracking-widest"
                                     />
                                 </div>
@@ -245,10 +304,85 @@ export default function AgentPortal() {
                                 </div>
                             )}
                         </div>
+
+                        <div className="flex items-center gap-3">
+                            <Wallet size={20} className="text-emerald-500" />
+                            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">ประวัติการถอนค่าคอม</h3>
+                        </div>
+
+                        <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+                            {withdrawals.length === 0 ? (
+                                <div className="py-12 text-center opacity-40">
+                                    <p className="text-xs font-black uppercase tracking-widest">ยังไม่มีรายการถอน</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-slate-50">
+                                    {withdrawals.map(w => {
+                                        const status = WITHDRAWAL_STATUS[w.status] || WITHDRAWAL_STATUS.pending;
+                                        return (
+                                            <div key={w._id} className="p-6 flex items-center justify-between gap-4">
+                                                <div>
+                                                    <p className="text-sm font-black text-slate-900">{formatBaht(w.amount)}</p>
+                                                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                                                        {new Date(w.createdAt).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })} · {w.bankName} {w.bankAccountMasked}
+                                                    </p>
+                                                    {w.status === "rejected" && w.note && (
+                                                        <p className="text-[10px] font-bold text-red-500 mt-1">เหตุผล: {w.note}</p>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    {w.hasSlip && (
+                                                        <a
+                                                            href={`/api/agent/withdrawals/${w._id}/slip?agentId=${agentData._id}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-[10px] font-black text-blue-600 hover:underline"
+                                                        >
+                                                            ดูสลิป
+                                                        </a>
+                                                    )}
+                                                    <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase ${status.className}`}>{status.label}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Quick Guide */}
                     <div className="lg:col-span-4 space-y-6">
+                        <div className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ค่าคอมที่ถอนได้</p>
+                                    <h4 className="text-3xl font-black text-emerald-600 tracking-tight">{formatBaht(balance.available)}</h4>
+                                </div>
+                                <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                    <Wallet size={24} />
+                                </div>
+                            </div>
+                            <div className="space-y-1 text-[11px] font-bold text-slate-500">
+                                <div className="flex justify-between"><span>ค่าคอมประกันทั้งหมด</span><span>{formatBaht(balance.earned)}</span></div>
+                                <div className="flex justify-between"><span>ถอนแล้ว / รอโอน</span><span>{formatBaht(balance.withdrawn)}</span></div>
+                            </div>
+                            <button
+                                onClick={openWithdraw}
+                                disabled={hasPendingWithdrawal || balance.available <= 0 || !agentData.bankAccountMasked}
+                                className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-emerald-600 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-900"
+                            >
+                                <Wallet size={16} /> ขอถอนค่าคอม
+                            </button>
+                            {!agentData.bankAccountMasked ? (
+                                <p className="text-[10px] font-bold text-red-500 text-center">ยังไม่มีข้อมูลบัญชีธนาคาร กรุณาติดต่อเจ้าหน้าที่</p>
+                            ) : hasPendingWithdrawal ? (
+                                <p className="text-[10px] font-bold text-amber-600 text-center">มีคำขอถอนที่รอเจ้าหน้าที่โอนอยู่</p>
+                            ) : (
+                                <p className="text-[10px] font-bold text-slate-400 text-center">โอนเข้า {agentData.bankName} {agentData.bankAccountMasked}</p>
+                            )}
+                        </div>
+
                         <div className="bg-blue-600 rounded-[2rem] p-8 text-white space-y-6 shadow-xl shadow-blue-100 relative overflow-hidden group">
                             <Zap size={80} className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-700" />
                             <h3 className="text-lg font-black uppercase italic leading-tight relative z-10">คู่มือแนะนำ<br />การส่งใบสมัคร</h3>
@@ -267,18 +401,65 @@ export default function AgentPortal() {
                             </ul>
                         </div>
 
-                        <div className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm flex items-center justify-between group">
+                        <a
+                            href="https://lin.ee/zZVgklN"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm flex items-center justify-between group hover:border-blue-200 transition-all"
+                        >
                             <div>
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ต้องการความช่วยเหลือ?</p>
                                 <p className="text-sm font-black text-slate-900 uppercase">ฝ่ายดูแลตัวแทน</p>
                             </div>
-                            <button className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all">
+                            <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all">
                                 <Settings size={20} />
-                            </button>
-                        </div>
+                            </div>
+                        </a>
                     </div>
                 </div>
             </main>
+
+            {isWithdrawOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-[2px]">
+                    <form onSubmit={handleWithdraw} className="relative w-full max-w-sm bg-white rounded-[2rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
+                        <button type="button" onClick={() => setIsWithdrawOpen(false)} className="absolute top-6 right-6 text-slate-300 hover:text-slate-900 transition-colors">
+                            <X size={20} />
+                        </button>
+                        <div>
+                            <h3 className="text-lg font-black text-slate-900">ขอถอนค่าคอม</h3>
+                            <p className="text-[11px] font-bold text-slate-400 mt-1">ถอนได้สูงสุด {formatBaht(balance.available)}</p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">จำนวนเงิน (บาท)</label>
+                            <input
+                                type="number"
+                                required
+                                min="0.01"
+                                step="0.01"
+                                max={balance.available}
+                                value={withdrawAmount}
+                                onChange={(e) => setWithdrawAmount(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-5 text-lg font-black text-slate-900 outline-none focus:bg-white focus:border-blue-600 transition-all"
+                            />
+                        </div>
+                        <div className="rounded-2xl bg-slate-50 p-4 text-[11px] font-bold text-slate-500 space-y-1">
+                            <p>โอนเข้าบัญชี</p>
+                            <p className="text-slate-900">{agentData.bankName} {agentData.bankAccountMasked}</p>
+                            {agentData.bankAccountName && <p>{agentData.bankAccountName}</p>}
+                        </div>
+                        {withdrawError && (
+                            <p role="alert" className="rounded-xl bg-red-50 border border-red-100 p-3 text-[11px] font-bold text-red-600">{withdrawError}</p>
+                        )}
+                        <button
+                            type="submit"
+                            disabled={withdrawing}
+                            className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-emerald-600 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                        >
+                            {withdrawing ? <Loader2 className="animate-spin" size={16} /> : <Wallet size={16} />} ยืนยันการถอน
+                        </button>
+                    </form>
+                </div>
+            )}
         </div>
     );
 }

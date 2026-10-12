@@ -8,7 +8,7 @@ import {
     ClipboardList, FileText, LogOut, TrendingDown, Percent,
     UserCog, UserCircle, ChevronDown, Settings, Bell, Zap,
     Circle, ChevronsLeft, ChevronsRight, History, LayoutTemplate, MessageCircle, Shield,
-    DollarSign,
+    DollarSign, Wallet,
 } from "lucide-react";
 import { useCurrentAdmin } from "@/hooks/useCurrentAdmin";
 import { ROLE_LABELS, ROLE_COLORS } from "@/lib/permissions";
@@ -55,6 +55,7 @@ const navGroups: NavGroup[] = [
             { title: "จัดการสิทธิ์ (Roles)", icon: <Shield size={18} />, href: "/admin/roles", permission: "view_roles" },
             { title: "จัดการสาขา", icon: <LayoutTemplate size={18} />, href: "/admin/branches", permission: "view_branches" },
             { title: "ตัวแทน (Agents)", icon: <Users size={18} />, href: "/admin/agents", permission: "view_agents" },
+            { title: "ถอนค่าคอมตัวแทน", icon: <Wallet size={18} />, href: "/admin/agent-withdrawals", permission: "view_agents" },
         ],
     },
     {

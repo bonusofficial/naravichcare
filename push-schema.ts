@@ -7,6 +7,7 @@ dotenv.config();
 import "./src/models/AdminLog";
 import "./src/models/AdminUser";
 import "./src/models/Agent";
+import "./src/models/AgentWithdrawal";
 import "./src/models/Branch";
 import "./src/models/Buyback";
 import "./src/models/Claim";

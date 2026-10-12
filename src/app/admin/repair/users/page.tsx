@@ -16,6 +16,18 @@ import {
     Save
 } from "lucide-react";
 import Link from "next/link";
+import { validatePassword } from "@/lib/password-policy";
+
+const PASSWORD_HINT = "รหัสผ่านอย่างน้อย 12 ตัว ต้องมีตัวพิมพ์ใหญ่ (A-Z) ตัวพิมพ์เล็ก (a-z) ตัวเลข และสัญลักษณ์";
+
+// The API answers in English; show the staff a Thai message instead.
+const toThaiError = (status: number, message?: string) => {
+    if (status === 401) return "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่";
+    if (status === 403) return "บัญชีของคุณไม่มีสิทธิ์จัดการพนักงาน";
+    if (message?.startsWith("Password")) return PASSWORD_HINT;
+    if (message === "Username already exists") return "Username นี้มีในระบบแล้ว กรุณาใช้ชื่ออื่น";
+    return message || "บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
+};
 
 export default function UserManagement() {
     const [users, setUsers] = useState<any[]>([]);
@@ -33,6 +45,7 @@ export default function UserManagement() {
     });
     const [submitting, setSubmitting] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [formError, setFormError] = useState("");
 
     useEffect(() => {
         fetchUsers();
@@ -77,11 +90,18 @@ export default function UserManagement() {
                 email: ""
             });
         }
+        setFormError("");
         setIsModalOpen(true);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFormError("");
+        // Blank password on edit means "keep the current one".
+        if ((!editingUser || formData.password) && validatePassword(formData.password)) {
+            setFormError(PASSWORD_HINT);
+            return;
+        }
         setSubmitting(true);
         try {
             const method = editingUser ? "PATCH" : "POST";
@@ -98,9 +118,13 @@ export default function UserManagement() {
                 setTimeout(() => setShowSuccess(false), 3000);
                 setIsModalOpen(false);
                 fetchUsers();
+            } else {
+                const data = await res.json().catch(() => ({}));
+                setFormError(toThaiError(res.status, data.error));
             }
         } catch (error) {
             console.error("Submit User Error:", error);
+            setFormError("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่อีกครั้ง");
         } finally {
             setSubmitting(false);
         }
@@ -210,6 +234,7 @@ export default function UserManagement() {
                             <div className="space-y-1">
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1 leading-none">{editingUser ? "New Password (Optional)" : "Password"}</label>
                                 <input type="password" required={!editingUser} value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs font-black italic outline-none focus:border-blue-500" placeholder="••••••••" />
+                                <p className="text-[9px] font-bold text-slate-400 ml-1">{PASSWORD_HINT}</p>
                             </div>
                             <div className="space-y-1">
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1 leading-none">Email Address</label>
@@ -224,7 +249,14 @@ export default function UserManagement() {
                                      <option value="staff">Staff / พนักงานรับเครื่อง</option>
                                 </select>
                             </div>
-                            
+
+                            {formError && (
+                                <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 p-3 text-[10px] font-bold text-red-600">
+                                    <ShieldAlert size={14} className="mt-0.5 shrink-0" />
+                                    <span>{formError}</span>
+                                </div>
+                            )}
+
                             <div className="flex gap-2 pt-4">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors">Cancel</button>
                                 <button type="submit" disabled={submitting} className="flex-[2] py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-600 transition-all">
