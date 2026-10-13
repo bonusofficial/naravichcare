@@ -1,10 +1,13 @@
-export async function sendLineFlexMessage(to: string, job: any, statusLabel: string, color: string) {
-    const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-    
-    if (!token) {
-        console.warn("LINE_CHANNEL_ACCESS_TOKEN is not set. Skipping Flex Message.");
-        return { success: false, error: "Token not found" };
-    }
+import { sendLinePortal } from "@/lib/line-portal";
+
+type RepairJobForLine = {
+    _id: unknown;
+    jobId: string;
+    brand: string;
+    deviceModel: string;
+};
+
+export async function sendLineFlexMessage(job: RepairJobForLine, statusLabel: string, color: string) {
 
     // Design Flex Message
     const flexMessage = {
@@ -138,7 +141,7 @@ export async function sendLineFlexMessage(to: string, job: any, statusLabel: str
                     action: {
                         type: "uri",
                         label: "ตรวจสถานะออนไลน์",
-                        uri: `http://localhost:3001/admin/repair/jobs/${job._id}`
+                        uri: `https://naravichcare.com/admin/repair/jobs/${job._id}`
                     },
                     style: "primary",
                     color: "#0F172A",
@@ -148,34 +151,11 @@ export async function sendLineFlexMessage(to: string, job: any, statusLabel: str
         }
     };
 
-    try {
-        const res = await fetch("https://api.line.me/v2/bot/message/push", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                to: to,
-                messages: [
-                    {
-                        type: "flex",
-                        altText: `อัปเดตงานซ่อม ${job.jobId}: ${statusLabel}`,
-                        contents: flexMessage
-                    }
-                ]
-            })
-        });
-
-        if (res.ok) {
-            console.log("LINE Flex Message sent successfully!");
-            return { success: true };
-        } else {
-            console.error("LINE Messaging API Error:", await res.text());
-            return { success: false };
-        }
-    } catch (error) {
-        console.error("LINE Messaging API Fetch Error:", error);
-        return { success: false, error };
-    }
+    return sendLinePortal([
+        {
+            type: "flex",
+            altText: `อัปเดตงานซ่อม ${job.jobId}: ${statusLabel}`,
+            contents: flexMessage,
+        },
+    ]);
 }
