@@ -94,15 +94,11 @@ export async function PATCH(req: NextRequest, { params }: Context) {
             }
 
             // LINE NOTIFICATION
-            const adminUserId = process.env.LINE_ADMIN_USER_ID;
-            if (adminUserId) {
-                await sendLineFlexMessage(
-                    adminUserId, 
-                    currentJob, 
-                    getStatusLabel(data.status), 
-                    getStatusColor(data.status)
-                );
-            }
+            await sendLineFlexMessage(
+                currentJob,
+                getStatusLabel(data.status),
+                getStatusColor(data.status)
+            );
 
             // ACTIVITY LOG
             await recordAdminLog({
@@ -163,7 +159,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
             .populate("customer");
 
         return NextResponse.json(updatedJob);
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof ClaimEligibilityError) return NextResponse.json({ error: error.message, code: error.code }, { status: 409 });
         console.error("Update Job Error:", error);
         return NextResponse.json({ error: "Failed to update job" }, { status: 500 });
