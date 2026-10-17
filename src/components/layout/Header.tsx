@@ -51,6 +51,12 @@ export function Header() {
                     </Link>
                 </div>
             </div>
+
+            {/* Mobile Nav: the desktop nav is hidden below lg, and agents reach their portal from their phones */}
+            <nav className="lg:hidden flex items-center gap-2 px-4 pb-3 text-[13px] font-bold">
+                <Link href="/check-policy" className="flex-1 text-center text-blue-600 bg-blue-50 py-2 rounded-lg hover:bg-blue-100 transition-colors">ดาวน์โหลดกรมธรรม์</Link>
+                <Link href="/agent" className="flex-1 text-center text-gray-700 bg-slate-50 py-2 rounded-lg hover:text-purple-600 transition-colors">สำหรับตัวแทน</Link>
+            </nav>
         </header>
     );
 }
