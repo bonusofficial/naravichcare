@@ -166,6 +166,40 @@ export default function AgentPortal() {
         );
     }
 
+    // Rendered at the top on phones, where the sidebar column stacks below the
+    // insurance list and agents could not find their balance or withdraw button.
+    const balanceCard = (
+        <div className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm space-y-6">
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ค่าคอมที่ถอนได้</p>
+                    <h4 className="text-3xl font-black text-emerald-600 tracking-tight">{formatBaht(balance.available)}</h4>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                    <Wallet size={24} />
+                </div>
+            </div>
+            <div className="space-y-1 text-[11px] font-bold text-slate-500">
+                <div className="flex justify-between"><span>ค่าคอมประกันทั้งหมด</span><span>{formatBaht(balance.earned)}</span></div>
+                <div className="flex justify-between"><span>ถอนแล้ว / รอโอน</span><span>{formatBaht(balance.withdrawn)}</span></div>
+            </div>
+            <button
+                onClick={openWithdraw}
+                disabled={hasPendingWithdrawal || balance.available <= 0 || !agentData.bankAccountMasked}
+                className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-emerald-600 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-900"
+            >
+                <Wallet size={16} /> ขอถอนค่าคอม
+            </button>
+            {!agentData.bankAccountMasked ? (
+                <p className="text-[10px] font-bold text-red-500 text-center">ยังไม่มีข้อมูลบัญชีธนาคาร กรุณาติดต่อเจ้าหน้าที่</p>
+            ) : hasPendingWithdrawal ? (
+                <p className="text-[10px] font-bold text-amber-600 text-center">มีคำขอถอนที่รอเจ้าหน้าที่โอนอยู่</p>
+            ) : (
+                <p className="text-[10px] font-bold text-slate-400 text-center">โอนเข้า {agentData.bankName} {agentData.bankAccountMasked}</p>
+            )}
+        </div>
+    );
+
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col animate-in fade-in duration-700">
             {/* Top Navigation */}
@@ -202,6 +236,8 @@ export default function AgentPortal() {
             </nav>
 
             <main className="flex-1 p-6 md:p-12 max-w-7xl mx-auto w-full space-y-10">
+                <div className="lg:hidden">{balanceCard}</div>
+
                 {/* Dashboard Section */}
                 <div className="space-y-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -353,35 +389,7 @@ export default function AgentPortal() {
 
                     {/* Quick Guide */}
                     <div className="lg:col-span-4 space-y-6">
-                        <div className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm space-y-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ค่าคอมที่ถอนได้</p>
-                                    <h4 className="text-3xl font-black text-emerald-600 tracking-tight">{formatBaht(balance.available)}</h4>
-                                </div>
-                                <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-                                    <Wallet size={24} />
-                                </div>
-                            </div>
-                            <div className="space-y-1 text-[11px] font-bold text-slate-500">
-                                <div className="flex justify-between"><span>ค่าคอมประกันทั้งหมด</span><span>{formatBaht(balance.earned)}</span></div>
-                                <div className="flex justify-between"><span>ถอนแล้ว / รอโอน</span><span>{formatBaht(balance.withdrawn)}</span></div>
-                            </div>
-                            <button
-                                onClick={openWithdraw}
-                                disabled={hasPendingWithdrawal || balance.available <= 0 || !agentData.bankAccountMasked}
-                                className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-emerald-600 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-900"
-                            >
-                                <Wallet size={16} /> ขอถอนค่าคอม
-                            </button>
-                            {!agentData.bankAccountMasked ? (
-                                <p className="text-[10px] font-bold text-red-500 text-center">ยังไม่มีข้อมูลบัญชีธนาคาร กรุณาติดต่อเจ้าหน้าที่</p>
-                            ) : hasPendingWithdrawal ? (
-                                <p className="text-[10px] font-bold text-amber-600 text-center">มีคำขอถอนที่รอเจ้าหน้าที่โอนอยู่</p>
-                            ) : (
-                                <p className="text-[10px] font-bold text-slate-400 text-center">โอนเข้า {agentData.bankName} {agentData.bankAccountMasked}</p>
-                            )}
-                        </div>
+                        <div className="hidden lg:block">{balanceCard}</div>
 
                         <div className="bg-blue-600 rounded-[2rem] p-8 text-white space-y-6 shadow-xl shadow-blue-100 relative overflow-hidden group">
                             <Zap size={80} className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-700" />
