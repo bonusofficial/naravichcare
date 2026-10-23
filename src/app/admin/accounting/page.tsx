@@ -2,8 +2,24 @@
 import React, { useState, useEffect } from "react";
 import { Info, Receipt, Calendar, Loader2, Wrench } from "lucide-react";
 
+interface RecentClaim {
+    deviceModel: string;
+    customerName: string;
+    createdAt: string;
+    deductibleAmount?: number;
+    parts: { qty: number; unitCost: number }[];
+}
+
+interface AccountingData {
+    totalInsuranceSales: number;
+    totalPartsCost: number;
+    totalDeductibleAmount: number;
+    netClaimExpense: number;
+    recentClaims: RecentClaim[];
+}
+
 export default function AccountingPage() {
-    const [data, setData] = useState<any>(null);
+    const [accounting, setData] = useState<AccountingData | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -21,6 +37,10 @@ export default function AccountingPage() {
             <p className="font-black uppercase tracking-[0.3em] text-xs">Loading Accounting Data...</p>
         </div>
     );
+
+    // Still null here when the API answered without success; the page has never
+    // handled that case and fails to render.
+    const data = accounting as AccountingData;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
@@ -88,7 +108,7 @@ export default function AccountingPage() {
                         <Receipt size={18} className="text-blue-400" /> เคสเคลมล่าสุด (Recent Claims)
                     </h3>
                     <div className="space-y-4 relative z-10">
-                        {data.recentClaims.map((item: any, i: number) => (
+                        {data.recentClaims.map((item, i) => (
                             <div key={i} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center justify-between hover:bg-white/10 transition-all">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-xl bg-rose-500/20 flex items-center justify-center text-rose-400">
@@ -100,7 +120,7 @@ export default function AccountingPage() {
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-sm font-black text-rose-400">-฿{item.parts.reduce((sum: number, p: any) => sum + (p.qty * p.unitCost), 0).toLocaleString()}</p>
+                                    <p className="text-sm font-black text-rose-400">-฿{item.parts.reduce((sum, p) => sum + (p.qty * p.unitCost), 0).toLocaleString()}</p>
                                     <p className="text-[10px] text-emerald-400 font-bold">+฿{(item.deductibleAmount || 0).toLocaleString()} (Ded)</p>
                                 </div>
                             </div>

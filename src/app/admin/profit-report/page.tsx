@@ -51,6 +51,17 @@ interface SaleRow {
 
 type GroupBy = "package" | "agent" | "both";
 
+interface PackageOption {
+    _id: string;
+    name: string;
+}
+
+interface AgentOption {
+    _id?: string;
+    agentCode: string;
+    name: string;
+}
+
 interface EditForm {
     salePrice: number;
     packageCost: number;
@@ -84,8 +95,8 @@ export default function ProfitReportPage() {
     const [status, setStatus] = useState("");
 
     // Filter dropdown options
-    const [packages, setPackages] = useState<any[]>([]);
-    const [agents, setAgents] = useState<any[]>([]);
+    const [packages, setPackages] = useState<PackageOption[]>([]);
+    const [agents, setAgents] = useState<AgentOption[]>([]);
 
     // Drill-down
     const [drill, setDrill] = useState<Drill | null>(null);
@@ -467,7 +478,7 @@ export default function ProfitReportPage() {
                             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                             <option value="">ทั้งหมด</option>
-                            {packages.map((p: any) => (
+                            {packages.map((p) => (
                                 <option key={p._id} value={p._id}>{p.name}</option>
                             ))}
                         </select>
@@ -480,7 +491,7 @@ export default function ProfitReportPage() {
                             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                             <option value="">ทั้งหมด</option>
-                            {agents.map((a: any) => (
+                            {agents.map((a) => (
                                 <option key={a._id || a.agentCode} value={a.agentCode}>{a.name} ({a.agentCode})</option>
                             ))}
                         </select>

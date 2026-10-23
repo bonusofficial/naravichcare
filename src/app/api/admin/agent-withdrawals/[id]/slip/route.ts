@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
-import AgentWithdrawal from "@/models/AgentWithdrawal";
+import AgentWithdrawal, { type IAgentWithdrawal } from "@/models/AgentWithdrawal";
 import { checkPermission } from "@/lib/check-permission";
 import { readBuybackFile } from "@/lib/buyback-storage";
 
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
         await dbConnect();
-        const withdrawal = await AgentWithdrawal.findById(id).select("slip").lean<any>();
+        const withdrawal = await AgentWithdrawal.findById(id).select("slip").lean<Pick<IAgentWithdrawal, "slip">>();
         if (!withdrawal?.slip?.relativePath) return NextResponse.json({ error: "ไม่พบสลิป" }, { status: 404 });
 
         const content = await readBuybackFile(withdrawal.slip.relativePath);

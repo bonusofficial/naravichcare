@@ -2,8 +2,24 @@
 import React, { useState, useEffect } from "react";
 import { Users, Search, Filter, Plus, Award, AlertCircle, CreditCard, Loader2, Edit, Trash2, CheckCircle2, X, Store, User, MapPin, Building, Target } from "lucide-react";
 
+interface AgentRow {
+    _id: string;
+    agentCode: string;
+    name: string;
+    contactPerson?: string;
+    email?: string;
+    phone: string;
+    address?: string;
+    taxId?: string;
+    bankName?: string;
+    bankAccount?: string;
+    bankAccountName?: string;
+    commissionRate: number;
+    isActive?: boolean;
+}
+
 export default function AgentsManagement() {
-    const [agents, setAgents] = useState<any[]>([]);
+    const [agents, setAgents] = useState<AgentRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -88,7 +104,7 @@ export default function AgentsManagement() {
         }
     };
 
-    const openModal = (agent?: any) => {
+    const openModal = (agent?: AgentRow) => {
         if (agent) {
             setEditingId(agent._id);
             setFormData({

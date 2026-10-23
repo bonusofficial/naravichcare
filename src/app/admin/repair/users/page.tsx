@@ -29,11 +29,19 @@ const toThaiError = (status: number, message?: string) => {
     return message || "บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
 };
 
+interface StaffUser {
+    _id: string;
+    username: string;
+    name: string;
+    role: string;
+    email: string;
+}
+
 export default function UserManagement() {
-    const [users, setUsers] = useState<any[]>([]);
+    const [users, setUsers] = useState<StaffUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingUser, setEditingUser] = useState<any>(null);
+    const [editingUser, setEditingUser] = useState<StaffUser | null>(null);
     
     // Form States
     const [formData, setFormData] = useState({
@@ -70,7 +78,7 @@ export default function UserManagement() {
         }
     };
 
-    const handleOpenModal = (user: any = null) => {
+    const handleOpenModal = (user: StaffUser | null = null) => {
         if (user) {
             setEditingUser(user);
             setFormData({

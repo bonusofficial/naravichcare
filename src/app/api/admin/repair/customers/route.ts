@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import RepairCustomer from "@/models/RepairCustomer";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
+import { getErrorMessage, isDuplicateKeyError } from "@/lib/errors";
 
 export async function GET(req: NextRequest) {
     try {
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
         const query = searchParams.get("q");
         const phone = searchParams.get("phone");
 
-        let filter: any = {};
+        let filter: Record<string, unknown> = {};
         if (phone) {
             filter.phone = phone;
         } else if (query) {
@@ -60,8 +61,8 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json(customer, { status: 201 });
-    } catch (error: any) {
-        if (error.code === 11000) {
+    } catch (error) {
+        if (isDuplicateKeyError(error)) {
             return NextResponse.json({ error: "Customer already exists" }, { status: 400 });
         }
         console.error("Create Customer Error:", error);
@@ -96,7 +97,7 @@ export async function PATCH(req: NextRequest) {
         });
 
         return NextResponse.json(updated);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

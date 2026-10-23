@@ -10,16 +10,61 @@ const WITHDRAWAL_STATUS: Record<string, { label: string; className: string }> = 
 
 const formatBaht = (n: number) => `฿${(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
+/** The portal-safe agent fields from /api/agent/login (see toAgentView). */
+interface AgentView {
+    _id: string;
+    agentCode: string;
+    name: string;
+    contactPerson: string;
+    bankName: string;
+    bankAccountName: string;
+    bankAccountMasked: string;
+    commissionRate: number;
+}
+
+interface AgentRegistration {
+    _id: string;
+    firstName?: string;
+    lastName?: string;
+    brand: string;
+    model: string;
+    packageType?: string;
+    policyNumber?: string;
+    status: string;
+}
+
+/** A withdrawal from /api/agent/withdrawals (see toWithdrawalView). */
+interface AgentWithdrawalView {
+    _id: string;
+    amount: number;
+    status: string;
+    bankName: string;
+    bankAccountName: string;
+    bankAccountMasked: string;
+    note: string;
+    hasSlip: boolean;
+    createdAt: string;
+    processedAt?: string;
+}
+
+interface AgentStats {
+    totalVolume: number;
+    customerCount: number;
+    commission: number;
+    registrationCount?: number;
+}
+
 export default function AgentPortal() {
     const [step, setStep] = useState<"login" | "dashboard">("login");
     const [loading, setLoading] = useState(false);
     const [agentCode, setAgentCode] = useState("");
-    const [agentData, setAgentData] = useState<any>(null);
-    const [stats, setStats] = useState({ totalVolume: 0, customerCount: 0, commission: 0 });
-    const [recentLoans, setRecentLoans] = useState<any[]>([]);
-    const [recentRegistrations, setRecentRegistrations] = useState<any[]>([]);
+    const [agentData, setAgentData] = useState<AgentView | null>(null);
+    const [stats, setStats] = useState<AgentStats>({ totalVolume: 0, customerCount: 0, commission: 0 });
+    // Loaded with the dashboard but not shown anywhere yet.
+    const [recentLoans, setRecentLoans] = useState<unknown[]>([]);
+    const [recentRegistrations, setRecentRegistrations] = useState<AgentRegistration[]>([]);
     const [balance, setBalance] = useState({ earned: 0, withdrawn: 0, available: 0 });
-    const [withdrawals, setWithdrawals] = useState<any[]>([]);
+    const [withdrawals, setWithdrawals] = useState<AgentWithdrawalView[]>([]);
     const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
     const [withdrawAmount, setWithdrawAmount] = useState("");
     const [withdrawError, setWithdrawError] = useState("");
@@ -46,6 +91,8 @@ export default function AgentPortal() {
 
     const handleWithdraw = async (e: React.FormEvent) => {
         e.preventDefault();
+        // The withdraw form only exists on the dashboard, after login set the agent.
+        if (!agentData) return;
         setWithdrawError("");
         setWithdrawing(true);
         try {
@@ -105,7 +152,9 @@ export default function AgentPortal() {
         }
     };
 
-    if (step === "login") {
+    // Login sets the agent before it switches to the dashboard, and logging out
+    // keeps it, so the dashboard below always has one.
+    if (step === "login" || !agentData) {
         return (
             <div className="min-h-screen bg-white flex items-center justify-center p-6 relative overflow-hidden">
                 {/* Background Pattern */}
@@ -291,7 +340,7 @@ export default function AgentPortal() {
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">จำนวนลูกค้าประกัน</p>
-                                    <h4 className="text-3xl font-black text-blue-600 tracking-tight">{(stats as any).registrationCount || 0} ราย</h4>
+                                    <h4 className="text-3xl font-black text-blue-600 tracking-tight">{stats.registrationCount || 0} ราย</h4>
                                 </div>
                             </div>
                         </div>

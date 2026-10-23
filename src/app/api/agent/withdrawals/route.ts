@@ -3,13 +3,14 @@ import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
 import Agent from "@/models/Agent";
 import AgentWithdrawal from "@/models/AgentWithdrawal";
-import { getAgentBalance, toWithdrawalView } from "@/lib/agent-portal";
+import { getAgentBalance, toWithdrawalView, type AgentRecord } from "@/lib/agent-portal";
+import { isDuplicateKeyError } from "@/lib/errors";
 
 // Agent-side commission withdrawals. Like /api/agent/dashboard these are keyed
 // by agentId, which the portal receives from /api/agent/login.
 async function loadAgent(agentId: unknown) {
     if (typeof agentId !== "string" || !mongoose.isValidObjectId(agentId)) return null;
-    return Agent.findById(agentId).lean<any>();
+    return Agent.findById(agentId).lean<AgentRecord>();
 }
 
 export async function GET(req: Request) {
@@ -65,9 +66,9 @@ export async function POST(req: Request) {
         });
 
         return NextResponse.json({ success: true, withdrawal: toWithdrawalView(withdrawal) }, { status: 201 });
-    } catch (error: any) {
+    } catch (error) {
         // The partial unique index caught a second request racing this one.
-        if (error?.code === 11000) {
+        if (isDuplicateKeyError(error)) {
             return NextResponse.json({ error: "มีคำขอถอนที่รอโอนอยู่แล้ว กรุณารอให้เจ้าหน้าที่ดำเนินการก่อน" }, { status: 409 });
         }
         console.error("Agent Withdrawal Request Error:", error);

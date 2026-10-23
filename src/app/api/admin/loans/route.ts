@@ -5,6 +5,7 @@ import Insurance from "@/models/Insurance";
 import { sendLineNotify } from "@/lib/line";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function POST(req: NextRequest) {
     try {
@@ -76,9 +77,9 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json({ success: true, contractId, loan });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Loan Creation Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -90,7 +91,7 @@ export async function GET(req: NextRequest) {
         await dbConnect();
         const loans = await Loan.find().sort({ createdAt: -1 });
         return NextResponse.json({ success: true, loans });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

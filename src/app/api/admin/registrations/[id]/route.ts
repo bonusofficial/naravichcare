@@ -3,6 +3,7 @@ import connectToDatabase from "@/lib/mongodb";
 import Registration from "@/models/Registration";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function GET(
     req: NextRequest,
@@ -17,8 +18,8 @@ export async function GET(
         const registration = await Registration.findById(id).lean();
         if (!registration) return NextResponse.json({ message: "Not found" }, { status: 404 });
         return NextResponse.json({ success: true, data: registration }, { status: 200 });
-    } catch (error: any) {
-        return NextResponse.json({ message: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ message: getErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -46,7 +47,7 @@ export async function DELETE(
         });
 
         return NextResponse.json({ success: true }, { status: 200 });
-    } catch (error: any) {
-        return NextResponse.json({ message: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ message: getErrorMessage(error) }, { status: 500 });
     }
 }

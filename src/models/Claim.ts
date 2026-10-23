@@ -74,7 +74,7 @@ const ClaimSchema: Schema = new Schema(
 
 // Force clear cache to ensure updated schema is used
 if (mongoose.models.Claim) {
-    delete (mongoose.models as any).Claim;
+    delete mongoose.models.Claim;
 }
 
 export default mongoose.model<IClaim>("Claim", ClaimSchema);

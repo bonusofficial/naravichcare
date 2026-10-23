@@ -417,7 +417,7 @@ export default function AdminRegistrations() {
                                 ].map(item => (
                                     <div key={item.label}>
                                         <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">{item.label}</div>
-                                        <div className={`text-sm font-semibold text-gray-800 border-b border-dotted border-gray-200 pb-1 ${(item as any).mono ? "font-mono text-xs tracking-widest" : ""}`}>{item.value}</div>
+                                        <div className={`text-sm font-semibold text-gray-800 border-b border-dotted border-gray-200 pb-1 ${item.mono ? "font-mono text-xs tracking-widest" : ""}`}>{item.value}</div>
                                     </div>
                                 ))}
                             </div>
@@ -820,7 +820,7 @@ export default function AdminRegistrations() {
                                             ].map(item => (
                                                 <div key={item.label} className="space-y-1 p-4 bg-gray-50 rounded-lg">
                                                     <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{item.label}</div>
-                                                    <div className={`text-sm font-semibold text-gray-800 ${(item as any).mono ? "font-mono text-xs" : ""}`}>{item.value}</div>
+                                                    <div className={`text-sm font-semibold text-gray-800 ${item.mono ? "font-mono text-xs" : ""}`}>{item.value}</div>
                                                 </div>
                                             ))}
                                             <div className="col-span-2 p-4 bg-gray-50 rounded-lg space-y-1">

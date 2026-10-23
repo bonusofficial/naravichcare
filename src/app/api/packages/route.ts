@@ -3,6 +3,7 @@ import connectToDatabase from "@/lib/mongodb";
 import Package from "@/models/Package";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
+import { getErrorMessage } from "@/lib/errors";
 
 // Public: the homepage pricing section and /check-policy read this while
 // logged out. Gating it made those sections silently render empty.
@@ -11,9 +12,9 @@ export async function GET() {
         await connectToDatabase();
         const packages = await Package.find({}).sort({ order: 1 });
         return NextResponse.json(packages);
-    } catch (error: any) {
+    } catch (error) {
         console.error("Failed to fetch packages:", error);
-        return NextResponse.json({ message: "Failed to fetch packages", error: error.message }, { status: 500 });
+        return NextResponse.json({ message: "Failed to fetch packages", error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json(newPackage, { status: 201 });
-    } catch (error: any) {
-        return NextResponse.json({ message: "Failed to create package", error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ message: "Failed to create package", error: getErrorMessage(error) }, { status: 500 });
     }
 }

@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import Agent from "@/models/Agent";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
@@ -30,8 +31,8 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         });
 
         return NextResponse.json({ success: true, agent: updatedAgent });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -58,7 +59,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
         });
 
         return NextResponse.json({ success: true, message: "ลบตัวแทนสำเร็จ" });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

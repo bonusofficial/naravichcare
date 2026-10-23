@@ -12,8 +12,11 @@ export function CookieConsent() {
 
     useEffect(() => {
         if (typeof window === "undefined") return;
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (!saved) setVisible(true);
+        const timer = window.setTimeout(() => {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (!saved) setVisible(true);
+        }, 0);
+        return () => window.clearTimeout(timer);
     }, []);
 
     const accept = (type: "all" | "settings") => {

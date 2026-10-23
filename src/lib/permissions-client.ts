@@ -3,7 +3,7 @@
  * This fetches the user's role permissions from the database
  */
 
-export async function hasPermissionClient(user: any, permission: string): Promise<boolean> {
+export async function hasPermissionClient(user: { role: string } | null | undefined, permission: string): Promise<boolean> {
     if (!user) return false;
 
     try {
@@ -11,8 +11,8 @@ export async function hasPermissionClient(user: any, permission: string): Promis
         const res = await fetch(`/api/admin/roles?name=${user.role}`);
         if (!res.ok) return false;
 
-        const data = await res.json();
-        const role = data.roles?.find((r: any) => r.name === user.role);
+        const data: { roles?: { name: string; permissions: string[] }[] } = await res.json();
+        const role = data.roles?.find((r) => r.name === user.role);
 
         if (!role) return false;
 

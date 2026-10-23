@@ -5,6 +5,7 @@ import AdminUser from "@/models/AdminUser";
 import Branch from "@/models/Branch";
 import { checkPermission } from "@/lib/check-permission";
 import { validatePassword } from "@/lib/password-policy";
+import { isDuplicateKeyError } from "@/lib/errors";
 
 export async function GET(req: NextRequest) {
     try {
@@ -52,8 +53,8 @@ export async function POST(req: NextRequest) {
 
         const { password, ...safeUser } = newUser.toObject();
         return NextResponse.json(safeUser, { status: 201 });
-    } catch (error: any) {
-        if (error.code === 11000) {
+    } catch (error) {
+        if (isDuplicateKeyError(error)) {
             return NextResponse.json({ error: "Username already exists" }, { status: 400 });
         }
         console.error("Create Admin Error:", error);

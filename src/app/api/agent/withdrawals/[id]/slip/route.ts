@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
-import AgentWithdrawal from "@/models/AgentWithdrawal";
+import AgentWithdrawal, { type IAgentWithdrawal } from "@/models/AgentWithdrawal";
 import { readBuybackFile } from "@/lib/buyback-storage";
 
 // Lets an agent open the transfer slip of their own paid withdrawal.
@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         }
 
         await dbConnect();
-        const withdrawal = await AgentWithdrawal.findOne({ _id: id, agentId }).select("slip").lean<any>();
+        const withdrawal = await AgentWithdrawal.findOne({ _id: id, agentId }).select("slip").lean<Pick<IAgentWithdrawal, "slip">>();
         if (!withdrawal?.slip?.relativePath) return NextResponse.json({ error: "ไม่พบสลิป" }, { status: 404 });
 
         const content = await readBuybackFile(withdrawal.slip.relativePath);

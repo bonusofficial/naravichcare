@@ -14,8 +14,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+interface RepairCustomerRow {
+    _id: string;
+    customerId?: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    lineId?: string;
+    createdAt: string;
+}
+
 export default function RepairCustomersList() {
-    const [customers, setCustomers] = useState<any[]>([]);
+    const [customers, setCustomers] = useState<RepairCustomerRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
 

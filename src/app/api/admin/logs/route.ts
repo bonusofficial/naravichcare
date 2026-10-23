@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import AdminLog from "@/models/AdminLog";
 import { checkPermission } from "@/lib/check-permission";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function GET(req: NextRequest) {
     try {
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
             }
         });
 
-    } catch (error: any) {
-        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ success: false, message: getErrorMessage(error) }, { status: 500 });
     }
 }

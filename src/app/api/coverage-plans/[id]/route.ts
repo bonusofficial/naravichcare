@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"; // Re-sync schema 2
+import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
 import CoveragePlan from "@/models/CoveragePlan";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
 import { isCoveragePlanDeviceType } from "@/lib/coverage-plan";
+import { getErrorMessage } from "@/lib/errors";
 
 // Public: the registration flow reads a single coverage plan before login.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -18,15 +20,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
         // 2. Fallback: If not found but looks like a valid 24-char Hex ID, try direct MongoDB lookup
         if (!plan && /^[0-9a-fA-F]{24}$/.test(id)) {
-            const { ObjectId } = require("mongodb");
-            const rawPlan = await CoveragePlan.collection.findOne({ _id: new ObjectId(id) });
+            const rawPlan = await CoveragePlan.collection.findOne({ _id: new mongoose.Types.ObjectId(id) });
             if (rawPlan) plan = rawPlan;
         }
 
         if (!plan) return NextResponse.json({ error: "Plan not found" }, { status: 404 });
         return NextResponse.json(plan);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -57,8 +58,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         });
 
         return NextResponse.json(plan);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 400 });
     }
 }
 
@@ -81,7 +82,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         });
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 400 });
     }
 }

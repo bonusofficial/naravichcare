@@ -24,6 +24,47 @@ const QuotaIcon = ({ name, size = 18 }: { name: string; size?: number }) => {
     }
 };
 
+interface Quota {
+    name: string;
+    maxLimit: number;
+    icon: string;
+}
+
+/** A draft claim as stored. Checklist items and parts come back without the `id` the form keys on. */
+interface ClaimDraft {
+    _id: string;
+    currentStep?: number;
+    voidChecklist?: { label: string; checked: boolean }[];
+    preRepairNote?: string;
+    preRepairImages?: string[];
+    deductibleItem?: string;
+    deductibleDetail?: string;
+    deductibleAmount?: number;
+    paymentSlip?: string | null;
+    parts?: { name: string; partNumber: string; qty: number; unitCost: number }[];
+    postRepairImages?: string[];
+    postRepairNote?: string;
+    consumedQuotaName?: string;
+}
+
+/** The registration returned by /api/admin/claims/search. */
+interface ClaimCustomer {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    imei: string;
+    idCard?: string;
+    brand: string;
+    model: string;
+    policyNumber?: string;
+    approvedAt?: string;
+    createdAt: string;
+    coverageSnapshot?: { coverageStartAt?: string; coverageEndAt?: string };
+    coveragePlan: { name?: string; quotas?: Quota[] } | null;
+    previousClaims?: { consumedQuotaName?: string }[];
+    draftClaim: ClaimDraft | null;
+}
+
 function ClaimsContent() {
     const searchParams = useSearchParams();
     const [activeStep, setActiveStep] = useState(1);
@@ -45,7 +86,7 @@ function ClaimsContent() {
     // API States
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
-    const [customerData, setCustomerData] = useState<any>(null);
+    const [customerData, setCustomerData] = useState<ClaimCustomer | null>(null);
     const [selectedQuotaName, setSelectedQuotaName] = useState("");
 
     // Void Check States (Step 2)
@@ -91,7 +132,7 @@ function ClaimsContent() {
     const [savedClaimId, setSavedClaimId] = useState<string | null>(null);
     const [currentClaimId, setCurrentClaimId] = useState<string | null>(null);
     const [notification, setNotification] = useState<{ msg: string, type: 'success' | 'error' | 'info' } | null>(null);
-    const [confirmModal, setConfirmModal] = useState<{ show: boolean, draft: any } | null>(null);
+    const [confirmModal, setConfirmModal] = useState<{ show: boolean, draft: ClaimDraft } | null>(null);
 
     // Auto-hide notification
     useEffect(() => {
@@ -239,8 +280,8 @@ function ClaimsContent() {
         const planQuotas = customerData.coveragePlan.quotas || [];
         const prevClaims = customerData.previousClaims || [];
 
-        return planQuotas.map((q: any) => {
-            const usedCount = prevClaims.filter((c: any) => c.consumedQuotaName === q.name).length;
+        return planQuotas.map((q) => {
+            const usedCount = prevClaims.filter((c) => c.consumedQuotaName === q.name).length;
             return {
                 ...q,
                 remaining: Math.max(0, q.maxLimit - usedCount),
@@ -250,7 +291,7 @@ function ClaimsContent() {
     };
 
     const currentQuotas = getDynamicQuotas();
-    const selectedQuota = currentQuotas.find((q: any) => q.name === selectedQuotaName);
+    const selectedQuota = currentQuotas.find((q) => q.name === selectedQuotaName);
 
     const toggleVoidCheck = (id: number) => {
         setVoidChecklist(voidChecklist.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
@@ -386,7 +427,7 @@ function ClaimsContent() {
                                         </div>
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {currentQuotas.map((q: any) => (
+                                            {currentQuotas.map((q) => (
                                                 <div key={`quota-s1-${q.name}`} className="bg-white p-4 rounded-xl border border-blue-100 text-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
                                                     {q.remaining === 0 && (
                                                         <div className="absolute inset-0 bg-slate-100/60 backdrop-blur-[1px] flex items-center justify-center z-10">
@@ -544,7 +585,7 @@ function ClaimsContent() {
                                                 <Tag size={14} className="text-blue-600" /> ประเภทสิทธิ์ที่ใช้เคลม
                                             </label>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                {currentQuotas.map((q: any) => (
+                                                {currentQuotas.map((q) => (
                                                     <button
                                                         key={`quota-s3-${q.name}`}
                                                         disabled={q.remaining === 0}
@@ -1007,14 +1048,16 @@ function ClaimsContent() {
                                     const draft = confirmModal.draft;
                                     setCurrentClaimId(draft._id);
                                     setActiveStep(draft.currentStep || 1);
-                                    setVoidChecklist(draft.voidChecklist || voidChecklist);
+                                    // Without a stored `id`, every resumed checklist item and part shares
+                                    // `id: undefined`, so toggling or removing one row hits all of them.
+                                    setVoidChecklist((draft.voidChecklist || voidChecklist) as typeof voidChecklist);
                                     setPreRepairNote(draft.preRepairNote || "");
                                     setPreRepairImages(draft.preRepairImages || []);
                                     setDeductibleItem(draft.deductibleItem || "");
                                     setDeductibleDetail(draft.deductibleDetail || "");
                                     setDeductibleAmount(draft.deductibleAmount?.toString() || "");
                                     setPaymentSlip(draft.paymentSlip || null);
-                                    if (draft.parts?.length > 0) setParts(draft.parts);
+                                    if (draft.parts && draft.parts.length > 0) setParts(draft.parts as Part[]);
                                     setPostRepairImages(draft.postRepairImages || []);
                                     setPostRepairNote(draft.postRepairNote || "");
                                     setSelectedQuotaName(draft.consumedQuotaName || "");
@@ -1026,9 +1069,10 @@ function ClaimsContent() {
                             </button>
                             <button
                                 onClick={() => {
-                                    if (customerData.coveragePlan?.quotas?.length > 0) {
-                                        setSelectedQuotaName(customerData.coveragePlan.quotas[0].name);
-                                        setDeductibleItem(`ค่าบริการ${customerData.coveragePlan.quotas[0].name}`);
+                                    const quotas = customerData?.coveragePlan?.quotas;
+                                    if (quotas && quotas.length > 0) {
+                                        setSelectedQuotaName(quotas[0].name);
+                                        setDeductibleItem(`ค่าบริการ${quotas[0].name}`);
                                     }
                                     setConfirmModal(null);
                                 }}

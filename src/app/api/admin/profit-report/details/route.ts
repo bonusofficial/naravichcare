@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type mongoose from "mongoose";
 import connectToDatabase from "@/lib/mongodb";
 import Registration from "@/models/Registration";
 import Package from "@/models/Package";
@@ -6,6 +7,15 @@ import CoveragePlan from "@/models/CoveragePlan";
 import Agent from "@/models/Agent";
 import { checkPermission } from "@/lib/check-permission";
 import { buildProfitMatch, PROFIT_EFFECTIVE_STAGES } from "@/lib/profit-report";
+import { getErrorMessage } from "@/lib/errors";
+
+/** The fields of a drill-down row that are resolved to display names. */
+interface ProfitDetailRow {
+    firstName?: string;
+    lastName?: string;
+    packageType?: string | null;
+    agentCode?: string | null;
+}
 
 export async function GET(req: NextRequest) {
     try {
@@ -79,21 +89,21 @@ export async function GET(req: NextRequest) {
             Agent.find({}).lean(),
         ]);
 
-        const packageMap = [...packages, ...plans].reduce((acc: any, pkg: any) => {
+        const packageMap = [...packages, ...plans].reduce((acc: Record<string, string>, pkg: { _id: mongoose.Types.ObjectId; name: string }) => {
             acc[pkg._id.toString()] = pkg.name;
             return acc;
         }, {});
 
-        const agentMap = agents.reduce((acc: any, agent: any) => {
+        const agentMap = agents.reduce((acc: Record<string, string>, agent: { agentCode: string; name: string }) => {
             acc[agent.agentCode] = agent.name;
             return acc;
         }, {});
 
-        const data = rows.map((row: any) => ({
+        const data = rows.map((row: ProfitDetailRow) => ({
             ...row,
             customerName: [row.firstName, row.lastName].filter(Boolean).join(" ") || "ไม่ระบุ",
-            packageName: packageMap[row.packageType] || row.packageType || "ไม่ระบุ",
-            agentName: agentMap[row.agentCode] || row.agentCode || "ไม่ระบุ",
+            packageName: packageMap[String(row.packageType)] || row.packageType || "ไม่ระบุ",
+            agentName: agentMap[String(row.agentCode)] || row.agentCode || "ไม่ระบุ",
         }));
 
         return NextResponse.json({
@@ -107,8 +117,8 @@ export async function GET(req: NextRequest) {
             }
         });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error("Profit details error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

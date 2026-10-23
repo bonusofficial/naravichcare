@@ -6,6 +6,8 @@ import { ArrowLeft, ShieldCheck, Trash2, ListChecks, Activity } from "lucide-rea
 import Link from "next/link";
 import { COVERAGE_PLAN_DEVICE_OPTIONS } from "@/lib/coverage-plan";
 
+type QuotaForm = { name: string; maxLimit: number; icon: string };
+
 export default function NewCoveragePlan() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -17,7 +19,7 @@ export default function NewCoveragePlan() {
         durationUnit: "",
         priceMultiplier: 0.05,
         highlights: [""],
-        quotas: [] as { name: string, maxLimit: number, icon: string }[],
+        quotas: [] as QuotaForm[],
         order: 0,
         isActive: true,
         deviceType: "Smartphone"
@@ -53,9 +55,9 @@ export default function NewCoveragePlan() {
 
     const addQuota = () => setForm({ ...form, quotas: [...form.quotas, { name: "", maxLimit: 1, icon: "Settings" }] });
     const removeQuota = (index: number) => setForm({ ...form, quotas: form.quotas.filter((_, i) => i !== index) });
-    const updateQuota = (index: number, field: string, value: string | number) => {
+    const updateQuota = <K extends keyof QuotaForm>(index: number, field: K, value: QuotaForm[K]) => {
         const updated = [...form.quotas];
-        (updated[index] as any)[field] = value;
+        updated[index][field] = value;
         setForm({ ...form, quotas: updated });
     };
 

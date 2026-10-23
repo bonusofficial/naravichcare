@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import FooterSettings from "@/models/FooterSettings";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function GET() {
     try {
@@ -8,7 +9,7 @@ export async function GET() {
         let doc = await FooterSettings.findOne();
         if (!doc) doc = await FooterSettings.create({});
         return NextResponse.json({ success: true, data: doc });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type mongoose from "mongoose";
 import connectToDatabase from "@/lib/mongodb";
 import Registration from "@/models/Registration";
 import Package from "@/models/Package";
@@ -6,6 +7,26 @@ import CoveragePlan from "@/models/CoveragePlan";
 import Agent from "@/models/Agent";
 import { checkPermission } from "@/lib/check-permission";
 import { buildProfitMatch, PROFIT_EFFECTIVE_STAGES } from "@/lib/profit-report";
+import { getErrorMessage } from "@/lib/errors";
+
+type ProfitTotals = Record<
+    | "salesCount"
+    | "cancelledCount"
+    | "refundedCount"
+    | "totalRevenue"
+    | "totalCost"
+    | "totalPackageCost"
+    | "totalCommission"
+    | "totalOtherExpenses"
+    | "totalProfit",
+    number
+>;
+
+/** One row of the grouped aggregation; which ids are set depends on groupBy. */
+type ProfitGroupRow = ProfitTotals & {
+    packageId?: string | null;
+    agentCode?: string | null;
+};
 
 export async function GET(req: NextRequest) {
     try {
@@ -47,7 +68,7 @@ export async function GET(req: NextRequest) {
                     ? { packageId: "$_id.packageType", agentCode: "$_id.agentCode" }
                     : { packageId: "$_id" };
 
-        const pipeline: any[] = [
+        const pipeline: mongoose.PipelineStage[] = [
             { $match: filter },
             ...PROFIT_EFFECTIVE_STAGES,
             {
@@ -96,7 +117,7 @@ export async function GET(req: NextRequest) {
             { $sort: { totalProfit: -1 } },
         ];
 
-        const results = await Registration.aggregate(pipeline);
+        const results: ProfitGroupRow[] = await Registration.aggregate(pipeline);
 
         // packageType points at either a Package or a CoveragePlan, so both have to
         // be looked up — resolving only Packages left plan-based sales showing their
@@ -107,26 +128,26 @@ export async function GET(req: NextRequest) {
             Agent.find({}).lean(),
         ]);
 
-        const packageMap = [...packages, ...plans].reduce((acc: any, pkg: any) => {
+        const packageMap = [...packages, ...plans].reduce((acc: Record<string, string>, pkg: { _id: mongoose.Types.ObjectId; name: string }) => {
             acc[pkg._id.toString()] = pkg.name;
             return acc;
         }, {});
 
-        const agentMap = agents.reduce((acc: any, agent: any) => {
+        const agentMap = agents.reduce((acc: Record<string, string>, agent: { agentCode: string; name: string }) => {
             acc[agent.agentCode] = agent.name;
             return acc;
         }, {});
 
         // Enrich results with names
-        const enrichedResults = results.map((item: any) => ({
+        const enrichedResults = results.map((item) => ({
             ...item,
-            packageName: packageMap[item.packageId] || item.packageId || "ไม่ระบุ",
-            agentName: agentMap[item.agentCode] || item.agentCode || "ไม่ระบุ",
+            packageName: packageMap[String(item.packageId)] || item.packageId || "ไม่ระบุ",
+            agentName: agentMap[String(item.agentCode)] || item.agentCode || "ไม่ระบุ",
         }));
 
         // Calculate summary
-        const sum = (key: string) =>
-            results.reduce((acc: number, r: any) => acc + (r[key] || 0), 0);
+        const sum = (key: keyof ProfitTotals) =>
+            results.reduce((acc: number, r) => acc + (r[key] || 0), 0);
 
         const summary = {
             totalSales: sum("salesCount"),
@@ -160,8 +181,8 @@ export async function GET(req: NextRequest) {
             }
         });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error("Profit report error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

@@ -11,6 +11,23 @@ const TABS: { key: Status; label: string }[] = [
     { key: "rejected", label: "ไม่อนุมัติ" },
 ];
 
+/** A row from /api/admin/agent-withdrawals, with the agent and admin populated. */
+interface Withdrawal {
+    _id: string;
+    agentCode: string;
+    amount: number;
+    status: Status;
+    bankName: string;
+    bankAccount: string;
+    bankAccountName: string;
+    note?: string;
+    hasSlip: boolean;
+    createdAt?: string;
+    processedAt?: string;
+    agentId?: { name?: string; phone?: string } | null;
+    processedBy?: { name?: string; username?: string } | null;
+}
+
 const formatBaht = (n: number) => `฿${(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 const formatDate = (d?: string) =>
     d ? new Date(d).toLocaleString("th-TH", { day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" }) : "-";
@@ -20,12 +37,12 @@ export default function AgentWithdrawalsPage() {
     const canSettle = permissions.includes("edit_agents");
 
     const [status, setStatus] = useState<Status>("pending");
-    const [withdrawals, setWithdrawals] = useState<any[]>([]);
+    const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
     const [summary, setSummary] = useState<Record<string, { count: number; total: number }>>({});
     const [loading, setLoading] = useState(true);
 
     // Settle modal
-    const [settling, setSettling] = useState<{ withdrawal: any; action: "paid" | "rejected" } | null>(null);
+    const [settling, setSettling] = useState<{ withdrawal: Withdrawal; action: "paid" | "rejected" } | null>(null);
     const [slip, setSlip] = useState<File | null>(null);
     const [note, setNote] = useState("");
     const [saving, setSaving] = useState(false);
@@ -51,7 +68,7 @@ export default function AgentWithdrawalsPage() {
         }
     };
 
-    const openSettle = (withdrawal: any, action: "paid" | "rejected") => {
+    const openSettle = (withdrawal: Withdrawal, action: "paid" | "rejected") => {
         setSettling({ withdrawal, action });
         setSlip(null);
         setNote("");

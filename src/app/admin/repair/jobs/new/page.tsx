@@ -15,6 +15,14 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+/** A match from /api/admin/repair/customers?phone=... */
+interface FoundCustomer {
+    _id: string;
+    customerId?: string;
+    firstName: string;
+    lastName: string;
+}
+
 export default function NewRepairJob() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -23,7 +31,7 @@ export default function NewRepairJob() {
     // Customer Search State
     const [searchPhone, setSearchPhone] = useState("");
     const [searchingCustomer, setSearchingCustomer] = useState(false);
-    const [customer, setCustomer] = useState<any>(null);
+    const [customer, setCustomer] = useState<FoundCustomer | null>(null);
 
     // Form State
     const [isNewCustomer, setIsNewCustomer] = useState(false);
@@ -287,7 +295,7 @@ export default function NewRepairJob() {
                                                 <button 
                                                     key={type}
                                                     type="button"
-                                                    onClick={() => setFormData({...formData, jobType: type as any})}
+                                                    onClick={() => setFormData({...formData, jobType: type})}
                                                     className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${formData.jobType === type ? "bg-slate-900 text-white shadow-lg" : "bg-white text-slate-400 border border-slate-100"}`}
                                                 >
                                                     {type === "repair" ? "ซ่อม" : "เคลม"}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import LegalPage from "@/models/LegalPage";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function GET(
     _req: Request,
@@ -28,7 +29,7 @@ export async function GET(
             page = await LegalPage.create({ slug, title: d.title, content: d.content });
         }
         return NextResponse.json({ success: true, data: page });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

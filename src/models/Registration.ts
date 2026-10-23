@@ -176,7 +176,7 @@ const RegistrationSchema = new mongoose.Schema(
 // Mongoose 9 no longer passes `next` into middleware — it awaits the returned
 // value instead. Calling next() here threw "next is not a function" and broke
 // every customer registration.
-RegistrationSchema.pre("save", function (this: any) {
+RegistrationSchema.pre("save", function () {
     if (this.salePrice !== undefined && this.packageCost !== undefined) {
         this.totalCost = (this.packageCost || 0) + (this.agentCommission || 0) + (this.otherExpenses || 0);
         this.netProfit = (this.salePrice || 0) - (this.totalCost || 0);

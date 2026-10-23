@@ -5,6 +5,7 @@ import CoveragePlan from "@/models/CoveragePlan";
 import Claim from "@/models/Claim";
 import Buyback from "@/models/Buyback";
 import { checkPermission } from "@/lib/check-permission";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function POST(req: NextRequest) {
     try {
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
                 draftClaim: draftClaim || null
             }
         });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

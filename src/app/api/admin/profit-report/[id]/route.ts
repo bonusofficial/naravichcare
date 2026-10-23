@@ -3,6 +3,7 @@ import connectToDatabase from "@/lib/mongodb";
 import Registration from "@/models/Registration";
 import { checkPermission } from "@/lib/check-permission";
 import { recordAdminLog } from "@/lib/admin-log";
+import { getErrorMessage } from "@/lib/errors";
 
 const EDITABLE_FIELDS = [
     "salePrice",
@@ -62,8 +63,8 @@ export async function PATCH(
         });
 
         return NextResponse.json({ success: true, data: registration });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Update profit data error:", error);
-        return NextResponse.json({ message: error.message }, { status: 500 });
+        return NextResponse.json({ message: getErrorMessage(error) }, { status: 500 });
     }
 }

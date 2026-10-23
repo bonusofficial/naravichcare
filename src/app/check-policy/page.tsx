@@ -48,8 +48,8 @@ export default function CheckPolicy() {
                 const pkgs = await pkgRes.json();
                 const plans = await planRes.json();
                 const mapping: Record<string, string> = {};
-                if (Array.isArray(pkgs)) pkgs.forEach((p: any) => mapping[p._id] = p.name);
-                if (Array.isArray(plans)) plans.forEach((p: any) => mapping[p._id] = p.name);
+                if (Array.isArray(pkgs)) pkgs.forEach((p: { _id: string; name: string }) => mapping[p._id] = p.name);
+                if (Array.isArray(plans)) plans.forEach((p: { _id: string; name: string }) => mapping[p._id] = p.name);
                 setPackageMapping(mapping);
             } catch (e) {
                 console.error("Failed to fetch mapping:", e);
@@ -155,7 +155,7 @@ export default function CheckPolicy() {
                                 ].map(item => (
                                     <div key={item.label}>
                                         <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">{item.label}</div>
-                                        <div className={`text-sm font-semibold text-gray-800 border-b border-dotted border-gray-200 pb-1 ${(item as any).mono ? "font-mono text-xs tracking-widest" : ""}`}>{item.value}</div>
+                                        <div className={`text-sm font-semibold text-gray-800 border-b border-dotted border-gray-200 pb-1 ${item.mono ? "font-mono text-xs tracking-widest" : ""}`}>{item.value}</div>
                                     </div>
                                 ))}
                             </div>

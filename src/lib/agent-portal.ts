@@ -1,6 +1,7 @@
-import mongoose from "mongoose";
+import mongoose, { type Document } from "mongoose";
 import Registration from "@/models/Registration";
-import AgentWithdrawal from "@/models/AgentWithdrawal";
+import AgentWithdrawal, { type IAgentWithdrawal } from "@/models/AgentWithdrawal";
+import type { IAgent } from "@/models/Agent";
 import { buildProfitMatch, PROFIT_EFFECTIVE_STAGES } from "@/lib/profit-report";
 
 /** Typed codes arrive with stray spaces or in lower case. */
@@ -17,7 +18,20 @@ export function maskBankAccount(account?: string): string {
  * The agent fields the public portal may see. The portal signs in with the
  * agent code alone, so the full bank account and tax ID stay admin-only.
  */
-export function toAgentView(agent: any) {
+/** An agent as returned by `.lean()`. */
+export type AgentRecord = Omit<IAgent, keyof Document> & { _id: mongoose.Types.ObjectId };
+
+type AgentViewSource = Pick<
+    IAgent,
+    "agentCode" | "name" | "contactPerson" | "bankName" | "bankAccountName" | "bankAccount" | "commissionRate"
+> & { _id: unknown };
+
+type WithdrawalViewSource = Pick<
+    IAgentWithdrawal,
+    "amount" | "status" | "bankName" | "bankAccountName" | "bankAccount" | "note" | "slip" | "createdAt" | "processedAt"
+> & { _id: unknown };
+
+export function toAgentView(agent: AgentViewSource) {
     return {
         _id: String(agent._id),
         agentCode: agent.agentCode,
@@ -30,7 +44,7 @@ export function toAgentView(agent: any) {
     };
 }
 
-export function toWithdrawalView(w: any) {
+export function toWithdrawalView(w: WithdrawalViewSource) {
     return {
         _id: String(w._id),
         amount: w.amount,

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Agent from "@/models/Agent";
-import { normalizeAgentCode, toAgentView } from "@/lib/agent-portal";
+import { normalizeAgentCode, toAgentView, type AgentRecord } from "@/lib/agent-portal";
 
 // Public sign-in for /agent. The portal used to download the whole agent list
 // from /api/admin/agents, which only worked in a browser already signed in as
@@ -14,9 +14,9 @@ export async function POST(req: Request) {
 
         await dbConnect();
         const escaped = code.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const agent = await Agent.findOne({ agentCode: { $regex: `^${escaped}$`, $options: "i" } }).lean();
+        const agent = await Agent.findOne({ agentCode: { $regex: `^${escaped}$`, $options: "i" } }).lean<AgentRecord>();
         if (!agent) return NextResponse.json({ error: "ไม่พบรหัสตัวแทนนี้ในระบบ" }, { status: 404 });
-        if (!(agent as any).isActive) {
+        if (!agent.isActive) {
             return NextResponse.json({ error: "บัญชีตัวแทนนี้ถูกระงับ กรุณาติดต่อเจ้าหน้าที่" }, { status: 403 });
         }
 
