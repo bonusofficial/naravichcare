@@ -5,39 +5,31 @@ import {
     Wrench, 
     User, 
     Smartphone, 
-    History, 
     ArrowLeft, 
-    Clock, 
     Loader2, 
     CheckCircle, 
-    Settings,
     AlertCircle,
     ChevronRight,
-    Search,
-    Edit2,
     Save,
     MapPin,
     Phone,
     Printer,
-    Pencil,
-    X,
-    CreditCard,
     ShieldCheck,
     ImagePlus,
-    MinusCircle,
     Receipt,
-    Upload
+    Upload,
+    Store
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { allowedNextStatuses } from "@/lib/repair/status";
+import type { RepairJobView } from "@/lib/repair/types";
 
 export default function RepairJobDetail({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
     const id = resolvedParams.id;
-    const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [job, setJob] = useState<any>(null);
+    const [job, setJob] = useState<RepairJobView | null>(null);
     const [loading, setLoading] = useState(true);
     const [updatingStatus, setUpdatingStatus] = useState(false);
     const [statusNote, setStatusNote] = useState("");
@@ -98,10 +90,10 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
             const res = await fetch(`/api/admin/repair/jobs/${id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
+                // The server records who changed the status from the login session.
                 body: JSON.stringify({ 
                     status: pendingStatus, 
                     statusNote: statusNote,
-                    adminUsername: "Super Admin" 
                 }),
             });
             if (res.ok) {
@@ -112,6 +104,9 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                 setPendingStatus(null);
                 setShowSuccessToast(true);
                 setTimeout(() => setShowSuccessToast(false), 3000);
+            } else {
+                const err = await res.json().catch(() => ({}));
+                alert(err.error || "เปลี่ยนสถานะไม่สำเร็จ");
             }
         } catch (error) {
             console.error("Update Status Error:", error);
@@ -126,11 +121,11 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
             const res = await fetch(`/api/admin/repair/jobs/${id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
+                // totalPrice is computed on the server from these three values.
                 body: JSON.stringify({ 
                     laborCost,
                     partsCost,
                     partsPurchaseCost,
-                    totalPrice: Number(laborCost) + Number(partsCost)
                 }),
             });
             if (res.ok) {
@@ -138,6 +133,9 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                 setJob(updatedJob);
                 setShowSuccessToast(true);
                 setTimeout(() => setShowSuccessToast(false), 3000);
+            } else {
+                const err = await res.json().catch(() => ({}));
+                alert(err.error || "บันทึกราคาไม่สำเร็จ");
             }
         } catch (error) {
             console.error("Update Price Error:", error);
@@ -182,7 +180,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
             reader.onload = async () => {
                 const base64 = reader.result;
                 const field = photoType === "before" ? "photosBefore" : "photosAfter";
-                const currentPhotos = job[field] || [];
+                const currentPhotos = job?.[field] || [];
                 
                 const res = await fetch(`/api/admin/repair/jobs/${id}`, {
                     method: "PATCH",
@@ -323,8 +321,17 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                 <div className="grid grid-cols-2 gap-6 mb-8 text-black">
                     <div className="border-2 border-slate-100 rounded-2xl p-6 bg-slate-50/20">
                          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2 text-blue-600">CUSTOMER INFO</h3>
-                         <p className="text-lg font-black text-slate-900 uppercase tracking-tight">{job.customer?.firstName} {job.customer?.lastName}</p>
-                         <p className="text-[11px] font-bold text-slate-600 mt-1">TEL: {job.customer?.phone}</p>
+                         {job.customer ? (
+                             <>
+                                 <p className="text-lg font-black text-slate-900 uppercase tracking-tight">{job.customer.firstName} {job.customer.lastName}</p>
+                                 <p className="text-[11px] font-bold text-slate-600 mt-1">TEL: {job.customer.phone}</p>
+                             </>
+                         ) : (
+                             <>
+                                 <p className="text-lg font-black text-slate-900 tracking-tight">เครื่องของร้าน (Store stock)</p>
+                                 {job.externalRef && <p className="text-[11px] font-bold text-slate-600 mt-1">POS REF: {job.externalRef}</p>}
+                             </>
+                         )}
                     </div>
                     <div className="border-2 border-slate-100 rounded-2xl p-6 bg-slate-50/20">
                          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2 text-blue-600">DEVICE DETAILS</h3>
@@ -440,19 +447,72 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                         </div>
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 transition-all hover:border-slate-300">
                              <div className="flex items-center gap-2 mb-4">
-                                 <User size={14} className="text-slate-400" />
-                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Customer</span>
+                                 {job.customer ? <User size={14} className="text-slate-400" /> : <Store size={14} className="text-amber-500" />}
+                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{job.customer ? "Customer" : "Owner"}</span>
                              </div>
-                             <p className="text-base font-black text-slate-900 uppercase tracking-tight">{job.customer?.firstName} {job.customer?.lastName}</p>
-                             <p className="text-[10px] font-bold text-blue-600 mt-1 uppercase tracking-tighter opacity-80">TEL: {job.customer?.phone}</p>
+                             {job.customer ? (
+                                 <>
+                                     <p className="text-base font-black text-slate-900 uppercase tracking-tight">{job.customer.firstName} {job.customer.lastName}</p>
+                                     <p className="text-[10px] font-bold text-blue-600 mt-1 uppercase tracking-tighter opacity-80">TEL: {job.customer.phone}</p>
+                                 </>
+                             ) : (
+                                 <>
+                                     <p className="text-base font-black text-slate-900 tracking-tight">เครื่องของร้าน</p>
+                                     <p className="text-[11px] font-semibold text-slate-500 mt-1">ไม่มีข้อมูลลูกค้า (สต็อกร้าน)</p>
+                                 </>
+                             )}
                         </div>
                     </div>
+
+                    {job.source === "pos" && (
+                        <div className="bg-amber-50/60 rounded-2xl border border-amber-200 shadow-sm p-5">
+                            <div className="flex flex-wrap items-center gap-2 mb-4">
+                                <Store size={14} className="text-amber-600" />
+                                <span className="text-sm font-bold text-amber-800">{job.ownerType === "store" ? "เครื่องของร้าน / ส่งจาก POS" : "ส่งจาก POS"}</span>
+                            </div>
+                            <dl className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+                                <div className="min-w-0">
+                                    <dt className="font-semibold text-slate-500">External Reference (POS)</dt>
+                                    <dd className="font-bold text-slate-900 break-all">{job.externalRef || "-"}</dd>
+                                </div>
+                                <div className="min-w-0">
+                                    <dt className="font-semibold text-slate-500">รหัสสินค้า (Product Code)</dt>
+                                    <dd className="font-bold text-slate-900 break-all">{job.integration?.productCode || "-"}</dd>
+                                </div>
+                                <div className="min-w-0">
+                                    <dt className="font-semibold text-slate-500">สาขาต้นทาง</dt>
+                                    <dd className="font-bold text-slate-900 break-all">
+                                        {job.integration?.branchCode || "-"}
+                                        {job.integration?.branchId && <span className="block text-[11px] font-medium text-slate-500">{job.integration.branchId}</span>}
+                                    </dd>
+                                </div>
+                                <div className="min-w-0">
+                                    <dt className="font-semibold text-slate-500">ส่งโดย</dt>
+                                    <dd className="font-bold text-slate-900 break-all">{job.integration?.clientName || "-"}</dd>
+                                </div>
+                            </dl>
+                            {(job.integration?.imageUrls?.length ?? 0) > 0 && (
+                                <div className="mt-4">
+                                    <p className="text-xs font-semibold text-slate-500 mb-1">รูปจาก POS</p>
+                                    <ul className="space-y-1 text-[11px]">
+                                        {job.integration?.imageUrls?.map((url) => (
+                                            <li key={url} className="break-all">
+                                                {/^https?:\/\//i.test(url)
+                                                    ? <a href={url} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 underline">{url}</a>
+                                                    : <span className="text-slate-600">{url}</span>}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                          <h4 className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-4 flex items-center gap-2 underline decoration-red-100 underline-offset-4">
                              <AlertCircle size={14} /> Reported Symptom
                          </h4>
-                         <p className="text-lg font-bold text-slate-800 leading-relaxed indent-4 underline decoration-slate-100">"{job.reportedSymptom}"</p>
+                         <p className="text-lg font-bold text-slate-800 leading-relaxed indent-4 underline decoration-slate-100">&ldquo;{job.reportedSymptom}&rdquo;</p>
                     </div>
 
                     {/* PHOTO GALLERY */}
@@ -502,11 +562,14 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                          <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 uppercase text-[10px] font-black tracking-widest text-slate-400">Workflow Timeline</div>
                          <div className="p-6 space-y-4">
-                            {job.statusHistory?.map((h: any, i: number) => (
+                            {job.statusHistory?.map((h, i) => (
                                 <div key={i} className="flex gap-4 group">
                                      <div className="flex-1 pb-4 border-b border-gray-50 last:border-0 font-bold">
                                           <span className="text-[10px] text-blue-600 underline">{getStatusLabel(h.status)}</span>
-                                          <p className="text-xs text-slate-500 mt-1">"{h.note || "No comments"}"</p>
+                                          <p className="text-xs text-slate-500 mt-1">&ldquo;{h.note || "No comments"}&rdquo;</p>
+                                          <p className="text-[10px] font-medium text-slate-400 mt-1">
+                                              {h.changedBy || "-"}{h.changedAt ? ` · ${new Date(h.changedAt).toLocaleString("th-TH")}` : ""}
+                                          </p>
                                      </div>
                                 </div>
                             )).reverse()}
@@ -518,12 +581,17 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                 <div className="lg:col-span-4 space-y-6">
                     <div className="bg-slate-900 rounded-2xl p-6 shadow-xl">
                         <h3 className="text-sm font-bold text-white mb-4">จัดการสถานะงาน</h3>
+                        {allowedNextStatuses(job.status).length === 0 && (
+                            <p className="mb-2 text-xs font-semibold text-slate-400">งานนี้ปิดแล้ว ไม่สามารถเปลี่ยนสถานะได้</p>
+                        )}
                         <div className="grid grid-cols-1 gap-1">
-                            {["checking", "quoted", "in_progress", "ready_pickup", "completed", "cancelled"].map((st) => {
+                            {/* Only the transitions the server will accept, plus the current status. */}
+                            {[job.status, ...allowedNextStatuses(job.status)].map((st: string) => {
                                 const isActive = job.status === st;
                                 return (
                                     <button 
                                         key={st} 
+                                        disabled={isActive}
                                         onClick={() => openStatusModal(st)} 
                                         className={`flex items-center justify-between w-full px-4 py-3 rounded-xl transition-all group ${
                                             isActive 
@@ -611,7 +679,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                     <div className="relative w-full max-w-md space-y-6 rounded-3xl bg-white p-5 shadow-2xl sm:p-8">
                         <div className="text-center">
                             <h2 className="text-base font-bold text-slate-800">เปลี่ยนสถานะงาน</h2>
-                            <p className="text-xs text-slate-500 font-semibold mt-1">เปลี่ยนเป็น: <span className="text-blue-600 underline">"{getStatusLabel(pendingStatus || "")}"</span></p>
+                            <p className="text-xs text-slate-500 font-semibold mt-1">เปลี่ยนเป็น: <span className="text-blue-600 underline">&ldquo;{getStatusLabel(pendingStatus || "")}&rdquo;</span></p>
                         </div>
                         <textarea rows={3} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-xs font-bold text-gray-800 outline-none placeholder:text-gray-300" placeholder="หมายเหตุ (บันทึกในประวัติงาน)..." value={statusNote} onChange={(e) => setStatusNote(e.target.value)} />
                         <div className="flex gap-3">

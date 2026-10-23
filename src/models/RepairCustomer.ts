@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { nextSequenceNumber } from "@/lib/repair/sequence";
 
 export interface IRepairCustomer extends Document {
     customerId: string;
@@ -30,9 +31,13 @@ const RepairCustomerSchema: Schema = new Schema(
 // Auto-generate customerId before saving
 RepairCustomerSchema.pre("save", async function (this: IRepairCustomer) {
     if (this.isNew && !this.customerId) {
-        const RepairCustomerModel = this.constructor as mongoose.Model<IRepairCustomer>;
-        const count = await RepairCustomerModel.countDocuments();
-        this.customerId = `CUS${String(count + 1).padStart(5, "0")}`;
+        const next = await nextSequenceNumber({
+            counterKey: "repair_customer",
+            model: this.constructor as mongoose.Model<unknown>,
+            field: "customerId",
+            prefix: "CUS",
+        });
+        this.customerId = `CUS${String(next).padStart(5, "0")}`;
     }
 });
 

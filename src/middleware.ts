@@ -19,6 +19,10 @@ export async function middleware(request: NextRequest) {
         || pathname.startsWith("/api/admin-users/")
         || pathname === "/api/auth/change-password";
     const isUserManagementApi = pathname === "/api/admin/users" || pathname === "/api/admin-users" || pathname.startsWith("/api/admin-users/");
+    // Machine credentials: super_admin only. The route handlers re-check the
+    // role from the database; this only stops other roles earlier.
+    const isIntegrationKeyApi = pathname === "/api/admin/integration-keys" || pathname.startsWith("/api/admin/integration-keys/");
+    const isIntegrationKeyPage = pathname === "/admin/settings/integration-keys" || pathname.startsWith("/admin/settings/integration-keys/");
 
     if (isAdminPage || isAdminApi) {
         if (!adminToken) {
@@ -34,8 +38,11 @@ export async function middleware(request: NextRequest) {
 
             const { payload } = await jwtVerify(adminToken, new TextEncoder().encode(secret));
 
-            if (isUserManagementApi && payload.role !== "super_admin") {
+            if ((isUserManagementApi || isIntegrationKeyApi) && payload.role !== "super_admin") {
                 return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            }
+            if (isIntegrationKeyPage && payload.role !== "super_admin") {
+                return NextResponse.redirect(new URL("/admin", request.url));
             }
 
             return NextResponse.next();
