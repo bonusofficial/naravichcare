@@ -3,23 +3,20 @@
 import React, { useEffect, useState } from "react";
 import { 
     Search, 
-    Filter, 
     PlusCircle, 
     Calendar, 
     ChevronRight, 
     Wrench, 
-    CheckCircle, 
-    Clock, 
-    AlertCircle,
     User,
-    ChevronLeft,
     Box,
-    Loader2
+    Loader2,
+    Store
 } from "lucide-react";
 import Link from "next/link";
+import type { RepairJobView } from "@/lib/repair/types";
 
 export default function RepairJobsList() {
-    const [jobs, setJobs] = useState<any[]>([]);
+    const [jobs, setJobs] = useState<RepairJobView[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
@@ -31,7 +28,7 @@ export default function RepairJobsList() {
     const fetchJobs = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/admin/repair/jobs?status=${statusFilter}&q=${search}`);
+            const res = await fetch(`/api/admin/repair/jobs?status=${encodeURIComponent(statusFilter)}&q=${encodeURIComponent(search)}`);
             const data = await res.json();
             if (Array.isArray(data)) {
                 setJobs(data);
@@ -96,7 +93,7 @@ export default function RepairJobsList() {
                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
                     <input 
                         type="text" 
-                        placeholder="ค้นหา Job ID, IMEI, ชื่อลูกค้า..."
+                        placeholder="ค้นหา Job ID, IMEI, Ref จาก POS, รหัสสินค้า..."
                         className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3.5 pl-14 pr-6 text-sm font-bold text-gray-800 outline-none focus:bg-white focus:border-blue-500 transition-all"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -138,6 +135,11 @@ export default function RepairJobsList() {
                             <div className="flex flex-col items-center md:items-start md:border-r border-gray-100 md:pr-10">
                                 <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1 leading-none">{job.jobType === "repair" ? "ซ่อมทั่วไป" : "งานเคลม"}</span>
                                 <h3 className="text-xl font-black text-slate-900 tracking-tighter leading-none">{job.jobId}</h3>
+                                {job.source === "pos" && (
+                                    <span className="mt-2 inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                                        <Store size={11} /> {job.ownerType === "store" ? "เครื่องของร้าน / ส่งจาก POS" : "ส่งจาก POS"}
+                                    </span>
+                                )}
                                 <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold mt-2 uppercase tracking-tighter">
                                     <Calendar size={12} /> {new Date(job.receivedAt).toLocaleDateString()}
                                 </div>
@@ -154,21 +156,35 @@ export default function RepairJobsList() {
                                         <span className="text-[10px] font-bold text-slate-400 ml-2 tracking-tighter">(IMEI: {job.imei || "N/A"})</span>
                                     </p>
                                 </div>
-                                <div className="flex items-center gap-2.5">
-                                    <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                                        <User size={12} />
+                                {job.customer ? (
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                                            <User size={12} />
+                                        </div>
+                                        <p className="text-[12px] font-bold text-gray-500">
+                                            {job.customer.firstName} {job.customer.lastName}
+                                            <span className="text-[9px] font-black text-blue-300 ml-2 uppercase tracking-widest">{job.customer.phone}</span>
+                                        </p>
                                     </div>
-                                    <p className="text-[12px] font-bold text-gray-500">
-                                        {job.customer?.firstName} {job.customer?.lastName}
-                                        <span className="text-[9px] font-black text-blue-300 ml-2 uppercase tracking-widest">{job.customer?.phone}</span>
-                                    </p>
-                                </div>
+                                ) : (
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                                            <Store size={12} />
+                                        </div>
+                                        <p className="text-[12px] font-bold text-gray-500 min-w-0 truncate">
+                                            {job.ownerType === "store" ? "เครื่องของร้าน" : "ไม่มีข้อมูลลูกค้า"}
+                                            {job.externalRef && <span className="ml-2 text-[10px] font-semibold text-slate-400">Ref: {job.externalRef}</span>}
+                                            {job.integration?.productCode && <span className="ml-2 text-[10px] font-semibold text-slate-400">รหัสสินค้า: {job.integration.productCode}</span>}
+                                            {(job.integration?.branchCode || job.integration?.branchId) && <span className="ml-2 text-[10px] font-semibold text-slate-400">สาขา: {job.integration.branchCode || job.integration.branchId}</span>}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Symptom Snippet */}
                             <div className="hidden lg:block flex-[2] border-l border-gray-100 pl-8">
                                 <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">อาการที่แจ้ง</p>
-                                <p className="text-[11px] font-semibold text-gray-600 line-clamp-2 leading-relaxed">"{job.reportedSymptom}"</p>
+                                <p className="text-[11px] font-semibold text-gray-600 line-clamp-2 leading-relaxed">&ldquo;{job.reportedSymptom}&rdquo;</p>
                             </div>
 
                             {/* Status & Action */}

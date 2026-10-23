@@ -3,6 +3,7 @@ import { jwtVerify } from "jose";
 import AdminLog from "@/models/AdminLog";
 import dbConnect from "@/lib/mongodb";
 import { JWT_SECRET } from "@/lib/jwt";
+import { redact } from "@/lib/integration/redact";
 
 interface LogParams {
     action: string;
@@ -11,18 +12,22 @@ interface LogParams {
     targetType?: string;
     details?: unknown;
     req?: Request;
+    /**
+     * Who acted, when the caller already knows. Required outside an admin
+     * cookie session (integration clients) and avoids re-verifying the JWT.
+     */
+    actor?: { id?: string | null; name: string };
 }
 
-export async function recordAdminLog({ action, description, targetId, targetType, details, req }: LogParams) {
+export async function recordAdminLog({ action, description, targetId, targetType, details, req, actor }: LogParams) {
     try {
         await dbConnect();
 
-        // 1. Get current admin from cookie
-        const cookieStore = await cookies();
-        const token = cookieStore.get("admin_token")?.value;
+        let adminId = actor?.id ?? null;
+        let adminName = actor?.name ?? "System";
 
-        let adminId = null;
-        let adminName = "System";
+        // 1. Get current admin from cookie
+        const token = actor ? undefined : (await cookies()).get("admin_token")?.value;
 
         if (token) {
             try {
@@ -41,7 +46,7 @@ export async function recordAdminLog({ action, description, targetId, targetType
         let userAgent = "";
 
         if (req) {
-            ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "";
+            ipAddress = req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "";
             userAgent = req.headers.get("user-agent") || "";
         }
 
@@ -53,7 +58,9 @@ export async function recordAdminLog({ action, description, targetId, targetType
             description,
             targetId,
             targetType,
-            details,
+            // Secrets and base64 blobs never belong in the audit trail; customer
+            // fields stay because admins audit changes to them.
+            details: details === undefined ? undefined : redact(details, { customerPii: false, maxString: 20_000, maxArray: 1_000 }),
             ipAddress,
             userAgent
         });

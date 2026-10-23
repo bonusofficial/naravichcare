@@ -1,0 +1,487 @@
+openapi: 3.1.0
+info:
+  title: NavarichCare Repair Integration API
+  version: 1.0.0
+  description: |
+    Machine-to-machine API for the Web POS (NaravichPOS) to create and track
+    repair jobs in NavarichCare. Separate from the admin API. Status is read by
+    polling; there are no webhooks and no payment endpoints in v1.
+
+    Only jobs created through this API (source = pos) are visible here.
+    See docs/REPAIR_INTEGRATION_API.md for the full semantics.
+servers:
+  - url: https://{host}/api/integration/v1
+    variables:
+      host:
+        default: navarichcare.example.com
+security:
+  - apiKey: []
+
+paths:
+  /repair-jobs:
+    post:
+      operationId: createRepairJob
+      summary: Create a repair job (scope repair:write)
+      description: |
+        Accepts the payload the POS sends today. Safe to retry: a repeated
+        reference (or Idempotency-Key) with the same payload returns the
+        existing job with 200 instead of creating a second one.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRepairJobRequest"
+            examples:
+              currentPos:
+                summary: Current NaravichPOS payload
+                value:
+                  reference: REP-20261024-MH3K2Z1A-1F2E3D
+                  productCode: NV-00001
+                  imei: "356938035643809"
+                  model: Apple iPhone 13 128GB
+                  branchId: 6f1c2a52-6a1e-4bd4-9c39-1f0f6f0b9a11
+                  symptom: หน้าจอมีปัญหา
+                  imageUrls: null
+      responses:
+        "201":
+          description: Created
+          headers:
+            X-Request-Id: { $ref: "#/components/headers/X-Request-Id" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RepairJob" }
+        "200":
+          description: Replay of an earlier identical request; the existing job is returned
+          headers:
+            X-Request-Id: { $ref: "#/components/headers/X-Request-Id" }
+            Idempotent-Replayed:
+              schema: { type: string, const: "true" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RepairJob" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: IDEMPOTENCY_CONFLICT or EXTERNAL_REFERENCE_CONFLICT
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    get:
+      operationId: searchRepairJobs
+      summary: Search repair jobs by exact externalRef and/or IMEI (scope repair:read)
+      description: Exact match only. Unknown or repeated query parameters are rejected. Newest first.
+      parameters:
+        - name: externalRef
+          in: query
+          schema: { type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,119}$" }
+        - name: imei
+          in: query
+          schema: { type: string, pattern: "^\\d{14,17}$" }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100000, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200":
+          description: A page of jobs
+          headers:
+            X-Request-Id: { $ref: "#/components/headers/X-Request-Id" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RepairJobPage" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /repair-jobs/{id}:
+    parameters:
+      - $ref: "#/components/parameters/JobId"
+    get:
+      operationId: getRepairJob
+      summary: Read a repair job (scope repair:read)
+      responses:
+        "200":
+          description: The job
+          headers:
+            X-Request-Id: { $ref: "#/components/headers/X-Request-Id" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RepairJob" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /repair-jobs/{id}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/JobId"
+    post:
+      operationId: cancelRepairJob
+      summary: Cancel a job that is not finished (scope repair:cancel)
+      description: |
+        Allowed from pending through testing. ready_pickup and completed return
+        REPAIR_CLOSED. Cancelling an already cancelled job returns 200 and adds
+        no history.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 500 }
+            example: { reason: ยกเลิกจาก Web POS }
+      responses:
+        "200":
+          description: The cancelled job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RepairJob" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: REPAIR_CLOSED or CONFLICT
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /repair-jobs/{id}/handover:
+    parameters:
+      - $ref: "#/components/parameters/JobId"
+    post:
+      operationId: handoverRepairJob
+      summary: Confirm the POS has the device back (scope repair:handover)
+      description: |
+        Only from ready_pickup; moves the job to completed and sets handedOverAt.
+        Calling it again after completed returns 200 and adds no history.
+        The body is optional.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                note: { type: string, maxLength: 500 }
+      responses:
+        "200":
+          description: The completed job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RepairJob" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: INVALID_STATUS_TRANSITION, REPAIR_CLOSED or CONFLICT
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /repair-jobs/{id}/costs:
+    parameters:
+      - $ref: "#/components/parameters/JobId"
+    get:
+      operationId: getRepairJobCosts
+      summary: Server-computed costs of a job (scope repair:read)
+      responses:
+        "200":
+          description: Costs
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    required: [id, reference, externalRef]
+                    properties:
+                      id: { type: string }
+                      reference: { type: string }
+                      externalRef: { type: [string, "null"] }
+                  - $ref: "#/components/schemas/RepairCosts"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+components:
+  securitySchemes:
+    apiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: "nvc_live_<publicId>_<secret>"
+      description: |
+        Authorization: Bearer <API key>. Keys are created, rotated and revoked
+        by a super_admin at /admin/settings/integration-keys. Keys in the query
+        string are rejected.
+
+  parameters:
+    JobId:
+      name: id
+      in: path
+      required: true
+      description: The `id` returned when the job was created (24-character hex ObjectId)
+      schema: { type: string, pattern: "^[0-9a-f]{24}$" }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string, pattern: "^[A-Za-z0-9._:-]{8,128}$" }
+
+  headers:
+    X-Request-Id:
+      description: Request id, also returned as error.requestId
+      schema: { type: string, format: uuid }
+
+  responses:
+    ValidationError:
+      description: VALIDATION_ERROR
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: INVALID_API_KEY (missing, malformed, wrong, expired or revoked key)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: INSUFFICIENT_SCOPE
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: NOT_FOUND
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    PayloadTooLarge:
+      description: PAYLOAD_TOO_LARGE (body over 64 KB)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UnsupportedMediaType:
+      description: UNSUPPORTED_MEDIA_TYPE (body present but Content-Type is not application/json)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RateLimited:
+      description: RATE_LIMITED
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    InternalError:
+      description: INTERNAL_ERROR (no internal detail is returned)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    CreateRepairJobRequest:
+      type: object
+      additionalProperties: false
+      required: [reference, model, symptom]
+      description: |
+        At least one of imei, serialNumber or productCode is required.
+        Empty strings are treated as null. customer is required when
+        ownerType is customer and must be absent when ownerType is store.
+      properties:
+        reference:
+          type: string
+          description: The POS repair number; unique per job
+          pattern: "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,119}$"
+        inventoryItemId:
+          type: [string, "null"]
+          pattern: "^[A-Za-z0-9-]{1,64}$"
+        productCode: { type: [string, "null"], maxLength: 64 }
+        imei:
+          type: [string, "null"]
+          pattern: "^\\d{14,17}$"
+        serialNumber:
+          type: [string, "null"]
+          pattern: "^[A-Za-z0-9./-]{1,64}$"
+        model:
+          type: string
+          maxLength: 200
+          description: '"<brand> <model>"; the first word is stored as the brand'
+        branchId:
+          type: [string, "null"]
+          pattern: "^[A-Za-z0-9-]{1,64}$"
+        branchCode:
+          type: [string, "null"]
+          pattern: "^[A-Za-z0-9_-]{1,32}$"
+        ownerType:
+          type: string
+          enum: [store, customer]
+          default: store
+        customer: { $ref: "#/components/schemas/CustomerInput" }
+        symptom: { type: string, minLength: 1, maxLength: 4000 }
+        imageUrls:
+          type: [array, "null"]
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 2048
+            description: |
+              https URL (http only when INTEGRATION_API_ALLOW_HTTP=true) or a
+              root-relative POS path such as /api/product-images/files/x.jpg.
+              data: URIs, credentials in URLs, // and .. are rejected.
+
+    CustomerInput:
+      type: object
+      additionalProperties: false
+      required: [firstName, lastName, phone]
+      properties:
+        firstName: { type: string, maxLength: 100 }
+        lastName: { type: string, maxLength: 100 }
+        phone: { type: string, pattern: "^0\\d{8,9}$" }
+        lineId: { type: [string, "null"], maxLength: 100 }
+
+    RepairStatus:
+      type: string
+      enum: [pending, checking, quoted, waiting_approval, in_progress, waiting_parts, testing, ready_pickup, completed, cancelled]
+
+    PosStatus:
+      type: string
+      enum: [sent, repairing, completed, cancelled]
+      description: |
+        pending -> sent; checking, quoted, waiting_approval, in_progress,
+        waiting_parts, testing -> repairing; ready_pickup, completed ->
+        completed; cancelled -> cancelled
+
+    RepairCosts:
+      type: object
+      required: [partsPurchaseCost, partsSellingPrice, laborCost, inventoryCostTotal, customerChargeTotal, currency, version, updatedAt]
+      properties:
+        partsPurchaseCost: { type: number, description: What the shop paid for parts }
+        partsSellingPrice: { type: number, description: What the parts are charged at }
+        laborCost: { type: number }
+        inventoryCostTotal: { type: number, description: partsPurchaseCost + laborCost }
+        customerChargeTotal: { type: number, description: partsSellingPrice + laborCost }
+        currency: { type: string, const: THB }
+        version: { type: integer, minimum: 1, description: Increments whenever any cost changes }
+        updatedAt: { type: [string, "null"], format: date-time }
+
+    RepairJob:
+      type: object
+      additionalProperties: false
+      required: [id, reference, externalRef, source, ownerType, status, posStatus, device, symptom, imageUrls, repairItems, costs, cancelReason, timestamps]
+      properties:
+        id: { type: string, description: Use this id for all later calls }
+        reference: { type: string, description: "NavarichCare job number, JOBYYMM-NNNN" }
+        externalRef: { type: [string, "null"], description: The reference the POS sent }
+        source: { type: string, enum: [admin, pos] }
+        ownerType: { type: string, enum: [store, customer] }
+        status: { $ref: "#/components/schemas/RepairStatus" }
+        posStatus: { $ref: "#/components/schemas/PosStatus" }
+        device:
+          type: object
+          additionalProperties: false
+          required: [inventoryItemId, productCode, imei, serialNumber, model, branchId, branchCode]
+          properties:
+            inventoryItemId: { type: [string, "null"] }
+            productCode: { type: [string, "null"] }
+            imei: { type: [string, "null"] }
+            serialNumber: { type: [string, "null"] }
+            model: { type: string }
+            branchId: { type: [string, "null"] }
+            branchCode: { type: [string, "null"] }
+        symptom: { type: string }
+        imageUrls: { type: array, items: { type: string } }
+        repairItems:
+          type: array
+          maxItems: 0
+          description: Reserved; always empty in v1
+        costs: { $ref: "#/components/schemas/RepairCosts" }
+        cancelReason: { type: [string, "null"] }
+        timestamps:
+          type: object
+          additionalProperties: false
+          required: [receivedAt, repairCompletedAt, handedOverAt, cancelledAt, createdAt, updatedAt]
+          properties:
+            receivedAt: { type: [string, "null"], format: date-time }
+            repairCompletedAt: { type: [string, "null"], format: date-time, description: Set on entering ready_pickup }
+            handedOverAt: { type: [string, "null"], format: date-time, description: Set on entering completed }
+            cancelledAt: { type: [string, "null"], format: date-time }
+            createdAt: { type: [string, "null"], format: date-time }
+            updatedAt: { type: [string, "null"], format: date-time }
+
+    RepairJobPage:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/RepairJob" }
+        pagination:
+          type: object
+          required: [page, limit, total, totalPages]
+          properties:
+            page: { type: integer }
+            limit: { type: integer }
+            total: { type: integer }
+            totalPages: { type: integer }
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code:
+              type: string
+              enum:
+                - INVALID_API_KEY
+                - INSUFFICIENT_SCOPE
+                - VALIDATION_ERROR
+                - UNSUPPORTED_MEDIA_TYPE
+                - PAYLOAD_TOO_LARGE
+                - NOT_FOUND
+                - IDEMPOTENCY_CONFLICT
+                - EXTERNAL_REFERENCE_CONFLICT
+                - INVALID_STATUS_TRANSITION
+                - REPAIR_CLOSED
+                - CONFLICT
+                - RATE_LIMITED
+                - INTERNAL_ERROR
+            message: { type: string }
+            requestId: { type: string, format: uuid }
+            details:
+              type: array
+              items:
+                type: object
+                required: [field, message]
+                properties:
+                  field: { type: string }
+                  message: { type: string }

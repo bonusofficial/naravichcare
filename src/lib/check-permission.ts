@@ -16,6 +16,13 @@ export async function resolveRolePermissions(roleName: string): Promise<string[]
   return getRolePermissions(roleName);
 }
 
+type CurrentAdmin = Awaited<ReturnType<typeof getCurrentAdmin>>;
+
+// Discriminated so `if (!authorized) return error;` is known to return a response.
+export type PermissionCheck =
+  | { authorized: true; user: NonNullable<CurrentAdmin>; error?: undefined }
+  | { authorized: false; user: CurrentAdmin; error: NextResponse };
+
 /**
  * Check if user has any of the given permissions.
  * Works with both system roles and custom roles from the database.
@@ -23,7 +30,7 @@ export async function resolveRolePermissions(roleName: string): Promise<string[]
 export async function checkAnyPermission(
   req: NextRequest,
   requiredPermissions: Permission[]
-): Promise<{ authorized: boolean; user: any; error?: NextResponse }> {
+): Promise<PermissionCheck> {
   const user = await getCurrentAdmin(req);
 
   if (!user) {
@@ -71,6 +78,6 @@ export async function checkAnyPermission(
 export async function checkPermission(
   req: NextRequest,
   requiredPermission: Permission
-): Promise<{ authorized: boolean; user: any; error?: NextResponse }> {
+): Promise<PermissionCheck> {
   return checkAnyPermission(req, [requiredPermission]);
 }

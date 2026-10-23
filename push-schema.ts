@@ -17,6 +17,7 @@ import "./src/models/FloatingChat";
 import "./src/models/FooterSettings";
 import "./src/models/HeroBanner";
 import "./src/models/Insurance";
+import "./src/models/IntegrationApiKey";
 import "./src/models/LegalPage";
 import "./src/models/Loan";
 import "./src/models/Package";

@@ -8,12 +8,13 @@ import {
     ClipboardList, FileText, LogOut, TrendingDown, Percent,
     UserCog, UserCircle, ChevronDown, Settings, Bell, Zap,
     Circle, ChevronsLeft, ChevronsRight, History, LayoutTemplate, MessageCircle, Shield,
-    DollarSign, Wallet,
+    DollarSign, Wallet, KeyRound,
 } from "lucide-react";
 import { useCurrentAdmin } from "@/hooks/useCurrentAdmin";
 import { ROLE_LABELS, ROLE_COLORS } from "@/lib/permissions";
 
-type NavItem = { title: string; icon: React.ReactNode; href: string; badge?: string | number; permission?: string };
+// role: shown only to that exact role (not grantable to custom roles via permissions).
+type NavItem = { title: string; icon: React.ReactNode; href: string; badge?: string | number; permission?: string; role?: string };
 type NavGroup = { group: string; items: NavItem[] };
 
 const navGroups: NavGroup[] = [
@@ -56,6 +57,7 @@ const navGroups: NavGroup[] = [
             { title: "จัดการสาขา", icon: <LayoutTemplate size={18} />, href: "/admin/branches", permission: "view_branches" },
             { title: "ตัวแทน (Agents)", icon: <Users size={18} />, href: "/admin/agents", permission: "view_agents" },
             { title: "ถอนค่าคอมตัวแทน", icon: <Wallet size={18} />, href: "/admin/agent-withdrawals", permission: "view_agents" },
+            { title: "Integration API Keys", icon: <KeyRound size={18} />, href: "/admin/settings/integration-keys", role: "super_admin" },
         ],
     },
     {
@@ -123,6 +125,7 @@ export function AdminSidebar({ collapsed, mobileOpen, onMobileClose, onToggle }:
         .map(group => ({
             ...group,
             items: group.items.filter(item => {
+                if (item.role) return user?.role === item.role;
                 // If no permission specified, show to everyone
                 if (!item.permission) return true;
                 // Check if user has the required permission
