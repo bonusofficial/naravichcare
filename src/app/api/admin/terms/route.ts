@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import TermsPage from "@/models/TermsPage";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
+import { getErrorMessage } from "@/lib/errors";
 
 const DEFAULT_TERMS = [
     {
@@ -35,8 +36,8 @@ export async function GET() {
             page = await TermsPage.create({ items: DEFAULT_TERMS });
         }
         return NextResponse.json({ success: true, data: page });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -64,7 +65,7 @@ export async function PUT(req: NextRequest) {
         });
 
         return NextResponse.json({ success: true, data: page });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

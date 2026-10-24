@@ -2,11 +2,47 @@
 import React, { useState } from "react";
 import { Search, Loader2, ShieldCheck, Smartphone, Calendar, CreditCard, ChevronRight, Download, ReceiptText } from "lucide-react";
 
+interface PortalLoan {
+    customerName: string;
+    contractId: string;
+    status: string;
+    deviceModel: string;
+    imei: string;
+    installmentAmount: number;
+    nextPaymentDate: string;
+    startDate: string;
+}
+
+interface QuotaUse {
+    used: number;
+    total: number;
+}
+
+interface PortalInsurance {
+    policyId: string;
+    quota: { screen: QuotaUse; water: QuotaUse; battery: QuotaUse };
+}
+
+interface PortalPayment {
+    _id: string;
+    installmentNumber: number;
+    paymentDate: string;
+    amount: number;
+    receiptId: string;
+}
+
+/** The body of /api/portal/find-loan. A loan need not have an insurance record. */
+interface PortalData {
+    loan: PortalLoan;
+    insurance: PortalInsurance | null;
+    payments: PortalPayment[];
+}
+
 export default function CustomerPortal() {
     const [step, setStep] = useState<"search" | "dashboard">("search");
     const [loading, setLoading] = useState(false);
     const [searchData, setSearchData] = useState({ phone: "", idNumber: "" });
-    const [portalData, setPortalData] = useState<any>(null);
+    const [portalData, setPortalData] = useState<PortalData | null>(null);
     const [isCertModalOpen, setIsCertModalOpen] = useState(false);
 
     const handleSearch = async (e: React.FormEvent) => {
@@ -32,7 +68,9 @@ export default function CustomerPortal() {
         }
     };
 
-    if (step === "search") {
+    // The dashboard is only reached after a successful search, and going back
+    // keeps the data, so it always has a result.
+    if (step === "search" || !portalData) {
         return (
             <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
                 <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in duration-500">
@@ -86,6 +124,9 @@ export default function CustomerPortal() {
     }
 
     const { loan, insurance, payments } = portalData;
+    // The certificate modal has never handled a loan without insurance: with
+    // insurance null it fails to render.
+    const certificate = insurance as PortalInsurance;
 
     return (
         <div className="min-h-screen bg-slate-50 p-4 md:p-8 animate-in slide-in-from-bottom-10 duration-700">
@@ -146,7 +187,7 @@ export default function CustomerPortal() {
                     <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-4 space-y-3">
                         {payments.length === 0 ? (
                             <p className="text-center py-10 text-[10px] font-black text-slate-400 uppercase tracking-widest">ยังไม่มีรายการชำระ</p>
-                        ) : payments.map((p: any) => (
+                        ) : payments.map((p) => (
                             <div key={p._id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl hover:bg-white hover:ring-1 hover:ring-slate-100 transition-all group">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-100 group-hover:border-emerald-500 transition-colors">
@@ -173,11 +214,12 @@ export default function CustomerPortal() {
                         โควตาประกันภัย 3 ปี
                     </h3>
                     <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8 space-y-6">
-                        {[
+                        {([
                             { label: "จอแตก (Screen)", used: insurance?.quota?.screen?.used, total: insurance?.quota?.screen?.total },
                             { label: "น้ำเข้า / ความเสียหายอื่นๆ", used: insurance?.quota?.water?.used, total: insurance?.quota?.water?.total },
                             { label: "แบตเตอรี่ (Battery)", used: insurance?.quota?.battery?.used, total: insurance?.quota?.battery?.total },
-                        ].map(q => (
+                        // Without insurance these are undefined and the rows show NaN.
+                        ] as { label: string; used: number; total: number }[]).map(q => (
                             <div key={q.label} className="space-y-3">
                                 <div className="flex justify-between items-end">
                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{q.label}</p>
@@ -216,7 +258,7 @@ export default function CustomerPortal() {
                                     <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Naravich Care+ | Device Insurance</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-xs font-black text-slate-900 uppercase">{insurance.policyId}</p>
+                                    <p className="text-xs font-black text-slate-900 uppercase">{certificate.policyId}</p>
                                     <p className="text-[10px] font-bold text-slate-400 uppercase">Issue Date: {new Date(loan.startDate).toLocaleDateString()}</p>
                                 </div>
                             </div>
@@ -237,15 +279,15 @@ export default function CustomerPortal() {
                                 <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 grid grid-cols-3 gap-6">
                                     <div>
                                         <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Screen Protect</p>
-                                        <p className="text-sm font-black text-slate-900 uppercase">{insurance.quota.screen.total} Times</p>
+                                        <p className="text-sm font-black text-slate-900 uppercase">{certificate.quota.screen.total} Times</p>
                                     </div>
                                     <div>
                                         <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Water Damage</p>
-                                        <p className="text-sm font-black text-slate-900 uppercase">{insurance.quota.water.total} Times</p>
+                                        <p className="text-sm font-black text-slate-900 uppercase">{certificate.quota.water.total} Times</p>
                                     </div>
                                     <div>
                                         <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Battery Health</p>
-                                        <p className="text-sm font-black text-slate-900 uppercase">{insurance.quota.battery.total} Times</p>
+                                        <p className="text-sm font-black text-slate-900 uppercase">{certificate.quota.battery.total} Times</p>
                                     </div>
                                 </div>
                             </div>

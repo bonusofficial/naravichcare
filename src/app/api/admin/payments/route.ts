@@ -5,6 +5,7 @@ import Loan from "@/models/Loan";
 import { sendLineNotify } from "@/lib/line";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function POST(req: NextRequest) {
     try {
@@ -72,8 +73,8 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json({ success: true, receiptId, payment });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Payment recording error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

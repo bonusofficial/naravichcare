@@ -54,9 +54,9 @@ export default function AdminTermsPage() {
         setItems(items.filter((_, idx) => idx !== i));
     };
 
-    const updateItem = (i: number, field: keyof TermItem, value: any) => {
+    const updateItem = <K extends keyof TermItem>(i: number, field: K, value: TermItem[K]) => {
         const updated = [...items];
-        (updated[i] as any)[field] = value;
+        updated[i][field] = value;
         setItems(updated);
     };
 

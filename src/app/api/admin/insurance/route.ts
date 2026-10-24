@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import Insurance from "@/models/Insurance";
 import Loan from "@/models/Loan";
 import { checkPermission } from "@/lib/check-permission";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function GET(req: NextRequest) {
     try {
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
             .sort({ createdAt: -1 });
 
         return NextResponse.json({ success: true, policies });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

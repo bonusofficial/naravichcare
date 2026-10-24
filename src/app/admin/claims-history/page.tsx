@@ -19,6 +19,7 @@ interface Claim {
     postRepairImages: string[];
     preRepairNote: string;
     postRepairNote: string;
+    currentStep?: number;
 }
 
 const statusColor: Record<string, string> = {
@@ -149,7 +150,7 @@ export default function ClaimsHistoryPage() {
                     <div className="flex flex-col items-center justify-center py-20 text-slate-300">
                         <ClipboardList size={48} strokeWidth={1.5} className="mb-4" />
                         <p className="font-black text-slate-500 text-lg">ยังไม่มีรายการเคลม</p>
-                        <p className="text-sm text-slate-400 mt-1">ไปที่ "งานเคลม" เพื่อเริ่มเปิดเคสใหม่ครับ</p>
+                        <p className="text-sm text-slate-400 mt-1">ไปที่ &ldquo;งานเคลม&rdquo; เพื่อเริ่มเปิดเคสใหม่ครับ</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -200,7 +201,7 @@ export default function ClaimsHistoryPage() {
                                                     </span>
                                                     {claim.status === "draft" && (
                                                         <span className="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded-md">
-                                                            ค้างที่ขั้นตอน {(claim as any).currentStep || 1}/6
+                                                            ค้างที่ขั้นตอน {claim.currentStep || 1}/6
                                                         </span>
                                                     )}
                                                 </div>

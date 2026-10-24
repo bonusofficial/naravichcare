@@ -5,6 +5,7 @@ import Registration from "@/models/Registration";
 import Agent from "@/models/Agent";
 import mongoose from "mongoose";
 import { getAgentBalance } from "@/lib/agent-portal";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function GET(req: Request) {
     try {
@@ -62,7 +63,7 @@ export async function GET(req: Request) {
             recentLoans,
             recentRegistrations
         });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

@@ -4,6 +4,7 @@ import CoveragePlan from "@/models/CoveragePlan";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
 import { isCoveragePlanDeviceType } from "@/lib/coverage-plan";
+import { getErrorMessage } from "@/lib/errors";
 
 // Public: the registration flow (step 3) reads coverage plans before login.
 export async function GET() {
@@ -11,8 +12,8 @@ export async function GET() {
         await dbConnect();
         const plans = await CoveragePlan.find({}).sort({ order: 1 });
         return NextResponse.json(plans);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json(plan, { status: 201 });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 400 });
     }
 }

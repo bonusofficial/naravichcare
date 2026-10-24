@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
-import AgentWithdrawal from "@/models/AgentWithdrawal";
+import AgentWithdrawal, { type IAgentWithdrawal } from "@/models/AgentWithdrawal";
 import { checkPermission } from "@/lib/check-permission";
 import { recordAdminLog } from "@/lib/admin-log";
 import { deleteBuybackFile } from "@/lib/buyback-storage";
@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         }
 
         await dbConnect();
-        const existing = await AgentWithdrawal.findById(id).select("status").lean<any>();
+        const existing = await AgentWithdrawal.findById(id).select("status").lean<Pick<IAgentWithdrawal, "status">>();
         if (!existing) return NextResponse.json({ error: "ไม่พบคำขอถอน" }, { status: 404 });
         if (existing.status !== "pending") {
             return NextResponse.json({ error: "คำขอนี้ถูกดำเนินการไปแล้ว" }, { status: 409 });

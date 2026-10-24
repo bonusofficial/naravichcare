@@ -35,7 +35,7 @@ export default function CustomerPortal() {
 
             <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
                 {[{ k: "balance", l: "💳 ยอดค้างชำระ" }, { k: "insurance", l: "🛡️ สิทธิ์ประกัน" }, { k: "repair", l: "🔧 แจ้งซ่อม" }].map(t => (
-                    <button key={t.k} onClick={() => setActiveTab(t.k as any)} className={`flex-1 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === t.k ? "bg-white text-blue-600 shadow-sm" : "text-gray-500"}`}>{t.l}</button>
+                    <button key={t.k} onClick={() => setActiveTab(t.k as typeof activeTab)} className={`flex-1 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === t.k ? "bg-white text-blue-600 shadow-sm" : "text-gray-500"}`}>{t.l}</button>
                 ))}
             </div>
 

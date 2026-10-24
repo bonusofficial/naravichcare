@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { type PipelineStage } from "mongoose";
 
 /**
  * Shared filtering and money rules for the profit report.
@@ -27,16 +27,17 @@ export function buildProfitMatch({
     agentCode,
     branchId,
     status,
-}: ProfitFilterInput): Record<string, any> {
-    const filter: any = {};
+}: ProfitFilterInput): Record<string, unknown> {
+    const filter: Record<string, unknown> = {};
 
     // Cancelled and refunded sales stay in the result set: they are not counted
     // as sales, but their package cost still has to hit the bottom line.
     filter.status = status ? status : { $in: SALE_STATUSES };
 
     if (startDate || endDate) {
-        filter.approvedAt = {};
-        if (startDate) filter.approvedAt.$gte = new Date(startDate);
+        const approvedAt: { $gte?: Date; $lte?: Date } = {};
+        filter.approvedAt = approvedAt;
+        if (startDate) approvedAt.$gte = new Date(startDate);
         if (endDate) {
             const end = new Date(endDate);
             // A bare YYYY-MM-DD parses to midnight, which would exclude that whole
@@ -44,7 +45,7 @@ export function buildProfitMatch({
             if (/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
                 end.setHours(23, 59, 59, 999);
             }
-            filter.approvedAt.$lte = end;
+            approvedAt.$lte = end;
         }
     }
 
@@ -71,7 +72,7 @@ const IS_VOID = {
  * clawed back, so both go to zero. The package cost and any other expenses were
  * still incurred, which leaves those rows as a loss of exactly that amount.
  */
-export const PROFIT_EFFECTIVE_STAGES: any[] = [
+export const PROFIT_EFFECTIVE_STAGES: PipelineStage[] = [
     {
         $addFields: {
             isVoid: IS_VOID,

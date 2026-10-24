@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import FloatingChat from "@/models/FloatingChat";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
+import { getErrorMessage } from "@/lib/errors";
 
 const DEFAULT_CONTACTS = [
     { iconType: "facebook", label: "Chat with us", desc: "Facebook Messenger", href: "https://m.me/naravichcare", isActive: true, order: 0 },
@@ -18,8 +19,8 @@ export async function GET() {
             doc = await FloatingChat.create({ contacts: DEFAULT_CONTACTS });
         }
         return NextResponse.json({ success: true, data: doc });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -47,7 +48,7 @@ export async function PUT(req: NextRequest) {
         });
 
         return NextResponse.json({ success: true, data: doc });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

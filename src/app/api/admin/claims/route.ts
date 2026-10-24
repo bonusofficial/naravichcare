@@ -4,6 +4,7 @@ import Claim from "@/models/Claim";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
 import { assertClaimEligible, ClaimEligibilityError } from "@/lib/claim-eligibility";
+import { getErrorMessage } from "@/lib/errors";
 
 // GET all claims
 export async function GET(req: NextRequest) {
@@ -14,8 +15,8 @@ export async function GET(req: NextRequest) {
         await dbConnect();
         const claims = await Claim.find({}).sort({ createdAt: -1 });
         return NextResponse.json({ success: true, data: claims });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -39,9 +40,9 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json({ success: true, data: claim }, { status: 201 });
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof ClaimEligibilityError) return NextResponse.json({ error: error.message, code: error.code }, { status: 409 });
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 // PUT update existing claim (for drafts)
@@ -71,9 +72,9 @@ export async function PUT(req: NextRequest) {
         });
 
         return NextResponse.json({ success: true, data: claim });
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof ClaimEligibilityError) return NextResponse.json({ error: error.message, code: error.code }, { status: 409 });
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 // DELETE a claim
@@ -100,8 +101,8 @@ export async function DELETE(req: NextRequest) {
         });
 
         return NextResponse.json({ success: true, message: "Claim deleted" });
-    } catch (error: any) {
+    } catch (error) {
         if (error instanceof ClaimEligibilityError) return NextResponse.json({ error: error.message, code: error.code }, { status: 409 });
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

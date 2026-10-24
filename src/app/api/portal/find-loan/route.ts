@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import Loan from "@/models/Loan";
 import Insurance from "@/models/Insurance";
 import Payment from "@/models/Payment";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function POST(req: Request) {
     try {
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
             insurance,
             payments
         });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

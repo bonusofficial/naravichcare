@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Registration from "@/models/Registration";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function POST(req: Request) {
     try {
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
             success: true,
             data: registration
         });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

@@ -3,6 +3,7 @@ import connectToDatabase from "@/lib/mongodb";
 import Package from "@/models/Package";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function PUT(
     req: NextRequest,
@@ -27,8 +28,8 @@ export async function PUT(
         });
 
         return NextResponse.json(updatedPackage);
-    } catch (error: any) {
-        return NextResponse.json({ message: "Failed to update package", error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ message: "Failed to update package", error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -54,7 +55,7 @@ export async function DELETE(
         });
 
         return NextResponse.json({ message: "Package deleted successfully" });
-    } catch (error: any) {
-        return NextResponse.json({ message: "Failed to delete package", error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ message: "Failed to delete package", error: getErrorMessage(error) }, { status: 500 });
     }
 }

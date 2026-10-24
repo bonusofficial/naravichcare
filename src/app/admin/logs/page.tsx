@@ -17,7 +17,7 @@ type AdminLog = {
     targetType?: string;
     createdAt: string;
     ipAddress?: string;
-    details?: any;
+    details?: unknown;
 };
 
 export default function AdminLogsPage() {

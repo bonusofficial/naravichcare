@@ -4,6 +4,7 @@ import Registration from "@/models/Registration";
 import Claim from "@/models/Claim";
 import { checkPermission } from "@/lib/check-permission";
 import { buildProfitMatch, PROFIT_EFFECTIVE_STAGES } from "@/lib/profit-report";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function GET(req: NextRequest) {
     try {
@@ -35,8 +36,8 @@ export async function GET(req: NextRequest) {
         let totalPartsCost = 0;
         let totalDeductibleAmount = 0;
 
-        claims.forEach((c: any) => {
-            const partsCost = c.parts?.reduce((sum: number, p: any) => sum + (p.qty * p.unitCost), 0) || 0;
+        claims.forEach((c) => {
+            const partsCost = c.parts?.reduce((sum: number, p) => sum + (p.qty * p.unitCost), 0) || 0;
             totalPartsCost += partsCost;
             totalDeductibleAmount += (c.deductibleAmount || 0);
         });
@@ -51,7 +52,7 @@ export async function GET(req: NextRequest) {
             netClaimExpense,
             recentClaims: claims.slice(0, 5) // since we sorted descending, take first 5
         });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

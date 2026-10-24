@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import connectToDatabase from "@/lib/mongodb";
-import AdminUser from "@/models/AdminUser";
+import AdminUser, { type IAdminUser } from "@/models/AdminUser";
 import { Permission, hasPermission } from "@/lib/permissions";
 import { JWT_SECRET } from "@/lib/jwt";
 import { cookies } from "next/headers";
 
 export interface AuthenticatedRequest extends NextRequest {
-    user?: any;
+    user?: IAdminUser;
 }
 
 // Get current admin user from JWT token (for App Router Route Handlers)
@@ -99,7 +99,7 @@ export async function requireAuth(req: NextRequest) {
 }
 
 // Helper to wrap API route with permission check
-export function withPermission(permissions: Permission[], handler: (req: NextRequest, user: any) => Promise<NextResponse>) {
+export function withPermission(permissions: Permission[], handler: (req: NextRequest, user: IAdminUser) => Promise<NextResponse>) {
     return async (req: NextRequest) => {
         const user = await getCurrentAdmin(req);
 

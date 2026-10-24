@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Agent from "@/models/Agent";
 import { checkPermission } from "@/lib/check-permission";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function GET(req: NextRequest) {
     try {
@@ -11,8 +12,8 @@ export async function GET(req: NextRequest) {
         await dbConnect();
         const agents = await Agent.find().sort({ name: 1 });
         return NextResponse.json({ success: true, agents });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json({ success: true, agent });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

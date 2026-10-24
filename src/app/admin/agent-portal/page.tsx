@@ -30,7 +30,7 @@ export default function AgentPortalPage() {
 
             <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
                 {[{ k: "portfolio", l: "📊 พอร์ตลูกค้า" }, { k: "commission", l: "💰 ค่าคอมมิชชั่น" }, { k: "new", l: "➕ ใบสมัครใหม่" }].map(t => (
-                    <button key={t.k} onClick={() => setActiveTab(t.k as any)} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${activeTab === t.k ? "bg-white text-blue-600 shadow-sm" : "text-gray-500"}`}>{t.l}</button>
+                    <button key={t.k} onClick={() => setActiveTab(t.k as typeof activeTab)} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${activeTab === t.k ? "bg-white text-blue-600 shadow-sm" : "text-gray-500"}`}>{t.l}</button>
                 ))}
             </div>
 

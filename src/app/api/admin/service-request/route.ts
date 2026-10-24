@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import ServiceRequestPage from "@/models/ServiceRequestPage";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
+import { getErrorMessage } from "@/lib/errors";
 
 const DEFAULT_ROWS = [
     {
@@ -43,8 +44,8 @@ export async function GET() {
             page = await ServiceRequestPage.create({ rows: DEFAULT_ROWS });
         }
         return NextResponse.json({ success: true, data: page });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }
 
@@ -77,7 +78,7 @@ export async function PUT(req: NextRequest) {
         });
 
         return NextResponse.json({ success: true, data: page });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
     }
 }

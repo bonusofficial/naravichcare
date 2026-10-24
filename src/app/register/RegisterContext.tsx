@@ -1,6 +1,19 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+
+/** The saved registration, as shown on the success page. */
+export interface RegistrationResult {
+    _id?: string;
+    referenceNumber?: string;
+    fullName?: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    brand?: string;
+    model?: string;
+    imei?: string;
+}
 
 interface RegisterContextType {
     phone: string;
@@ -46,8 +59,8 @@ interface RegisterContextType {
     agentCode: string;
     setAgentCode: (v: string) => void;
 
-    registrationResult: any;
-    setRegistrationResult: (v: any) => void;
+    registrationResult: RegistrationResult | null;
+    setRegistrationResult: (v: RegistrationResult | null) => void;
 }
 
 const RegisterContext = createContext<RegisterContextType | undefined>(undefined);
@@ -75,40 +88,50 @@ export function RegisterProvider({ children }: { children: React.ReactNode }) {
     const [subDistrict, setSubDistrict] = useState("");
     const [addressDetails, setAddressDetails] = useState("");
     const [agentCode, setAgentCode] = useState("");
-    const [registrationResult, setRegistrationResult] = useState<any>(null);
+    const [registrationResult, setRegistrationResult] = useState<RegistrationResult | null>(null);
 
-    // Initial Load (Text only)
+    // Set once the saved text is restored, so the save effect below cannot
+    // overwrite it with the empty initial state first.
+    const restored = useRef(false);
+
+    // Initial Load (Text only). Deferred a tick so restoring does not set state
+    // synchronously inside the effect.
     useEffect(() => {
-        const saved = localStorage.getItem("registerState_text");
-        if (saved) {
-            try {
-                const data = JSON.parse(saved);
-                if (data.phone) setPhone(data.phone);
-                if (data.imei) setImei(data.imei);
-                if (data.brand) setBrand(data.brand);
-                if (data.model) setModel(data.model);
-                if (data.devicePrice) setDevicePrice(data.devicePrice);
-                if (data.deviceType) setDeviceType(data.deviceType);
-                if (data.packageType) setPackageType(data.packageType);
-                if (data.packagePrice) setPackagePrice(Number(data.packagePrice) || 0);
-                if (data.firstName) setFirstName(data.firstName);
-                if (data.lastName) setLastName(data.lastName);
-                if (data.idCard) setIdCard(data.idCard);
-                if (data.email) setEmail(data.email);
-                if (data.postCode) setPostCode(data.postCode);
-                if (data.province) setProvince(data.province);
-                if (data.district) setDistrict(data.district);
-                if (data.subDistrict) setSubDistrict(data.subDistrict);
-                if (data.addressDetails) setAddressDetails(data.addressDetails);
-                if (data.agentCode) setAgentCode(data.agentCode);
-            } catch (e) {
-                console.error("Error loading registerState_text", e);
+        const timer = window.setTimeout(() => {
+            const saved = localStorage.getItem("registerState_text");
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    if (data.phone) setPhone(data.phone);
+                    if (data.imei) setImei(data.imei);
+                    if (data.brand) setBrand(data.brand);
+                    if (data.model) setModel(data.model);
+                    if (data.devicePrice) setDevicePrice(data.devicePrice);
+                    if (data.deviceType) setDeviceType(data.deviceType);
+                    if (data.packageType) setPackageType(data.packageType);
+                    if (data.packagePrice) setPackagePrice(Number(data.packagePrice) || 0);
+                    if (data.firstName) setFirstName(data.firstName);
+                    if (data.lastName) setLastName(data.lastName);
+                    if (data.idCard) setIdCard(data.idCard);
+                    if (data.email) setEmail(data.email);
+                    if (data.postCode) setPostCode(data.postCode);
+                    if (data.province) setProvince(data.province);
+                    if (data.district) setDistrict(data.district);
+                    if (data.subDistrict) setSubDistrict(data.subDistrict);
+                    if (data.addressDetails) setAddressDetails(data.addressDetails);
+                    if (data.agentCode) setAgentCode(data.agentCode);
+                } catch (e) {
+                    console.error("Error loading registerState_text", e);
+                }
             }
-        }
+            restored.current = true;
+        }, 0);
+        return () => window.clearTimeout(timer);
     }, []);
 
     // Save Text only (Avoid images in localStorage because they are huge)
     useEffect(() => {
+        if (!restored.current) return;
         const state = {
             phone, imei, brand, model, devicePrice, deviceType, packageType, packagePrice,
             firstName, lastName, idCard, email, postCode, province, district, subDistrict, addressDetails, agentCode

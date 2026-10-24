@@ -4,10 +4,22 @@ import { useRouter } from "next/navigation";
 import { useRegister } from "../RegisterContext";
 import { supportsDeviceType } from "@/lib/coverage-plan";
 
+interface PlanOption {
+    _id: string;
+    name: string;
+    subTitle?: string;
+    durationText?: string;
+    durationUnit?: string;
+    priceMultiplier: number;
+    highlights?: string[];
+    isActive: boolean;
+    deviceType?: string;
+}
+
 export default function Step3() {
     const router = useRouter();
     const { devicePrice, deviceType, packageType, setPackageType, setPackagePrice } = useRegister();
-    const [packages, setPackages] = React.useState<any[]>([]);
+    const [packages, setPackages] = React.useState<PlanOption[]>([]);
     const [loading, setLoading] = React.useState(true);
     const priceNum = Number(devicePrice) || 0;
 
@@ -20,7 +32,7 @@ export default function Step3() {
                 // An all-device plan is available alongside device-specific plans.
                 // If deviceType is null/empty, we default to Smartphone for backward compatibility
                 const currentType = deviceType || "Smartphone";
-                setPackages(data.filter((p: any) => p.isActive && supportsDeviceType(p.deviceType, currentType)));
+                setPackages(data.filter((p: PlanOption) => p.isActive && supportsDeviceType(p.deviceType, currentType)));
             } catch (err) {
                 console.error(err);
             } finally {

@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import AgentWithdrawal from "@/models/AgentWithdrawal";
+import AgentWithdrawal, { type IAgentWithdrawal, type WithdrawalStatus } from "@/models/AgentWithdrawal";
 // Registered for populate().
 import "@/models/Agent";
 import "@/models/AdminUser";
 import { checkPermission } from "@/lib/check-permission";
 
 const STATUSES = ["pending", "paid", "rejected"];
+
+interface StatusTotal {
+    _id: WithdrawalStatus;
+    count: number;
+    total: number;
+}
 
 export async function GET(req: NextRequest) {
     try {
@@ -28,11 +34,11 @@ export async function GET(req: NextRequest) {
         ]);
 
         const summary = Object.fromEntries(STATUSES.map((s) => {
-            const row = counts.find((c: any) => c._id === s);
+            const row = counts.find((c: StatusTotal) => c._id === s);
             return [s, { count: row?.count || 0, total: row?.total || 0 }];
         }));
 
-        const rows = withdrawals.map((w: any) => ({
+        const rows = withdrawals.map((w: Pick<IAgentWithdrawal, "slip">) => ({
             ...w,
             hasSlip: !!w.slip?.relativePath,
             slip: undefined,

@@ -6,6 +6,27 @@ import { ArrowLeft, ShieldCheck, Trash2, ListChecks, Save, Activity } from "luci
 import Link from "next/link";
 import { COVERAGE_PLAN_DEVICE_OPTIONS } from "@/lib/coverage-plan";
 
+type QuotaForm = { name: string; maxLimit: number; icon: string };
+
+interface PlanForm {
+    name: string;
+    subTitle: string;
+    durationText: string;
+    coverageDurationMonths: number;
+    durationUnit: string;
+    priceMultiplier: number;
+    highlights: string[];
+    quotas: QuotaForm[];
+    order: number;
+    isActive: boolean;
+    deviceType: string;
+    // Arrive with the loaded plan and are stripped again before saving.
+    _id?: string;
+    createdAt?: string;
+    updatedAt?: string;
+    __v?: number;
+}
+
 export default function EditCoveragePlan() {
     const router = useRouter();
     const params = useParams();
@@ -13,7 +34,7 @@ export default function EditCoveragePlan() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [form, setForm] = useState({
+    const [form, setForm] = useState<PlanForm>({
         name: "",
         subTitle: "",
         durationText: "",
@@ -21,7 +42,7 @@ export default function EditCoveragePlan() {
         durationUnit: "",
         priceMultiplier: 0.05,
         highlights: [""],
-        quotas: [] as { name: string, maxLimit: number, icon: string }[],
+        quotas: [],
         order: 0,
         isActive: true,
         deviceType: "Smartphone"
@@ -58,7 +79,7 @@ export default function EditCoveragePlan() {
         setSaving(true);
         try {
             // Strip internal fields before sending to API
-            const { _id, createdAt, updatedAt, __v, ...saveData } = form as any;
+            const { _id, createdAt, updatedAt, __v, ...saveData } = form;
 
             const res = await fetch(`/api/coverage-plans/${id}`, {
                 method: "PUT",
@@ -89,9 +110,9 @@ export default function EditCoveragePlan() {
 
     const addQuota = () => setForm({ ...form, quotas: [...(form.quotas || []), { name: "", maxLimit: 1, icon: "Settings" }] });
     const removeQuota = (index: number) => setForm({ ...form, quotas: (form.quotas || []).filter((_, i) => i !== index) });
-    const updateQuota = (index: number, field: string, value: string | number) => {
+    const updateQuota = <K extends keyof QuotaForm>(index: number, field: K, value: QuotaForm[K]) => {
         const updated = [...(form.quotas || [])];
-        (updated[index] as any)[field] = value;
+        updated[index][field] = value;
         setForm({ ...form, quotas: updated });
     };
 
@@ -206,7 +227,7 @@ export default function EditCoveragePlan() {
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ประเภทอุปกรณ์ (Device Type)</label>
                         <select
                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 focus:border-blue-500 outline-none transition-all font-bold text-slate-900 appearance-none cursor-pointer"
-                            value={(form as any).deviceType || "Smartphone"}
+                            value={form.deviceType || "Smartphone"}
                             onChange={e => setForm({ ...form, deviceType: e.target.value })}
                             required
                         >
