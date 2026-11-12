@@ -6,6 +6,7 @@ import { NextRequest } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
 import AdminUser from "@/models/AdminUser";
 import AdminLog from "@/models/AdminLog";
+import Branch from "@/models/Branch";
 import Counter from "@/models/Counter";
 import IntegrationApiKey from "@/models/IntegrationApiKey";
 import RepairCustomer from "@/models/RepairCustomer";
@@ -49,7 +50,13 @@ function assertTestDbName() {
 export async function connectTestDb() {
     await connectToDatabase();
     assertTestDbName();
-    await Promise.all([AdminUser, AdminLog, Counter, IntegrationApiKey, RepairCustomer, RepairJob, Role].map((model) => model.init()));
+    await Promise.all([AdminUser, AdminLog, Branch, Counter, IntegrationApiKey, RepairCustomer, RepairJob, Role].map((model) => model.init()));
+}
+
+/** An active branch. posBranchIds routes POS jobs sent with those branch ids/codes to it. */
+export async function createBranch(name = `สาขา ${randomBytes(2).toString("hex")}`, posBranchIds: string[] = []) {
+    const branch = await Branch.create({ name, location: "กรุงเทพฯ", isActive: true, posBranchIds });
+    return { branch, id: String(branch._id) };
 }
 
 /** Empty every collection in the test database (documents only; indexes stay). */
@@ -59,13 +66,23 @@ export async function clearTestDb() {
     await Promise.all(collections.map((collection) => collection.deleteMany({})));
 }
 
-export async function createAdmin(role: string, username = `${role}_${randomBytes(3).toString("hex")}`) {
+/**
+ * An admin user plus a signed session token. Roles without view_all_branches
+ * only see repair jobs of `branchId` (home branch) and `branchIds`.
+ */
+export async function createAdmin(
+    role: string,
+    username = `${role}_${randomBytes(3).toString("hex")}`,
+    branches: { branchId?: string; branchIds?: string[] } = {},
+) {
     const user = await AdminUser.create({
         username,
         password: randomBytes(12).toString("hex"),
         name: `Test ${role}`,
         role,
         email: `${username}@example.test`,
+        ...(branches.branchId ? { branchId: branches.branchId } : {}),
+        branchIds: branches.branchIds ?? [],
     });
     const token = await new SignJWT({ id: String(user._id), username, role })
         .setProtectedHeader({ alg: "HS256" })

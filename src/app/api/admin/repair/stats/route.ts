@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import RepairJob from "@/models/RepairJob";
-import { checkPermission } from "@/lib/check-permission";
+import { requireRepairAccess, scopeFilter } from "@/lib/repair/branch-scope";
 
 export async function GET(req: NextRequest) {
     try {
-        const { authorized, error } = await checkPermission(req, "view_repair_jobs");
-        if (!authorized) return error;
+        const access = await requireRepairAccess(req, "view_repair_jobs");
+        if (!access.ok) return access.error;
+        // Basic branch scoping only; the per-branch dashboard replaces this route's figures.
+        const scoped = scopeFilter(access.scope);
 
         await dbConnect();
 
         // 1. Basic Counts
-        const totalJobs = await RepairJob.countDocuments();
-        const pendingJobs = await RepairJob.countDocuments({ status: { $in: ["pending", "checking", "waiting_parts"] } });
-        const readyPickup = await RepairJob.countDocuments({ status: "ready_pickup" });
-        const completedJobs = await RepairJob.countDocuments({ status: "completed" });
+        const totalJobs = await RepairJob.countDocuments(scoped);
+        const pendingJobs = await RepairJob.countDocuments({ ...scoped, status: { $in: ["pending", "checking", "waiting_parts"] } });
+        const readyPickup = await RepairJob.countDocuments({ ...scoped, status: "ready_pickup" });
+        const completedJobs = await RepairJob.countDocuments({ ...scoped, status: "completed" });
 
         // 2. Revenue Aggregation (Daily & Monthly)
         const startOfToday = new Date();
@@ -25,7 +27,7 @@ export async function GET(req: NextRequest) {
         startOfThisMonth.setHours(0, 0, 0, 0);
 
         const dailyStats = await RepairJob.aggregate([
-            { $match: { createdAt: { $gte: startOfToday } } },
+            { $match: { ...scoped, createdAt: { $gte: startOfToday } } },
             { $group: { 
                 _id: null, 
                 revenue: { $sum: "$totalPrice" }, 
@@ -35,7 +37,7 @@ export async function GET(req: NextRequest) {
         ]);
 
         const monthlyStats = await RepairJob.aggregate([
-            { $match: { createdAt: { $gte: startOfThisMonth } } },
+            { $match: { ...scoped, createdAt: { $gte: startOfThisMonth } } },
             { $group: { 
                 _id: null, 
                 revenue: { $sum: "$totalPrice" }, 
@@ -46,6 +48,7 @@ export async function GET(req: NextRequest) {
 
         // 3. Status Breakdown for Chart/List
         const statusGroups = await RepairJob.aggregate([
+            { $match: scoped },
             { $group: { _id: "$status", count: { $sum: 1 } } }
         ]);
 

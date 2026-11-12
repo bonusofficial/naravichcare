@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { MAX_MONEY } from "./costs";
+import { DATA_BACKUP, type DataBackupStatus } from "./options";
 import { isRepairStatus } from "./status";
 
 /**
@@ -44,6 +45,26 @@ function stringList(body: Record<string, unknown>, field: string, maxItems: numb
     return raw as string[];
 }
 
+function dateField(body: Record<string, unknown>, field: string): Date | null | undefined {
+    const raw = body[field];
+    if (raw === undefined) return undefined;
+    if (raw === null || raw === "") return null;
+    if (typeof raw !== "string") throw new AdminValidationError(`${field} ไม่ถูกต้อง`, [field]);
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) throw new AdminValidationError(`${field} ไม่ถูกต้อง`, [field]);
+    return date;
+}
+
+function dataBackupStatus(body: Record<string, unknown>, required: boolean): DataBackupStatus | undefined {
+    const raw = body.dataBackupStatus;
+    if (raw === undefined || raw === null || raw === "") {
+        if (required) throw new AdminValidationError("กรุณาเลือกสถานะข้อมูลในเครื่องลูกค้า", ["dataBackupStatus"]);
+        return undefined;
+    }
+    if (!DATA_BACKUP.is(raw)) throw new AdminValidationError("สถานะข้อมูลในเครื่องไม่ถูกต้อง", ["dataBackupStatus"]);
+    return raw;
+}
+
 // ---------------------------------------------------------------------------
 // POST /api/admin/repair/jobs
 // ---------------------------------------------------------------------------
@@ -52,6 +73,7 @@ const CREATE_FIELDS = [
     "deviceType", "brand", "deviceModel", "serialNumber", "imei", "color",
     "deviceCondition", "accessories", "jobType", "reportedSymptom", "internalNotes",
     "customer", "newCustomer",
+    "branchId", "appointmentDate", "dataBackupStatus",
 ] as const;
 const NEW_CUSTOMER_FIELDS = ["firstName", "lastName", "phone", "lineId", "address", "notes"] as const;
 
@@ -59,6 +81,10 @@ export interface AdminCreateInput {
     job: Record<string, unknown>;
     customerId: string | null;
     newCustomer: Record<string, string> | null;
+    /** Receiving branch as sent; the route checks it against the caller's scope. */
+    branchId: string | null;
+    /** The route stores it with the caller's name and the time. */
+    dataBackupStatus: DataBackupStatus;
 }
 
 export function parseAdminCreate(body: Record<string, unknown>): AdminCreateInput {
@@ -88,6 +114,17 @@ export function parseAdminCreate(body: Record<string, unknown>): AdminCreateInpu
         internalNotes: text(body, "internalNotes", 4000) ?? "",
         accessories: stringList(body, "accessories", 30, 100) ?? [],
     };
+    const appointmentDate = dateField(body, "appointmentDate");
+    if (appointmentDate) job.appointmentDate = appointmentDate;
+
+    let branchId: string | null = null;
+    if (body.branchId !== undefined && body.branchId !== null && body.branchId !== "") {
+        if (typeof body.branchId !== "string" || !mongoose.isValidObjectId(body.branchId)) {
+            throw new AdminValidationError("สาขาไม่ถูกต้อง", ["branchId"]);
+        }
+        branchId = body.branchId;
+    }
+    const backup = dataBackupStatus(body, true)!;
 
     let customerId: string | null = null;
     if (body.customer !== undefined && body.customer !== null && body.customer !== "") {
@@ -121,7 +158,7 @@ export function parseAdminCreate(body: Record<string, unknown>): AdminCreateInpu
     }
 
     if (!customerId && !newCustomer) throw new AdminValidationError("กรุณาระบุข้อมูลลูกค้า (Customer info required)", ["customer"]);
-    return { job, customerId, newCustomer };
+    return { job, customerId, newCustomer, branchId, dataBackupStatus: backup };
 }
 
 // ---------------------------------------------------------------------------
@@ -135,6 +172,7 @@ const PATCH_FIELDS = [
     "warrantyStartDate", "warrantyExpireDate", "warrantyType", "voidStickerCode",
     "photosBefore", "photosAfter",
     "color", "deviceCondition", "accessories",
+    "appointmentDate", "dataBackupStatus",
 ] as const;
 
 // Sent by older copies of the admin UI. adminUsername is ignored because the
@@ -151,6 +189,8 @@ export interface AdminPatchInput {
     statusNote: string;
     costs?: { laborCost?: number; partsCost?: number; partsPurchaseCost?: number };
     set: Record<string, unknown>;
+    /** The route stores it with the caller's name and the time. */
+    dataBackupStatus?: DataBackupStatus;
 }
 
 function money(body: Record<string, unknown>, field: string): number | undefined {
@@ -161,16 +201,6 @@ function money(body: Record<string, unknown>, field: string): number | undefined
         throw new AdminValidationError(`${field} ต้องเป็นจำนวนเงินตั้งแต่ 0 ถึง ${MAX_MONEY.toLocaleString()}`, [field]);
     }
     return Math.round(value * 100) / 100;
-}
-
-function dateField(body: Record<string, unknown>, field: string): Date | null | undefined {
-    const raw = body[field];
-    if (raw === undefined) return undefined;
-    if (raw === null || raw === "") return null;
-    if (typeof raw !== "string") throw new AdminValidationError(`${field} ไม่ถูกต้อง`, [field]);
-    const date = new Date(raw);
-    if (Number.isNaN(date.getTime())) throw new AdminValidationError(`${field} ไม่ถูกต้อง`, [field]);
-    return date;
 }
 
 export function parseAdminPatch(body: Record<string, unknown>): AdminPatchInput {
@@ -209,7 +239,7 @@ export function parseAdminPatch(body: Record<string, unknown>): AdminPatchInput 
         else throw new AdminValidationError("assignedTechnician ไม่ถูกต้อง", ["assignedTechnician"]);
     }
 
-    for (const field of ["warrantyStartDate", "warrantyExpireDate"] as const) {
+    for (const field of ["warrantyStartDate", "warrantyExpireDate", "appointmentDate"] as const) {
         const value = dateField(body, field);
         if (value !== undefined) set[field] = value;
     }
@@ -224,5 +254,5 @@ export function parseAdminPatch(body: Record<string, unknown>): AdminPatchInput 
         set[field] = photos;
     }
 
-    return { status, statusNote, costs, set };
+    return { status, statusNote, costs, set, dataBackupStatus: dataBackupStatus(body, false) };
 }

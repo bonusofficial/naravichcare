@@ -5,6 +5,7 @@ import AdminUser from "@/models/AdminUser";
 import Branch from "@/models/Branch";
 import { checkPermission } from "@/lib/check-permission";
 import { validatePassword } from "@/lib/password-policy";
+import { validateBranchIds } from "@/lib/branches";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -18,7 +19,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         const updatedUser = await AdminUser.findById(id);
         if (!updatedUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-        const { name, role, email, isActive, branchId, password } = data;
+        const { name, role, email, isActive, branchId, branchIds, password } = data;
 
         if (branchId && (!mongoose.isValidObjectId(branchId) || !(await Branch.exists({ _id: branchId, isActive: true })))) {
             return NextResponse.json({ error: "Branch not found or inactive" }, { status: 400 });
@@ -30,6 +31,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         if (typeof role === "string") updatedUser.role = role;
         if (typeof email === "string") updatedUser.email = email;
         if (typeof isActive === "boolean") updatedUser.isActive = isActive;
+        if (branchIds !== undefined) {
+            const validated = await validateBranchIds(branchIds);
+            if (!validated.ok) return NextResponse.json({ error: validated.error }, { status: 400 });
+            updatedUser.branchIds = validated.ids;
+        }
         if (branchId === "" || branchId === null) updatedUser.branchId = undefined;
         else if (typeof branchId === "string" && mongoose.isValidObjectId(branchId)) {
             updatedUser.branchId = new mongoose.Types.ObjectId(branchId);
@@ -52,7 +58,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
             description: `แก้ไขข้อมูลแอดมิน: ${updatedUser.name} (User: ${updatedUser.username})`,
             targetId: updatedUser._id.toString(),
             targetType: "AdminUser",
-            details: { name: updatedUser.name, role: updatedUser.role, isActive: updatedUser.isActive },
+            details: { name: updatedUser.name, role: updatedUser.role, isActive: updatedUser.isActive, branchId: updatedUser.branchId, branchIds: updatedUser.branchIds },
             req
         });
 

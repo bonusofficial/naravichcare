@@ -20,8 +20,8 @@ type CurrentAdmin = Awaited<ReturnType<typeof getCurrentAdmin>>;
 
 // Discriminated so `if (!authorized) return error;` is known to return a response.
 export type PermissionCheck =
-  | { authorized: true; user: NonNullable<CurrentAdmin>; error?: undefined }
-  | { authorized: false; user: CurrentAdmin; error: NextResponse };
+  | { authorized: true; user: NonNullable<CurrentAdmin>; permissions: string[]; error?: undefined }
+  | { authorized: false; user: CurrentAdmin; permissions?: undefined; error: NextResponse };
 
 /**
  * Check if user has any of the given permissions.
@@ -69,7 +69,7 @@ export async function checkAnyPermission(
     };
   }
 
-  return { authorized: true, user };
+  return { authorized: true, user, permissions };
 }
 
 /**

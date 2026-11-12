@@ -3,7 +3,10 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Building2, Check, MapPin, Pencil, Phone, Plus, Trash2, X } from "lucide-react";
 
-interface Branch { _id: string; name: string; location: string; phone?: string; isActive: boolean }
+interface Branch { _id: string; name: string; location: string; phone?: string; isActive: boolean; posBranchIds?: string[] }
+
+// POS branch ids are typed as one comma-separated field.
+const splitPosIds = (value: string) => value.split(",").map((id) => id.trim()).filter(Boolean);
 
 export default function BranchesPage() {
     const [branches, setBranches] = useState<Branch[]>([]);
@@ -11,7 +14,7 @@ export default function BranchesPage() {
     const [error, setError] = useState("");
     // Which card is in edit mode, plus the draft values being typed into it.
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [editForm, setEditForm] = useState({ name: "", location: "", phone: "" });
+    const [editForm, setEditForm] = useState({ name: "", location: "", phone: "", posBranchIds: "" });
     const [saving, setSaving] = useState(false);
 
     const load = useCallback(async () => {
@@ -41,7 +44,7 @@ export default function BranchesPage() {
     const startEdit = (branch: Branch) => {
         setError("");
         setEditingId(branch._id);
-        setEditForm({ name: branch.name, location: branch.location, phone: branch.phone || "" });
+        setEditForm({ name: branch.name, location: branch.location, phone: branch.phone || "", posBranchIds: (branch.posBranchIds || []).join(", ") });
     };
     const cancelEdit = () => { setEditingId(null); setError(""); };
     const saveEdit = async (branch: Branch) => {
@@ -53,7 +56,7 @@ export default function BranchesPage() {
         const response = await fetch(`/api/admin/branches/${branch._id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: editForm.name.trim(), location: editForm.location.trim(), phone: editForm.phone.trim() }),
+            body: JSON.stringify({ name: editForm.name.trim(), location: editForm.location.trim(), phone: editForm.phone.trim(), posBranchIds: splitPosIds(editForm.posBranchIds) }),
         });
         const payload = await response.json();
         setSaving(false);
@@ -64,7 +67,7 @@ export default function BranchesPage() {
         <div className="mx-auto max-w-6xl space-y-6">
             <div>
                 <h1 className="text-2xl font-black text-slate-900">จัดการสาขา</h1>
-                <p className="text-sm text-slate-500">กำหนดสาขาสำหรับพนักงานและเอกสารซื้อคืน</p>
+                <p className="text-sm text-slate-500">กำหนดสาขาสำหรับพนักงาน งานซ่อม และเอกสารซื้อคืน ผูกรหัสสาขาใน Web POS เพื่อให้งานซ่อมจาก POS เข้าสาขาที่ถูกต้อง</p>
             </div>
 
             {error && <div className="rounded-xl bg-red-50 p-4 text-sm font-bold text-red-600">{error}</div>}
@@ -105,12 +108,24 @@ export default function BranchesPage() {
                                                 placeholder="เบอร์โทร"
                                                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                                             />
+                                            <label className="block text-[11px] font-semibold text-slate-500">
+                                                รหัสสาขาใน Web POS (ใส่ได้หลายรหัส คั่นด้วยจุลภาค)
+                                                <input
+                                                    value={editForm.posBranchIds}
+                                                    onChange={(event) => setEditForm({ ...editForm, posBranchIds: event.target.value })}
+                                                    placeholder="เช่น 6f1c2a52-6a1e-..., BKK01"
+                                                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal text-slate-900"
+                                                />
+                                            </label>
                                         </div>
                                     ) : (
                                         <div className="min-w-0">
                                             <h2 className="font-black text-slate-800">{branch.name}</h2>
                                             <p className="mt-1 flex items-center gap-1 text-xs text-slate-400"><MapPin size={12} />{branch.location}</p>
                                             {branch.phone && <p className="mt-1 flex items-center gap-1 text-xs text-slate-400"><Phone size={12} />{branch.phone}</p>}
+                                            <p className="mt-1 break-all text-[11px] text-slate-400">
+                                                POS: {branch.posBranchIds?.length ? branch.posBranchIds.join(", ") : "ยังไม่ผูกกับสาขาใน POS"}
+                                            </p>
                                         </div>
                                     )}
                                 </div>

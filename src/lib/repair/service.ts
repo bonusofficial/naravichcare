@@ -4,6 +4,7 @@ import dbConnect from "@/lib/mongodb";
 import { recordAdminLog } from "@/lib/admin-log";
 import RepairJob, { type IRepairJob, type RepairStatusHistoryEntry } from "@/models/RepairJob";
 import RepairCustomer from "@/models/RepairCustomer";
+import Branch from "@/models/Branch";
 import { computeRepairCosts } from "./costs";
 import type { IntegrationCreateInput, IntegrationCustomerInput, SearchQuery } from "./integration-validation";
 import { canTransition, isRepairStatus, repairStatusLabel, toPosStatus, type RepairStatus } from "./status";
@@ -204,6 +205,16 @@ export function integrationActor(client: IntegrationClientRef): RepairActor {
     return { type: "integration", id: client.keyId, name: `integration:${client.name}` };
 }
 
+/**
+ * The branch a POS job belongs to. Admins map POS branches on the branch page
+ * (Branch.posBranchIds), by the POS branch id or its branch code.
+ */
+export async function findBranchForPos(branchId?: string | null, branchCode?: string | null) {
+    const keys = [branchId, branchCode].filter((key): key is string => typeof key === "string" && key.length > 0);
+    if (!keys.length) return null;
+    return Branch.findOne({ posBranchIds: { $in: keys } }).select("name").lean<{ _id: mongoose.Types.ObjectId; name: string }>();
+}
+
 export async function createIntegrationRepairJob(options: {
     input: IntegrationCreateInput;
     client: IntegrationClientRef;
@@ -229,12 +240,16 @@ export async function createIntegrationRepairJob(options: {
     const actor = integrationActor(client);
     const now = new Date();
     const { brand, deviceModel } = splitPosModel(input.model);
+    const branch = await findBranchForPos(input.branchId, input.branchCode);
     try {
         const saved = await saveNewRepairJob({
             ownerType: input.ownerType,
             source: INTEGRATION_SOURCE,
             externalRef: input.reference,
             ...(customerId ? { customer: customerId } : {}),
+            // Unmapped POS branches leave the job without a branch: only users
+            // who see all branches can find it until the branch is mapped.
+            ...(branch ? { branchId: branch._id, currentHolder: { kind: "branch", label: branch.name, branchId: branch._id } } : {}),
             deviceType: "Smartphone",
             brand,
             deviceModel,

@@ -143,6 +143,11 @@ export default function RepairJobsList() {
                                 <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold mt-2 uppercase tracking-tighter">
                                     <Calendar size={12} /> {new Date(job.receivedAt).toLocaleDateString()}
                                 </div>
+                                {job.branchId ? (
+                                    <span className="mt-1 text-[10px] font-bold text-slate-500">{job.branchId.name}</span>
+                                ) : (
+                                    <span className="mt-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">ยังไม่ผูกสาขา</span>
+                                )}
                             </div>
 
                             {/* Device & Client */}

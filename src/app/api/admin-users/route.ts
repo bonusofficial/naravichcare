@@ -6,6 +6,7 @@ import Branch from "@/models/Branch";
 import { checkPermission } from "@/lib/check-permission";
 import { validatePassword } from "@/lib/password-policy";
 import { isDuplicateKeyError } from "@/lib/errors";
+import { validateBranchIds } from "@/lib/branches";
 
 export async function GET(req: NextRequest) {
     try {
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
 
         await dbConnect();
         // Never return the bcrypt hash to the client.
-        const users = await AdminUser.find({}).select("-password").sort({ createdAt: -1 });
+        const users = await AdminUser.find({}).select("-password").populate("branchId", "name location").populate("branchIds", "name").sort({ createdAt: -1 });
         return NextResponse.json(users);
     } catch (error) {
         console.error("Failed to fetch admin users:", error);
@@ -37,6 +38,9 @@ export async function POST(req: NextRequest) {
         if (branchId && (!mongoose.isValidObjectId(branchId) || !(await Branch.exists({ _id: branchId, isActive: true })))) {
             return NextResponse.json({ error: "Branch not found or inactive" }, { status: 400 });
         }
+        const branchIds = await validateBranchIds(data.branchIds);
+        if (!branchIds.ok) return NextResponse.json({ error: branchIds.error }, { status: 400 });
+        data.branchIds = branchIds.ids;
 
         const newUser = await AdminUser.create(data);
 

@@ -5,11 +5,11 @@ import RepairJob from "@/models/RepairJob";
 
 import { sendLineFlexMessage } from "@/lib/line-messaging";
 import { recordAdminLog } from "@/lib/admin-log";
-import { checkPermission } from "@/lib/check-permission";
 import { assertClaimEligible, ClaimEligibilityError } from "@/lib/claim-eligibility";
 import { AdminValidationError, parseAdminPatch } from "@/lib/repair/admin-validation";
+import { ADMIN_JOB_POPULATE, jobNotFound, requireRepairAccess, scopedJobFilter } from "@/lib/repair/branch-scope";
 import { computeRepairCosts } from "@/lib/repair/costs";
-import { RepairWorkflowError, transitionRepairJob, type RepairActor } from "@/lib/repair/service";
+import { RepairWorkflowError, transitionRepairJob } from "@/lib/repair/service";
 import { canTransition, repairStatusLabel } from "@/lib/repair/status";
 
 interface Context {
@@ -25,17 +25,15 @@ function workflowErrorResponse(error: unknown): NextResponse | null {
 
 export async function GET(req: NextRequest, { params }: Context) {
     try {
-        const { authorized, error } = await checkPermission(req, "view_repair_jobs");
-        if (!authorized) return error;
+        const access = await requireRepairAccess(req, "view_repair_jobs");
+        if (!access.ok) return access.error;
 
         await dbConnect();
         const { id } = await params;
-        if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Job not found" }, { status: 404 });
-        const job = await RepairJob.findById(id).populate("customer").populate("assignedTechnician", "name username");
-
-        if (!job) {
-            return NextResponse.json({ error: "Job not found" }, { status: 404 });
-        }
+        const filter = scopedJobFilter(access.scope, id);
+        if (!filter) return jobNotFound();
+        const job = await RepairJob.findOne(filter).populate(ADMIN_JOB_POPULATE);
+        if (!job) return jobNotFound();
 
         return NextResponse.json(job);
     } catch (error) {
@@ -58,22 +56,22 @@ const getStatusColor = (status: string) => {
 
 export async function PATCH(req: NextRequest, { params }: Context) {
     try {
-        const { authorized, error, user } = await checkPermission(req, "edit_repair_jobs");
-        if (!authorized) return error;
+        const access = await requireRepairAccess(req, "edit_repair_jobs");
+        if (!access.ok) return access.error;
+        const { actor } = access;
 
         await dbConnect();
         const { id } = await params;
-        if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+        const filter = scopedJobFilter(access.scope, id);
+        if (!filter) return jobNotFound();
         const body = await req.json().catch(() => null);
         if (!body || typeof body !== "object" || Array.isArray(body)) {
             return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
         }
         const input = parseAdminPatch(body);
 
-        const currentJob = await RepairJob.findById(id).select("-photosBefore -photosAfter").lean();
-        if (!currentJob) {
-            return NextResponse.json({ error: "Job not found" }, { status: 404 });
-        }
+        const currentJob = await RepairJob.findOne(filter).select("-photosBefore -photosAfter").lean();
+        if (!currentJob) return jobNotFound();
         // Photos are large inline images; only their counts are needed to log uploads.
         const [photoCounts] = await RepairJob.aggregate<{ photosBefore: number; photosAfter: number }>([
             { $match: { _id: new mongoose.Types.ObjectId(id) } },
@@ -83,7 +81,6 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         if (currentJob.jobType === "claim") await assertClaimEligible({ imei: currentJob.imei });
 
         // The actor is whoever holds the verified session, never a name the client sends.
-        const actor: RepairActor = { type: "admin", id: String(user._id), name: user.username };
         const logActor = { id: actor.id, name: actor.name };
         const jobTitle = `${currentJob.jobId} (${currentJob.brand} ${currentJob.deviceModel})`;
         const statusChanged = input.status !== undefined && input.status !== currentJob.status;
@@ -96,6 +93,10 @@ export async function PATCH(req: NextRequest, { params }: Context) {
 
         // Totals are always derived on the server from the three cost inputs.
         const set: Record<string, unknown> = { ...input.set };
+        const backupChanged = input.dataBackupStatus !== undefined && input.dataBackupStatus !== currentJob.dataBackup?.status;
+        if (backupChanged) {
+            set.dataBackup = { status: input.dataBackupStatus, recordedBy: actor.name, recordedById: actor.id, recordedAt: new Date() };
+        }
         const inc: Record<string, number> = {};
         let costsChanged = false;
         if (input.costs) {
@@ -122,7 +123,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
             await RepairJob.updateOne({ _id: id }, { $set: set, ...(Object.keys(inc).length ? { $inc: inc } : {}) }, { runValidators: true });
         }
 
-        const updatedJob = await RepairJob.findById(id).populate("customer").populate("assignedTechnician", "name username");
+        const updatedJob = await RepairJob.findById(id).populate(ADMIN_JOB_POPULATE);
 
         // ADMIN ACTIVITY LOGGING
         // 1. Log Status Changes
@@ -172,7 +173,20 @@ export async function PATCH(req: NextRequest, { params }: Context) {
             }
         }
 
-        // 4. Log Warranty Updates
+        // 4. Log appointment and device-data changes
+        if (input.set.appointmentDate !== undefined || backupChanged) {
+            await recordAdminLog({
+                req,
+                actor: logActor,
+                action: "update_job_intake",
+                description: `อัปเดตวันนัด/สถานะข้อมูลในเครื่อง งาน ${jobTitle}`,
+                targetId: id,
+                targetType: "RepairJob",
+                details: { appointmentDate: input.set.appointmentDate, dataBackupStatus: backupChanged ? input.dataBackupStatus : undefined },
+            });
+        }
+
+        // 5. Log Warranty Updates
         if (input.set.warrantyExpireDate !== undefined || input.set.voidStickerCode !== undefined) {
             await recordAdminLog({
                 req,
@@ -196,14 +210,16 @@ export async function PATCH(req: NextRequest, { params }: Context) {
 
 export async function DELETE(req: NextRequest, { params }: Context) {
     try {
-        const { authorized, error, user } = await checkPermission(req, "delete_repair_jobs");
-        if (!authorized) return error;
+        const access = await requireRepairAccess(req, "delete_repair_jobs");
+        if (!access.ok) return access.error;
+        const { user } = access;
 
         await dbConnect();
         const { id } = await params;
-        if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Job not found" }, { status: 404 });
-        const job = await RepairJob.findById(id).select("jobId jobType imei source externalRef").lean();
-        if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+        const filter = scopedJobFilter(access.scope, id);
+        if (!filter) return jobNotFound();
+        const job = await RepairJob.findOne(filter).select("jobId jobType imei source externalRef").lean();
+        if (!job) return jobNotFound();
         // The POS tracks these jobs by id; deleting one would orphan its record there.
         if (job.source === "pos") {
             return NextResponse.json({

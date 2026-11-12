@@ -1,20 +1,16 @@
 "use client";
 
 import React, { useEffect, useState, use, useRef } from "react";
-import { 
-    Wrench, 
-    User, 
-    Smartphone, 
-    ArrowLeft, 
-    Loader2, 
-    CheckCircle, 
+import {
+    User,
+    Smartphone,
+    ArrowLeft,
+    Loader2,
+    CheckCircle,
     AlertCircle,
     ChevronRight,
     Save,
-    MapPin,
-    Phone,
     Printer,
-    ShieldCheck,
     ImagePlus,
     Receipt,
     Upload,
@@ -22,7 +18,16 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { allowedNextStatuses } from "@/lib/repair/status";
-import type { RepairJobView } from "@/lib/repair/types";
+import type { RepairJobView, RepairPrintRequest } from "@/lib/repair/types";
+import QuotePrint from "@/components/admin/repair/QuotePrint";
+import ReceiptPrint from "@/components/admin/repair/ReceiptPrint";
+import HandoverPrint from "@/components/admin/repair/HandoverPrint";
+import IntakeSection from "@/components/admin/repair/IntakeSection";
+import CustodySection from "@/components/admin/repair/CustodySection";
+import QuoteApprovalSection from "@/components/admin/repair/QuoteApprovalSection";
+import PaymentsSection from "@/components/admin/repair/PaymentsSection";
+import QcSection from "@/components/admin/repair/QcSection";
+import HandoverSection from "@/components/admin/repair/HandoverSection";
 
 export default function RepairJobDetail({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
@@ -50,8 +55,8 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const [photoType, setPhotoType] = useState<"before" | "after">("before");
 
-    // Print State
-    const [printMode, setPrintMode] = useState<"quote" | "receipt">("quote");
+    // Print State: which document the hidden print area renders
+    const [print, setPrint] = useState<RepairPrintRequest>({ mode: "quote" });
 
     // Modal States
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -237,9 +242,16 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
         }
     };
 
-    const handlePrint = (mode: "quote" | "receipt") => {
-        setPrintMode(mode);
+    const handlePrint = (request: RepairPrintRequest) => {
+        setPrint(request);
         setTimeout(() => window.print(), 100);
+    };
+
+    // Section components report the job the API returned after a change.
+    const handleSectionChanged = (updated: RepairJobView) => {
+        setJob(updated);
+        setShowSuccessToast(true);
+        setTimeout(() => setShowSuccessToast(false), 3000);
     };
 
     if (loading) return (
@@ -289,124 +301,11 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
             {/* Hidden File Input */}
             <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" />
 
-            {/* SHARED PRINTABLE AREA */}
+            {/* SHARED PRINTABLE AREA: hidden on screen, the only thing visible when printing */}
             <div id="printable-area" className="text-black bg-white">
-                {/* Header Section */}
-                <div className="flex justify-between items-start border-b-4 border-slate-900 pb-6 mb-8 text-black">
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                             <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white">
-                                 <Wrench size={24} />
-                             </div>
-                             <h1 className="text-3xl font-black tracking-tighter">NAVAVICH CARE</h1>
-                        </div>
-                        <p className="text-[12px] font-black uppercase tracking-[0.3em] text-slate-500">Service Center & Claims Management</p>
-                        <div className="flex flex-col gap-1 mt-4 text-[11px] font-bold text-slate-700">
-                             <div className="flex items-center gap-2"><MapPin size={12}/> กรุงเทพมหานคร (Bangkok, Thailand)</div>
-                             <div className="flex items-center gap-2"><Phone size={12}/> 0XX-XXX-XXXX | LINE: @navavich_care</div>
-                        </div>
-                    </div>
-                    <div className="text-right flex flex-col items-end">
-                        <div className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black text-3xl mb-3">
-                             {printMode === "receipt" ? "RECEIPT" : (job.totalPrice > 0 ? "QUOTATION" : "JOB SHEET")}
-                        </div>
-                        <div className="space-y-1">
-                             <p className="text-[14px] font-black uppercase text-black">NO: <span className="text-blue-600">{job.jobId}</span></p>
-                             <p className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">Date: {new Date().toLocaleString('th-TH')}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Customer & Device */}
-                <div className="grid grid-cols-2 gap-6 mb-8 text-black">
-                    <div className="border-2 border-slate-100 rounded-2xl p-6 bg-slate-50/20">
-                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2 text-blue-600">CUSTOMER INFO</h3>
-                         {job.customer ? (
-                             <>
-                                 <p className="text-lg font-black text-slate-900 uppercase tracking-tight">{job.customer.firstName} {job.customer.lastName}</p>
-                                 <p className="text-[11px] font-bold text-slate-600 mt-1">TEL: {job.customer.phone}</p>
-                             </>
-                         ) : (
-                             <>
-                                 <p className="text-lg font-black text-slate-900 tracking-tight">เครื่องของร้าน (Store stock)</p>
-                                 {job.externalRef && <p className="text-[11px] font-bold text-slate-600 mt-1">POS REF: {job.externalRef}</p>}
-                             </>
-                         )}
-                    </div>
-                    <div className="border-2 border-slate-100 rounded-2xl p-6 bg-slate-50/20">
-                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2 text-blue-600">DEVICE DETAILS</h3>
-                         <p className="text-lg font-black text-slate-900 uppercase tracking-tight">{job.brand} {job.deviceModel}</p>
-                         <p className="text-[11px] font-bold text-slate-700 mt-1">S/N: {job.imei || "Not Found"}</p>
-                    </div>
-                </div>
-
-                {/* Content Table */}
-                <div className="border-2 border-slate-900 rounded-2xl overflow-hidden mb-8 text-black bg-white">
-                    <table className="w-full text-left text-[12px]">
-                         <thead className="bg-slate-900 text-white uppercase font-black">
-                             <tr>
-                                 <th className="px-6 py-4">Description / รายการแจ้ง</th>
-                                 <th className="px-6 py-4 text-right">Amount / จำนวนเงิน</th>
-                             </tr>
-                         </thead>
-                         <tbody className="font-bold text-slate-800">
-                             <tr className="border-b border-slate-100">
-                                 <td className="px-6 py-6">
-                                     <p className="text-slate-900 uppercase tracking-tight">Reported Problem: {job.reportedSymptom}</p>
-                                     {printMode === "receipt" && (
-                                         <p className="text-[10px] text-emerald-600 mt-2">Status: Repair Completed Successfully</p>
-                                     )}
-                                 </td>
-                                 <td className="px-6 py-6 text-right">
-                                     {job.totalPrice > 0 ? "฿ " + job.totalPrice.toLocaleString() : "-"}
-                                 </td>
-                             </tr>
-                             {job.totalPrice > 0 && (
-                                 <>
-                                     <tr className="border-b border-slate-100 text-[10px] text-slate-400">
-                                         <td className="px-6 py-3 shrink-0">Spare Parts & Service Labor (รวมอะไหล่และค่าแรง)</td>
-                                         <td className="px-6 py-3 text-right">฿ {job.totalPrice.toLocaleString()}</td>
-                                     </tr>
-                                     <tr className="bg-slate-50 text-slate-900 text-2xl font-black">
-                                         <td className="px-6 py-8">TOTAL AMOUNT (ราคาสุทธิ)</td>
-                                         <td className="px-6 py-8 text-right underline decoration-double decoration-slate-900 text-black">฿ {job.totalPrice.toLocaleString()}</td>
-                                     </tr>
-                                 </>
-                             )}
-                         </tbody>
-                    </table>
-                </div>
-
-                {/* Warranty Section for Receipt */}
-                {printMode === "receipt" && job.warrantyExpireDate && (
-                    <div className="mb-10 p-6 border-2 border-dashed border-slate-200 rounded-2xl bg-blue-50/30 text-black">
-                         <div className="flex items-center gap-3 mb-3">
-                              <ShieldCheck size={20} className="text-blue-600" />
-                              <h4 className="text-sm font-black text-slate-900 uppercase">Warranty Information / รายละเอียดการรับประกัน</h4>
-                         </div>
-                         <div className="grid grid-cols-2 gap-4 text-[11px] font-bold">
-                              <p className="text-slate-600">WARRANTY EXPIRES: <span className="text-red-600 underline">{new Date(job.warrantyExpireDate).toLocaleDateString('th-TH')}</span></p>
-                              <p className="text-slate-600 text-right">VOID CODE: <span className="text-blue-600">{job.voidStickerCode || "-"}</span></p>
-                         </div>
-                         <p className="text-[9px] text-slate-400 mt-4 leading-relaxed font-medium">
-                              * การรับประกันครอบคลุมเฉพาะอาการเดิมที่แจ้งซ่อมเท่านั้น หาก Void Sticker ฉีกขาดหรือตัวเครื่องโดนความชื้น ประกันจะสิ้นสุดทันที
-                         </p>
-                    </div>
-                )}
-
-                {/* Signature Section */}
-                <div className="grid grid-cols-2 gap-32 pt-16 border-t-2 border-slate-900 mt-auto text-black bg-white">
-                    <div className="text-center space-y-6">
-                         <div className="h-12 border-b-2 border-slate-300 w-full"></div>
-                         <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">Customer Signature / ลูกค้า</p>
-                    </div>
-                    <div className="text-center space-y-6">
-                         <div className="h-12 border-b-2 border-slate-300 w-full relative flex items-center justify-center">
-                              <span className="text-blue-600/10 font-black text-3xl uppercase tracking-[0.5em] absolute rotate-[-15deg]">NAVAVICH</span>
-                         </div>
-                         <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">Authorized Signature / เจ้าหน้าที่</p>
-                    </div>
-                </div>
+                {print.mode === "quote" && <QuotePrint job={job} />}
+                {print.mode === "receipt" && <ReceiptPrint job={job} paymentId={print.paymentId} />}
+                {print.mode === "handover" && <HandoverPrint job={job} />}
             </div>
 
             {/* NORMAL UI VIEW */}
@@ -423,11 +322,11 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                     </div>
                 </div>
                 <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-                    <button onClick={() => handlePrint("quote")} className="flex items-center gap-2 bg-slate-100 text-slate-600 px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all flex items-center gap-2">
+                    <button onClick={() => handlePrint({ mode: "quote" })} className="flex items-center gap-2 bg-slate-100 text-slate-600 px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all flex items-center gap-2">
                         <Printer size={14} /> พิมพ์ใบซ่อม/เสนอราคา
                     </button>
                     {job.status === "completed" && (
-                        <button onClick={() => handlePrint("receipt")} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2">
+                        <button onClick={() => handlePrint({ mode: "receipt" })} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2">
                             <Receipt size={14} /> พิมพ์ใบเสร็จ/ส่งงาน
                         </button>
                     )}
@@ -514,6 +413,14 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                          </h4>
                          <p className="text-lg font-bold text-slate-800 leading-relaxed indent-4 underline decoration-slate-100">&ldquo;{job.reportedSymptom}&rdquo;</p>
                     </div>
+
+                    {/* Multi-branch repair sections, in workflow order. Each owns its own API calls. */}
+                    <IntakeSection job={job} onChanged={handleSectionChanged} onPrint={handlePrint} />
+                    <CustodySection job={job} onChanged={handleSectionChanged} onPrint={handlePrint} />
+                    <QuoteApprovalSection job={job} onChanged={handleSectionChanged} onPrint={handlePrint} />
+                    <PaymentsSection job={job} onChanged={handleSectionChanged} onPrint={handlePrint} />
+                    <QcSection job={job} onChanged={handleSectionChanged} onPrint={handlePrint} />
+                    <HandoverSection job={job} onChanged={handleSectionChanged} onPrint={handlePrint} />
 
                     {/* PHOTO GALLERY */}
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">

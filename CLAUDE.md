@@ -33,13 +33,15 @@ npm run list-admins
 ADMIN_USERNAME=<u> ADMIN_PASSWORD=<p> npx tsx reset-admin-password.ts
 npm run migrate-profit
 npm run migrate:coverage                    # dry run; add -- --apply after a backup
+npm run migrate:repair-branches             # dry run; add -- --default-branch=<id> --apply
 npm run cleanup:buyback-images              # daily cron job in production (deletes files)
 ```
 
 ### Tests
 
 - Vitest, Node environment, `@/` alias; files run serially because DB suites share one database.
-- Unit tests sit next to the code (`src/lib/**/*.test.ts`). DB-backed tests are `tests/integration/*.db.test.ts` and call route handlers directly with `NextRequest`s built by `tests/helpers/db.ts` (`createAdmin`, `adminRequest`, `apiRequest`, `insertApiKey`, `posPayload`).
+- Unit tests sit next to the code (`src/lib/**/*.test.ts`). DB-backed tests are `tests/integration/*.db.test.ts` and call route handlers directly with `NextRequest`s built by `tests/helpers/db.ts` (`createAdmin(role, username?, { branchId, branchIds })`, `createBranch`, `adminRequest`, `apiRequest`, `insertApiKey`, `posPayload`).
+- Routes that call `cookies()` from `next/headers` (e.g. `requireAdmin`) cannot be called from these tests; `checkPermission`-based routes can.
 - DB tests need `MONGODB_URI_TEST` in `.env.test.local` (the app's `.env.local` is deliberately not loaded). `tests/helpers/db-guard.ts` aborts the run unless the database name ends in `_test`, is on localhost, and differs from `MONGODB_URI`. Without it, DB suites fail loudly; set `SKIP_DB_TESTS=true` to skip them.
 - `openapi-contract.db.test.ts` validates real integration responses against `docs/openapi/repair-integration-v1.yaml`; update the spec when changing the integration API.
 
@@ -61,7 +63,7 @@ npm run cleanup:buyback-images              # daily cron job in production (dele
   if (!authorized) return error;
   ```
   It loads the user, rejects deactivated accounts, and resolves permissions from the `Role` collection (falling back to the built-in matrix if the role isn't seeded), so custom roles work.
-- `requireAdmin(allowedRoles?)` in [src/lib/admin-auth.ts](src/lib/admin-auth.ts) is a role-list check that also returns the admin's branch; buybacks, branches, and hero-banner admin routes use it. It throws `AdminAuthError`; convert with `authErrorResponse()`.
+- `requireAdmin(allowedRoles?)` in [src/lib/admin-auth.ts](src/lib/admin-auth.ts) is a role-list check that also returns the admin's home branch; buybacks, branches, and hero-banner admin routes use it. It throws `AdminAuthError`; convert with `authErrorResponse()`.
 - `requirePermission`/`withPermission` in `src/lib/auth-middleware.ts` use only the static matrix and ignore custom roles; prefer `checkPermission`.
 
 ### Roles and permissions
@@ -80,6 +82,9 @@ npm run cleanup:buyback-images              # daily cron job in production (dele
 ### Repair domain and the Web POS integration
 
 - Repair business rules live in [src/lib/repair/](src/lib/repair/): `status.ts` (status list, `STATUS_TRANSITIONS`, mapping to the POS's 4 statuses), `costs.ts`, validators, and `service.ts`, which both `/api/admin/repair/*` and `/api/integration/v1/repair-jobs/*` call. Failures throw `RepairWorkflowError` with a code.
+- **Branch scope.** Every repair job has `branchId` (receiving branch). Admin repair routes must go through [src/lib/repair/branch-scope.ts](src/lib/repair/branch-scope.ts): `loadScopedRepairJob(req, id, permission)` for routes under `jobs/[id]/…`, or `requireRepairAccess` + `scopeFilter` for lists. Users with `view_all_branches` see everything (including jobs with no branch); others see only `AdminUser.branchId` + `branchIds`. Out-of-scope jobs answer 404. POS jobs get their branch from `Branch.posBranchIds` (POS branch id or code); unmapped ones stay branchless.
+- Choice lists with Thai labels (payment kinds/methods, data backup, approval channels, `QC_CHECKLIST`, outcomes) are in `src/lib/repair/options.ts`; derived figures (`summarizePayments`, `externalCostTotal`, `isOverdue`) in `src/lib/repair/summary.ts`. Both are client-safe and used by the model, API and UI.
+- The job detail page (`src/app/admin/repair/jobs/[id]/page.tsx`) renders section components from `src/components/admin/repair/` (each takes `RepairJobSectionProps`: `job`, `onChanged`, `onPrint`) and print documents (`QuotePrint`, `ReceiptPrint`, `HandoverPrint`) built from `PrintShell`. Add features as section components rather than growing the page; return the full job populated with `ADMIN_JOB_POPULATE` so `onChanged` can re-render it.
 - Integration routes are built with `integrationRoute({ scope, body }, handler)` from `src/lib/integration/http.ts`. It handles API-key auth, scope checks, per-IP and per-key rate limits, the 64 KB body cap, request IDs, and the error envelope. Wrap service calls in `withRepairErrors()` and validation results in `unwrap()` (`src/lib/integration/repair-route.ts`).
 - The rate limiter is in process memory, so limits multiply with instance count.
 - Contract and ops docs: `docs/REPAIR_INTEGRATION_API.md`, `docs/REPAIR_INTEGRATION_RUNBOOK.md`, `docs/openapi/repair-integration-v1.yaml`.

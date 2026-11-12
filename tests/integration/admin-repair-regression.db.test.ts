@@ -9,7 +9,8 @@ import type { RepairIntegrationDto } from "@/lib/repair/service";
 import { middleware } from "@/middleware";
 import RepairCustomer from "@/models/RepairCustomer";
 import RepairJob from "@/models/RepairJob";
-import { adminRequest, apiRequest, createAdmin, describeDb, insertApiKey, json, noParams, params, posPayload } from "../helpers/db";
+import Branch from "@/models/Branch";
+import { adminRequest, apiRequest, createAdmin, createBranch, describeDb, insertApiKey, json, noParams, params, posPayload } from "../helpers/db";
 
 interface JobJson {
     _id: string;
@@ -19,6 +20,7 @@ interface JobJson {
     customer?: { _id: string; firstName: string; phone: string } | null;
     ownerType?: string;
     source?: string;
+    branchId?: string | null;
     statusHistory: { status: string; changedBy: string; actorType?: string; note?: string }[];
 }
 
@@ -35,11 +37,26 @@ const newJobBody = (overrides: Record<string, unknown> = {}) => ({
     reportedSymptom: "จอไม่ติด",
     internalNotes: "",
     newCustomer: { firstName: "สมหญิง", lastName: "ทดสอบ", phone: "0899999999", lineId: "", address: "", notes: "" },
+    dataBackupStatus: "backed_up",
     ...overrides,
 });
 
+// Every job in these tests is received at one branch, which is also mapped to
+// the POS branch id that posPayload() sends, so POS jobs land there too.
+const DEFAULT_BRANCH = "สาขาทดสอบ";
+async function defaultBranchId() {
+    const existing = await Branch.findOne({ name: DEFAULT_BRANCH }).select("_id").lean();
+    return existing ? String(existing._id) : (await createBranch(DEFAULT_BRANCH, [posPayload().branchId as string])).id;
+}
+
+/** A user of a role without view_all_branches, assigned to the default branch. */
+async function createBranchUser(role: string, username?: string) {
+    return createAdmin(role, username, { branchIds: [await defaultBranchId()] });
+}
+
 async function createAdminJob(token: string, body: Record<string, unknown> = newJobBody()) {
-    const res = await createRoute(adminRequest("/api/admin/repair/jobs", { method: "POST", token, body }));
+    const payload = { branchId: await defaultBranchId(), ...body };
+    const res = await createRoute(adminRequest("/api/admin/repair/jobs", { method: "POST", token, body: payload }));
     return { res, job: res.status === 201 ? await json<JobJson>(res) : null };
 }
 
@@ -82,7 +99,7 @@ describeDb("admin repair workflow (regression)", () => {
     it("persists status history with the actor from the JWT, not the body", async () => {
         const { token: creatorToken } = await createAdmin("admin");
         const { job } = await createAdminJob(creatorToken);
-        const { token, username } = await createAdmin("technician", "tech_somchai");
+        const { token, username } = await createBranchUser("technician", "tech_somchai");
         const res = await patch(token, job!._id, { status: "checking", statusNote: "เริ่มตรวจ", adminUsername: "Super Admin" });
         expect(res.status).toBe(200);
         const stored = await RepairJob.findById(job!._id).lean();
@@ -132,7 +149,7 @@ describeDb("admin repair workflow (regression)", () => {
     });
 
     it("lists customer and store-owned jobs together", async () => {
-        const { token } = await createAdmin("viewer");
+        const { token } = await createBranchUser("viewer");
         const { token: adminToken } = await createAdmin("admin");
         await createAdminJob(adminToken);
         const key = await insertApiKey();
@@ -161,7 +178,7 @@ describeDb("admin repair workflow (regression)", () => {
     });
 
     it("lets admins move a store-owned POS job through the workflow", async () => {
-        const { token } = await createAdmin("technician");
+        const { token } = await createBranchUser("technician");
         const key = await insertApiKey();
         const posJob = await json<RepairIntegrationDto>(await integrationCreateRoute(
             apiRequest("/api/integration/v1/repair-jobs", { method: "POST", apiKey: key.apiKey, body: posPayload() }),
@@ -193,9 +210,9 @@ describeDb("admin repair workflow (regression)", () => {
     it("keeps the existing permission matrix", async () => {
         const { token: adminToken } = await createAdmin("admin");
         const { job } = await createAdminJob(adminToken);
-        const { token: viewer } = await createAdmin("viewer");
-        const { token: staff } = await createAdmin("staff");
-        const { token: tech } = await createAdmin("technician");
+        const { token: viewer } = await createBranchUser("viewer");
+        const { token: staff } = await createBranchUser("staff");
+        const { token: tech } = await createBranchUser("technician");
         expect((await patch(viewer, job!._id, { status: "checking" })).status).toBe(403);
         expect((await createAdminJob(viewer)).res.status).toBe(403);
         expect((await listRoute(adminRequest("/api/admin/repair/jobs", { token: staff }))).status).toBe(403);

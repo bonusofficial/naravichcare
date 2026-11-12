@@ -8,7 +8,10 @@ export interface IAdminUser extends Document {
     role: string;
     email: string;
     isActive: boolean;
+    /** Home branch. Buybacks are opened under it, and it is always in the repair scope. */
     branchId?: mongoose.Types.ObjectId;
+    /** Further branches whose repair jobs this user may see and work on. */
+    branchIds?: mongoose.Types.ObjectId[];
     createdAt: Date;
     comparePassword: (password: string) => Promise<boolean>;
 }
@@ -21,6 +24,7 @@ const AdminUserSchema: Schema = new Schema({
     email: { type: String, required: true },
     isActive: { type: Boolean, default: true },
     branchId: { type: Schema.Types.ObjectId, ref: "Branch", required: false, index: true },
+    branchIds: { type: [{ type: Schema.Types.ObjectId, ref: "Branch" }], default: [], index: true },
     createdAt: { type: Date, default: Date.now },
 });
 
