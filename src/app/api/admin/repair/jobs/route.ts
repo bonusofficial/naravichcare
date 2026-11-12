@@ -5,9 +5,10 @@ import RepairCustomer from "@/models/RepairCustomer";
 import { recordAdminLog } from "@/lib/admin-log";
 import { assertClaimEligible, ClaimEligibilityError } from "@/lib/claim-eligibility";
 import { AdminValidationError, parseAdminCreate } from "@/lib/repair/admin-validation";
-import { isBranchInScope, requireRepairAccess, scopeFilter } from "@/lib/repair/branch-scope";
+import { isBranchInScope, requireRepairAccess } from "@/lib/repair/branch-scope";
+import { branchChoiceFilter, overdueFilter } from "@/lib/repair/dashboard";
 import { saveNewRepairJob } from "@/lib/repair/service";
-import { isRepairStatus } from "@/lib/repair/status";
+import { isRepairStatus, TERMINAL_STATUSES } from "@/lib/repair/status";
 import Branch from "@/models/Branch";
 
 function escapeRegex(value: string): string {
@@ -24,10 +25,17 @@ export async function GET(req: NextRequest) {
         const status = searchParams.get("status");
         const query = searchParams.get("q")?.trim().slice(0, 100);
 
-        const filter: Record<string, unknown> = { ...scopeFilter(access.scope) };
-        if (status && status !== "all" && isRepairStatus(status)) {
+        // branchId: a branch in scope, or "none" (jobs with no branch); anything else lists nothing.
+        const branchFilter = branchChoiceFilter(access.scope, searchParams.get("branchId"));
+        if (!branchFilter) return NextResponse.json([]);
+        const filter: Record<string, unknown> = { ...branchFilter };
+        if (status === "open") {
+            filter.status = { $nin: [...TERMINAL_STATUSES] };
+        } else if (status && status !== "all" && isRepairStatus(status)) {
             filter.status = status;
         }
+        const overdue = searchParams.get("overdue") === "1";
+        if (overdue) filter.$and = [overdueFilter(new Date())];
 
         if (query) {
             // Escaped: the search text is matched literally, never run as a pattern.
@@ -45,7 +53,7 @@ export async function GET(req: NextRequest) {
             .select("-photosBefore -photosAfter")
             .populate("customer")
             .populate("branchId", "name location")
-            .sort({ createdAt: -1 })
+            .sort(overdue ? { appointmentDate: 1 } : { createdAt: -1 })
             .limit(100);
 
         return NextResponse.json(jobs);
