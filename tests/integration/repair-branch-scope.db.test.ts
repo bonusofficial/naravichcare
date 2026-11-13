@@ -65,8 +65,9 @@ describeDb("repair jobs are scoped to the user's branches", () => {
         const { token: techNone } = await createAdmin("technician");
         expect(await json<JobJson[]>(await listRoute(adminRequest("/api/admin/repair/jobs", { token: techNone })))).toEqual([]);
 
-        const stats = await json<{ stats: { total: number } }>(await statsRoute(adminRequest("/api/admin/repair/stats", { token: techA })));
-        expect(stats.stats.total).toBe(1);
+        const stats = await json<{ branches: { branchId: string | null }[]; totals: { openJobs: number } }>(await statsRoute(adminRequest("/api/admin/repair/stats", { token: techA })));
+        expect(stats.branches.map((row) => row.branchId)).toEqual([a.id]);
+        expect(stats.totals.openJobs).toBe(1);
     });
 
     it("scopes custom roles too, including delete", async () => {
