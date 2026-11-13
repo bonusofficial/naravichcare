@@ -9,12 +9,17 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:buyback": "vitest run src/lib/buyback.test.ts src/lib/buyback-storage.test.ts",
+    "test:hero-banner": "vitest run src/lib/hero-banner.test.ts",
+    "test:coverage-plan": "vitest run src/lib/coverage-plan.test.ts",
     "push-schema": "tsx push-schema.ts",
     "list-admins": "tsx list-admins.ts",
     "create-admin": "tsx create-admin.ts",
     "set-admin-role": "tsx set-admin-role.ts",
     "migrate-profit": "tsx migrate-profit-data.ts",
-    "seed-roles": "tsx seed-roles.ts"
+    "seed-roles": "tsx seed-roles.ts",
+    "migrate:coverage": "tsx migrate-coverage-snapshots.ts",
+    "cleanup:buyback-images": "tsx cleanup-buyback-images.ts"
   },
   "dependencies": {
     "@expo-google-fonts/noto-sans-thai": "^0.4.2",
