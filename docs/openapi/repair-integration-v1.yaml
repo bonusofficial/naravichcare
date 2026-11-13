@@ -174,6 +174,8 @@ paths:
       summary: Confirm the POS has the device back (scope repair:handover)
       description: |
         Only from ready_pickup; moves the job to completed and sets handedOverAt.
+        Also stores a handover record (receiver "Web POS", handed over by
+        "integration:<key name>"). Works for both outcomes (repaired / not_repaired).
         Calling it again after completed returns 200 and adds no history.
         The body is optional.
       requestBody:
@@ -394,7 +396,7 @@ components:
     RepairJob:
       type: object
       additionalProperties: false
-      required: [id, reference, externalRef, source, ownerType, status, posStatus, device, symptom, imageUrls, repairItems, costs, cancelReason, timestamps]
+      required: [id, reference, externalRef, source, ownerType, status, posStatus, outcome, device, symptom, imageUrls, repairItems, costs, cancelReason, timestamps]
       properties:
         id: { type: string, description: Use this id for all later calls }
         reference: { type: string, description: "NavarichCare job number, JOBYYMM-NNNN" }
@@ -403,6 +405,14 @@ components:
         ownerType: { type: string, enum: [store, customer] }
         status: { $ref: "#/components/schemas/RepairStatus" }
         posStatus: { $ref: "#/components/schemas/PosStatus" }
+        outcome:
+          type: [string, "null"]
+          enum: [repaired, not_repaired, null]
+          description: |
+            Set on entering ready_pickup. not_repaired means the customer refused the
+            repair (or it could not be done) and the device goes back unrepaired;
+            posStatus is "completed" in both cases. Null before ready_pickup or after
+            the job is sent back to in_progress.
         device:
           type: object
           additionalProperties: false

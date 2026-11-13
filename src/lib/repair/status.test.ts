@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canTransition, POS_STATUS_MAP, REPAIR_STATUSES, STATUS_TRANSITIONS, toPosStatus } from "./status";
+import { allowedNextStatuses, canTransition, NOT_REPAIRED_FROM, POS_STATUS_MAP, REPAIR_STATUSES, STATUS_TRANSITIONS, toPosStatus } from "./status";
 
 describe("repair status state machine", () => {
     it("defines transitions for every status and only to known statuses", () => {
@@ -48,6 +48,29 @@ describe("repair status state machine", () => {
         ["bogus", "pending"],
     ])("rejects %s -> %s", (from, to) => {
         expect(canTransition(from, to)).toBe(false);
+    });
+
+    it.each(["pending", "checking", "quoted", "waiting_approval", "in_progress", "waiting_parts", "testing"])(
+        "allows %s -> ready_pickup when the repair is refused (not_repaired)",
+        (from) => {
+            expect(canTransition(from, "ready_pickup", { outcome: "not_repaired" })).toBe(true);
+        },
+    );
+
+    it("keeps the not-repaired shortcut away from closed jobs", () => {
+        for (const from of ["ready_pickup", "completed", "cancelled"]) {
+            expect(canTransition(from, "ready_pickup", { outcome: "not_repaired" })).toBe(false);
+            expect(NOT_REPAIRED_FROM).not.toContain(from);
+        }
+        // Without the outcome, the repaired path still needs in_progress or testing.
+        expect(canTransition("pending", "ready_pickup", { outcome: "repaired" })).toBe(false);
+    });
+
+    it("never offers completed as a plain status move (it needs the handover record)", () => {
+        for (const status of REPAIR_STATUSES) expect(allowedNextStatuses(status)).not.toContain("completed");
+        expect(allowedNextStatuses("ready_pickup")).toEqual(["in_progress"]);
+        expect(allowedNextStatuses("in_progress")).toEqual(STATUS_TRANSITIONS.in_progress);
+        expect(allowedNextStatuses("completed")).toEqual([]);
     });
 
     it("only reaches completed through ready_pickup", () => {

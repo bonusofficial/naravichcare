@@ -6,6 +6,8 @@ import { GET as costsRoute } from "@/app/api/integration/v1/repair-jobs/[id]/cos
 import { POST as cancelRoute } from "@/app/api/integration/v1/repair-jobs/[id]/cancel/route";
 import { POST as handoverRoute } from "@/app/api/integration/v1/repair-jobs/[id]/handover/route";
 import { PATCH as adminPatchRoute } from "@/app/api/admin/repair/jobs/[id]/route";
+import { POST as adminQcRoute } from "@/app/api/admin/repair/jobs/[id]/qc/route";
+import { QC_ITEM_KEYS } from "@/lib/repair/options";
 import { MAX_BODY_BYTES } from "@/lib/integration/http";
 import { parseApiKey, type IntegrationScope } from "@/lib/integration/api-key";
 import type { RepairIntegrationDto } from "@/lib/repair/service";
@@ -49,10 +51,15 @@ async function setup(scopes?: IntegrationScope[]) {
     return { key, create, get, search, cancel, handover, costs };
 }
 
-/** Walk a job through the admin API, as a technician would. */
+/** Walk a job through the admin API, as a technician would (with a passing QC before ready_pickup). */
 async function adminMoveTo(id: string, statuses: string[]) {
     const { token } = await createAdmin("super_admin");
     for (const status of statuses) {
+        if (status === "ready_pickup") {
+            const items = QC_ITEM_KEYS.map((key) => ({ key, result: "pass" }));
+            const qc = await adminQcRoute(adminRequest(`/api/admin/repair/jobs/${id}/qc`, { method: "POST", token, body: { items } }), params({ id }));
+            expect(qc.status, "record QC").toBe(201);
+        }
         const res = await adminPatchRoute(adminRequest(`/api/admin/repair/jobs/${id}`, { method: "PATCH", token, body: { status } }), params({ id }));
         expect(res.status, `move to ${status}`).toBe(200);
     }
@@ -203,7 +210,7 @@ describeDb("repair integration API", () => {
         const text = await res.text();
         const body = JSON.parse(text) as Record<string, unknown>;
         expect(Object.keys(body).sort()).toEqual(
-            ["cancelReason", "costs", "device", "externalRef", "id", "imageUrls", "ownerType", "posStatus", "reference", "repairItems", "source", "status", "symptom", "timestamps"].sort(),
+            ["cancelReason", "costs", "device", "externalRef", "id", "imageUrls", "outcome", "ownerType", "posStatus", "reference", "repairItems", "source", "status", "symptom", "timestamps"].sort(),
         );
         for (const forbidden of ["staff only note", "iVBORw0KGgo", "statusHistory", "internalNotes", "requestHash", "idempotencyKey", "clientKeyId", "__v", "_id", "keyHash"]) {
             expect(text).not.toContain(forbidden);
@@ -331,6 +338,8 @@ describeDb("repair integration API", () => {
         expect(stored!.completedAt).toBeInstanceOf(Date);
         const historyLength = stored!.statusHistory.length;
         expect(stored!.statusHistory.at(-1)).toMatchObject({ status: "completed", actorType: "integration" });
+        expect(stored!.handover).toMatchObject({ receiverName: "Web POS", handedOverBy: "integration:Web POS" });
+        expect(body.outcome).toBe("repaired");
 
         expect((await api.handover(job.id)).status).toBe(200);
         expect((await RepairJob.findById(job.id).lean())!.statusHistory).toHaveLength(historyLength);

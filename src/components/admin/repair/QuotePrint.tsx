@@ -1,10 +1,12 @@
 import type { RepairJobView } from "@/lib/repair/types";
-import { DATA_BACKUP } from "@/lib/repair/options";
+import { APPROVAL_CHANNEL, APPROVAL_DECISION, DATA_BACKUP } from "@/lib/repair/options";
+import { latestQuoteApproval } from "@/lib/repair/workflow";
 import { PrintHeader, PrintParties, PrintSignatures } from "./PrintShell";
 import { formatDateTime } from "./format";
 
 /** Job sheet / quotation, printed at intake and when the price is quoted. */
 export default function QuotePrint({ job }: { job: RepairJobView }) {
+    const approval = latestQuoteApproval(job);
     return (
         <>
             <PrintHeader job={job} title={job.totalPrice > 0 ? "QUOTATION" : "JOB SHEET"} />
@@ -58,6 +60,28 @@ export default function QuotePrint({ job }: { job: RepairJobView }) {
                     </tbody>
                 </table>
             </div>
+
+            {/* Latest customer decision on the quotation, when one is recorded */}
+            {approval && (
+                <div className="border-2 border-slate-100 rounded-2xl p-4 mb-8 text-black text-[11px] grid grid-cols-4 gap-4">
+                    <div>
+                        <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">อนุมัติราคา รอบที่ {approval.round}</p>
+                        <p className={`font-black ${approval.decision === "approved" ? "text-emerald-700" : "text-red-600"}`}>{APPROVAL_DECISION.labels[approval.decision]}</p>
+                    </div>
+                    <div>
+                        <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">ยอดที่อนุมัติ</p>
+                        <p className="font-bold text-slate-900">฿ {approval.totalPrice.toLocaleString()}</p>
+                    </div>
+                    <div>
+                        <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">ช่องทาง / ผู้อนุมัติ</p>
+                        <p className="font-bold text-slate-900">{APPROVAL_CHANNEL.labels[approval.channel]} · {approval.approverName}</p>
+                    </div>
+                    <div>
+                        <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">เวลา</p>
+                        <p className="font-bold text-slate-900">{formatDateTime(approval.decidedAt)}</p>
+                    </div>
+                </div>
+            )}
 
             <PrintSignatures />
         </>

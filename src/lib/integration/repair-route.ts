@@ -10,6 +10,11 @@ export function toIntegrationError(error: unknown): unknown {
             return new IntegrationError("NOT_FOUND", 404, "Repair job not found");
         case "VALIDATION_ERROR":
             return new IntegrationError("VALIDATION_ERROR", 400, error.message);
+        // Workflow guards the POS cannot trigger today; reported as a plain transition error.
+        case "QUOTE_APPROVAL_REQUIRED":
+        case "QC_REQUIRED":
+        case "HANDOVER_REQUIRED":
+            return new IntegrationError("INVALID_STATUS_TRANSITION", 409, error.message);
         case "INVALID_STATUS_TRANSITION":
         case "REPAIR_CLOSED":
         case "CONFLICT":

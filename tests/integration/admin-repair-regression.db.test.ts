@@ -2,6 +2,9 @@ import mongoose from "mongoose";
 import { expect, it } from "vitest";
 import { GET as listRoute, POST as createRoute } from "@/app/api/admin/repair/jobs/route";
 import { DELETE as deleteRoute, GET as getRoute, PATCH as patchRoute } from "@/app/api/admin/repair/jobs/[id]/route";
+import { POST as qcRoute } from "@/app/api/admin/repair/jobs/[id]/qc/route";
+import { POST as handoverRoute } from "@/app/api/admin/repair/jobs/[id]/handover/route";
+import { QC_ITEM_KEYS } from "@/lib/repair/options";
 import { POST as integrationCreateRoute } from "@/app/api/integration/v1/repair-jobs/route";
 import { GET as meRoute } from "@/app/api/auth/me/route";
 import { repairJobPrefix } from "@/lib/repair/sequence";
@@ -117,9 +120,23 @@ describeDb("admin repair workflow (regression)", () => {
         expect((await json<{ code: string }>(jump)).code).toBe("INVALID_STATUS_TRANSITION");
         expect((await RepairJob.findById(job!._id).lean())!.status).toBe("pending");
 
-        for (const status of ["in_progress", "ready_pickup", "completed"]) {
-            expect((await patch(token, job!._id, { status })).status).toBe(200);
-        }
+        expect((await patch(token, job!._id, { status: "in_progress" })).status).toBe(200);
+        // A repaired job needs a passing QC before ready_pickup...
+        const noQc = await patch(token, job!._id, { status: "ready_pickup" });
+        expect(noQc.status).toBe(409);
+        expect((await json<{ code: string }>(noQc)).code).toBe("QC_REQUIRED");
+        const items = QC_ITEM_KEYS.map((key) => ({ key, result: "pass" }));
+        expect((await qcRoute(adminRequest(`/api/admin/repair/jobs/${job!._id}/qc`, { method: "POST", token, body: { items } }), params({ id: job!._id }))).status).toBe(201);
+        expect((await patch(token, job!._id, { status: "ready_pickup" })).status).toBe(200);
+        // ...and closing goes through the handover record, never a bare status change.
+        const bare = await patch(token, job!._id, { status: "completed" });
+        expect(bare.status).toBe(409);
+        expect((await json<{ code: string }>(bare)).code).toBe("HANDOVER_REQUIRED");
+        const handover = await handoverRoute(
+            adminRequest(`/api/admin/repair/jobs/${job!._id}/handover`, { method: "POST", token, body: { receiverName: "สมหญิง ทดสอบ" } }),
+            params({ id: job!._id }),
+        );
+        expect(handover.status).toBe(200);
         const stored = await RepairJob.findById(job!._id).lean();
         expect(stored!.statusHistory.map((h) => h.status)).toEqual(["pending", "in_progress", "ready_pickup", "completed"]);
         expect(stored!.repairCompletedAt).toBeInstanceOf(Date);

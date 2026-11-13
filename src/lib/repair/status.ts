@@ -39,13 +39,33 @@ export function isRepairStatus(value: unknown): value is RepairStatus {
     return typeof value === "string" && (REPAIR_STATUSES as readonly string[]).includes(value);
 }
 
-export function canTransition(from: string, to: string): boolean {
+/**
+ * The customer can refuse the repair (or it cannot be done) at any point
+ * before the device is ready. The job then goes straight to ready_pickup with
+ * outcome "not_repaired" and is closed through the same handover record.
+ */
+export const NOT_REPAIRED_FROM: readonly RepairStatus[] = [
+    "pending", "checking", "quoted", "waiting_approval", "in_progress", "waiting_parts", "testing",
+];
+
+/**
+ * Whether the status graph allows the move. `outcome` only matters for
+ * ready_pickup: "not_repaired" opens the shortcut from NOT_REPAIRED_FROM.
+ * Business guards (approval, QC, handover) live in workflow.ts.
+ */
+export function canTransition(from: string, to: string, options: { outcome?: string | null } = {}): boolean {
     if (!isRepairStatus(from) || !isRepairStatus(to)) return false;
+    if (to === "ready_pickup" && options.outcome === "not_repaired") return NOT_REPAIRED_FROM.includes(from);
     return STATUS_TRANSITIONS[from].includes(to);
 }
 
+/**
+ * Statuses the plain status change (the job page's sidebar buttons) can move
+ * to. Leaves out completed, which only the handover record can set, and the
+ * not-repaired shortcut, which needs an outcome (HandoverSection offers it).
+ */
 export function allowedNextStatuses(from: string): readonly RepairStatus[] {
-    return isRepairStatus(from) ? STATUS_TRANSITIONS[from] : [];
+    return isRepairStatus(from) ? STATUS_TRANSITIONS[from].filter((to) => to !== "completed") : [];
 }
 
 /** Status vocabulary of the Web POS (RepairStatus enum in NaravichPOS). */
