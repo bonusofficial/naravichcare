@@ -1,6 +1,9 @@
 import mongoose from "mongoose";
 import { MAX_MONEY } from "./costs";
-import { DATA_BACKUP, REPAIR_OUTCOME, type DataBackupStatus, type RepairOutcome } from "./options";
+import {
+    APPROVAL_CHANNEL, APPROVAL_DECISION, DATA_BACKUP, QC_CHECKLIST, QC_ITEM_KEYS, QC_RESULT, REPAIR_OUTCOME,
+    type ApprovalChannel, type ApprovalDecision, type DataBackupStatus, type QcItemKey, type QcOverall, type QcResult, type RepairOutcome,
+} from "./options";
 import { isRepairStatus } from "./status";
 
 /**
@@ -264,4 +267,103 @@ export function parseAdminPatch(body: Record<string, unknown>): AdminPatchInput 
     }
 
     return { status, statusNote, outcome, costs, set, dataBackupStatus: dataBackupStatus(body, false) };
+}
+
+// ---------------------------------------------------------------------------
+// Quote approvals, QC and handover (POST /api/admin/repair/jobs/:id/...)
+// ---------------------------------------------------------------------------
+
+/** Clock skew allowed for times the staff enter (decidedAt, handedOverAt). */
+const MAX_FUTURE_MS = 5 * 60 * 1000;
+
+function pastDate(body: Record<string, unknown>, field: string, label: string): Date | undefined {
+    const value = dateField(body, field);
+    if (!value) return undefined;
+    if (value.getTime() > Date.now() + MAX_FUTURE_MS) throw new AdminValidationError(`${label}ต้องไม่เป็นเวลาในอนาคต`, [field]);
+    return value;
+}
+
+export interface QuoteApprovalInput {
+    decision: ApprovalDecision;
+    channel: ApprovalChannel;
+    approverName: string;
+    /** Defaults to now in the route. */
+    decidedAt?: Date;
+    note: string;
+}
+
+export function parseQuoteApproval(body: Record<string, unknown>): QuoteApprovalInput {
+    rejectUnknown(body, ["decision", "channel", "approverName", "decidedAt", "note"]);
+    if (!APPROVAL_DECISION.is(body.decision)) throw new AdminValidationError("กรุณาเลือกผลการอนุมัติ (อนุมัติ/ไม่อนุมัติ)", ["decision"]);
+    if (!APPROVAL_CHANNEL.is(body.channel)) throw new AdminValidationError("กรุณาเลือกช่องทางที่ลูกค้าแจ้ง", ["channel"]);
+    const approverName = text(body, "approverName", 120);
+    if (!approverName) throw new AdminValidationError("กรุณากรอกชื่อผู้อนุมัติ", ["approverName"]);
+    return {
+        decision: body.decision,
+        channel: body.channel,
+        approverName,
+        decidedAt: pastDate(body, "decidedAt", "เวลาที่ลูกค้าแจ้ง"),
+        note: text(body, "note", 1000) ?? "",
+    };
+}
+
+export interface QcCheckInput {
+    items: { key: QcItemKey; result: QcResult }[];
+    overall: QcOverall;
+    note: string;
+}
+
+/** Every QC_CHECKLIST item exactly once; overall passes when nothing failed. */
+export function parseQcCheck(body: Record<string, unknown>): QcCheckInput {
+    rejectUnknown(body, ["items", "note"]);
+    if (!Array.isArray(body.items)) throw new AdminValidationError("กรุณาบันทึกผล QC ให้ครบทุกรายการ", ["items"]);
+    const results = new Map<string, QcResult>();
+    for (const raw of body.items as unknown[]) {
+        const item = raw as { key?: unknown; result?: unknown } | null;
+        if (!item || typeof item !== "object" || Array.isArray(item) || Object.keys(item).some((k) => k !== "key" && k !== "result")) {
+            throw new AdminValidationError("รายการ QC ไม่ถูกต้อง", ["items"]);
+        }
+        if (typeof item.key !== "string" || !(QC_ITEM_KEYS as readonly string[]).includes(item.key)) {
+            throw new AdminValidationError(`ไม่รู้จักรายการ QC "${String(item.key)}"`, ["items"]);
+        }
+        if (results.has(item.key)) throw new AdminValidationError(`รายการ QC "${item.key}" ซ้ำ`, ["items"]);
+        if (!QC_RESULT.is(item.result)) throw new AdminValidationError(`ผล QC ของ "${item.key}" ไม่ถูกต้อง`, ["items"]);
+        results.set(item.key, item.result);
+    }
+    const missing = QC_CHECKLIST.filter((item) => !results.has(item.key));
+    if (missing.length) {
+        throw new AdminValidationError(`กรุณาบันทึกผล QC ให้ครบ: ${missing.map((item) => item.label).join(", ")}`, ["items"]);
+    }
+    const items = QC_ITEM_KEYS.map((key) => ({ key, result: results.get(key)! }));
+    return {
+        items,
+        overall: items.every((item) => item.result !== "fail") ? "pass" : "fail",
+        note: text(body, "note", 1000) ?? "",
+    };
+}
+
+export interface HandoverInput {
+    receiverName: string;
+    receiverPhone: string;
+    receiverRelation: string;
+    /** Defaults to now in the route. */
+    handedOverAt?: Date;
+    note: string;
+}
+
+export function parseHandover(body: Record<string, unknown>): HandoverInput {
+    rejectUnknown(body, ["receiverName", "receiverPhone", "receiverRelation", "handedOverAt", "note"]);
+    const receiverName = text(body, "receiverName", 120);
+    if (!receiverName) throw new AdminValidationError("กรุณากรอกชื่อผู้รับเครื่อง", ["receiverName"]);
+    const receiverPhone = text(body, "receiverPhone", 20) ?? "";
+    if (receiverPhone && !/^[0-9+\-\s()]{6,20}$/.test(receiverPhone)) {
+        throw new AdminValidationError("เบอร์โทรผู้รับเครื่องไม่ถูกต้อง", ["receiverPhone"]);
+    }
+    return {
+        receiverName,
+        receiverPhone,
+        receiverRelation: text(body, "receiverRelation", 100) ?? "",
+        handedOverAt: pastDate(body, "handedOverAt", "เวลาส่งมอบ"),
+        note: text(body, "note", 1000) ?? "",
+    };
 }

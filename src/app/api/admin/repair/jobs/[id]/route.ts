@@ -6,22 +6,16 @@ import RepairJob from "@/models/RepairJob";
 import { sendLineFlexMessage } from "@/lib/line-messaging";
 import { recordAdminLog } from "@/lib/admin-log";
 import { assertClaimEligible, ClaimEligibilityError } from "@/lib/claim-eligibility";
-import { AdminValidationError, parseAdminPatch } from "@/lib/repair/admin-validation";
+import { parseAdminPatch } from "@/lib/repair/admin-validation";
+import { adminRepairErrorResponse } from "@/lib/repair/admin-route";
 import { ADMIN_JOB_POPULATE, jobNotFound, requireRepairAccess, scopedJobFilter } from "@/lib/repair/branch-scope";
 import { computeRepairCosts } from "@/lib/repair/costs";
-import { RepairWorkflowError, transitionRepairJob } from "@/lib/repair/service";
+import { transitionRepairJob } from "@/lib/repair/service";
 import { REPAIR_OUTCOME } from "@/lib/repair/options";
 import { statusLabelForOutcome } from "@/lib/repair/workflow";
 
 interface Context {
     params: Promise<{ id: string }>;
-}
-
-function workflowErrorResponse(error: unknown): NextResponse | null {
-    if (error instanceof AdminValidationError) return NextResponse.json({ error: error.message, code: "VALIDATION_ERROR", fields: error.fields }, { status: 400 });
-    if (error instanceof RepairWorkflowError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
-    if (error instanceof ClaimEligibilityError) return NextResponse.json({ error: error.message, code: error.code }, { status: 409 });
-    return null;
 }
 
 export async function GET(req: NextRequest, { params }: Context) {
@@ -208,7 +202,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
 
         return NextResponse.json(updatedJob);
     } catch (error: unknown) {
-        const handled = workflowErrorResponse(error);
+        const handled = adminRepairErrorResponse(error);
         if (handled) return handled;
         console.error("Update Job Error:", error);
         return NextResponse.json({ error: "Failed to update job" }, { status: 500 });
