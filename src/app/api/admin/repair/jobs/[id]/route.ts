@@ -10,7 +10,8 @@ import { AdminValidationError, parseAdminPatch } from "@/lib/repair/admin-valida
 import { ADMIN_JOB_POPULATE, jobNotFound, requireRepairAccess, scopedJobFilter } from "@/lib/repair/branch-scope";
 import { computeRepairCosts } from "@/lib/repair/costs";
 import { RepairWorkflowError, transitionRepairJob } from "@/lib/repair/service";
-import { canTransition, repairStatusLabel } from "@/lib/repair/status";
+import { REPAIR_OUTCOME } from "@/lib/repair/options";
+import { statusLabelForOutcome } from "@/lib/repair/workflow";
 
 interface Context {
     params: Promise<{ id: string }>;
@@ -84,9 +85,10 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         const logActor = { id: actor.id, name: actor.name };
         const jobTitle = `${currentJob.jobId} (${currentJob.brand} ${currentJob.deviceModel})`;
         const statusChanged = input.status !== undefined && input.status !== currentJob.status;
-        if (statusChanged && !canTransition(currentJob.status, input.status!)) {
+        // The outcome is chosen when the job enters ready_pickup; it cannot be swapped afterwards.
+        if (!statusChanged && input.outcome && input.outcome !== (currentJob.outcome ?? "repaired")) {
             return NextResponse.json({
-                error: `ไม่สามารถเปลี่ยนสถานะจาก "${repairStatusLabel(currentJob.status)}" เป็น "${repairStatusLabel(input.status!)}" ได้`,
+                error: `งานนี้บันทึกผลเป็น "${REPAIR_OUTCOME.labels[currentJob.outcome ?? "repaired"]}" แล้ว หากต้องการเปลี่ยน ให้ส่งกลับไป "กำลังซ่อม" ก่อน`,
                 code: "INVALID_STATUS_TRANSITION",
             }, { status: 409 });
         }
@@ -112,24 +114,29 @@ export async function PATCH(req: NextRequest, { params }: Context) {
                 Object.assign(set, next, {
                     totalPrice: computeRepairCosts(next).customerChargeTotal,
                     costsUpdatedAt: new Date(),
+                    // A new price needs a new approval round.
+                    quotationApproved: "pending",
                 });
-                inc.costsVersion = 1;
+                // $inc on a missing field would start at 1 and match an approval of version 1.
+                if (currentJob.costsVersion == null) set.costsVersion = 2;
+                else inc.costsVersion = 1;
             }
         }
 
         if (statusChanged) {
-            await transitionRepairJob(currentJob, input.status!, actor, input.statusNote, { set, inc });
+            await transitionRepairJob(currentJob, input.status!, actor, input.statusNote, { set, inc, outcome: input.outcome });
         } else if (Object.keys(set).length) {
             await RepairJob.updateOne({ _id: id }, { $set: set, ...(Object.keys(inc).length ? { $inc: inc } : {}) }, { runValidators: true });
         }
 
         const updatedJob = await RepairJob.findById(id).populate(ADMIN_JOB_POPULATE);
+        const newStatusLabel = statusChanged ? statusLabelForOutcome(input.status!, updatedJob?.outcome) : "";
 
         // ADMIN ACTIVITY LOGGING
         // 1. Log Status Changes
         if (statusChanged) {
             try {
-                await sendLineFlexMessage(currentJob, repairStatusLabel(input.status!), getStatusColor(input.status!));
+                await sendLineFlexMessage(currentJob, newStatusLabel, getStatusColor(input.status!));
             } catch (lineError) {
                 console.error("LINE notify failed:", lineError instanceof Error ? lineError.message : lineError);
             }
@@ -138,10 +145,10 @@ export async function PATCH(req: NextRequest, { params }: Context) {
                 req,
                 actor: logActor,
                 action: "update_job_status",
-                description: `เปลี่ยนสถานะงาน ${jobTitle} เป็น "${repairStatusLabel(input.status!)}"`,
+                description: `เปลี่ยนสถานะงาน ${jobTitle} เป็น "${newStatusLabel}"`,
                 targetId: id,
                 targetType: "RepairJob",
-                details: { oldStatus: currentJob.status, newStatus: input.status, note: input.statusNote }
+                details: { oldStatus: currentJob.status, newStatus: input.status, outcome: updatedJob?.outcome, note: input.statusNote }
             });
         }
 

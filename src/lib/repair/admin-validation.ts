@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { MAX_MONEY } from "./costs";
-import { DATA_BACKUP, type DataBackupStatus } from "./options";
+import { DATA_BACKUP, REPAIR_OUTCOME, type DataBackupStatus, type RepairOutcome } from "./options";
 import { isRepairStatus } from "./status";
 
 /**
@@ -166,7 +166,7 @@ export function parseAdminCreate(body: Record<string, unknown>): AdminCreateInpu
 // ---------------------------------------------------------------------------
 
 const PATCH_FIELDS = [
-    "status", "statusNote",
+    "status", "statusNote", "outcome",
     "laborCost", "partsCost", "partsPurchaseCost",
     "diagnosticResult", "internalNotes", "quotationApproved", "assignedTechnician",
     "warrantyStartDate", "warrantyExpireDate", "warrantyType", "voidStickerCode",
@@ -187,6 +187,8 @@ const PHOTO_PATTERN = /^(data:image\/(png|jpe?g|webp|gif);base64,|https:\/\/|\/)
 export interface AdminPatchInput {
     status?: string;
     statusNote: string;
+    /** Only with status "ready_pickup"; transitionRepairJob defaults it to "repaired". */
+    outcome?: RepairOutcome;
     costs?: { laborCost?: number; partsCost?: number; partsPurchaseCost?: number };
     set: Record<string, unknown>;
     /** The route stores it with the caller's name and the time. */
@@ -213,6 +215,13 @@ export function parseAdminPatch(body: Record<string, unknown>): AdminPatchInput 
         status = body.status;
     }
     const statusNote = text(body, "statusNote", 1000) ?? "";
+
+    let outcome: RepairOutcome | undefined;
+    if (body.outcome !== undefined && body.outcome !== null && body.outcome !== "") {
+        if (!REPAIR_OUTCOME.is(body.outcome)) throw new AdminValidationError("ผลการซ่อมไม่ถูกต้อง", ["outcome"]);
+        if (status !== "ready_pickup") throw new AdminValidationError("ระบุผลการซ่อมได้เฉพาะเมื่อเปลี่ยนเป็นสถานะรอรับคืน", ["outcome"]);
+        outcome = body.outcome;
+    }
 
     const laborCost = money(body, "laborCost");
     const partsCost = money(body, "partsCost");
@@ -254,5 +263,5 @@ export function parseAdminPatch(body: Record<string, unknown>): AdminPatchInput 
         set[field] = photos;
     }
 
-    return { status, statusNote, costs, set, dataBackupStatus: dataBackupStatus(body, false) };
+    return { status, statusNote, outcome, costs, set, dataBackupStatus: dataBackupStatus(body, false) };
 }
