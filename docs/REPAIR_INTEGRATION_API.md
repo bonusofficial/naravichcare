@@ -216,7 +216,10 @@ curl -sS -X POST "https://<NAVARICHCARE_HOST>/api/integration/v1/repair-jobs/<ID
 Body ไม่บังคับ: `{ "note": "รับคืนที่สาขา BKK01" }` (≤ 500)
 
 - ทำได้เมื่อสถานะ `ready_pickup` เท่านั้น → เปลี่ยนเป็น `completed`, ตั้ง `handedOverAt`
+- ระบบบันทึกใบส่งมอบให้อัตโนมัติ: ผู้รับเครื่อง `Web POS`, ผู้ส่งมอบ `integration:<ชื่อ Key>`, เวลา = เวลาที่เรียก, หมายเหตุ = `note` (สัญญา request/response เดิมไม่เปลี่ยน)
+- ใช้ได้ทั้งงานที่ซ่อมเสร็จ (`outcome = repaired`) และงานที่ลูกค้าไม่ซ่อม (`outcome = not_repaired`)
 - ยังไม่พร้อม (`pending` … `testing`) → `409 INVALID_STATUS_TRANSITION`
+- เครื่องยังอยู่ร้านซ่อมภายนอก (Admin ยังไม่บันทึกรับเครื่องกลับ) → `409 INVALID_STATUS_TRANSITION`
 - ถูกยกเลิกแล้ว → `409 REPAIR_CLOSED`
 - เรียกซ้ำหลัง `completed` → `200` ไม่เพิ่ม history ซ้ำ
 - บันทึก AdminLog `repair_integration.handed_over`
@@ -257,6 +260,7 @@ Response ทุกตัวที่เป็นงานซ่อมใช้�
   "ownerType": "store",
   "status": "in_progress",
   "posStatus": "repairing",
+  "outcome": null,
   "device": {
     "inventoryItemId": "1b8c6d2e-0f7a-4c1e-9a55-2b8f3c0d9e11",
     "productCode": "NV-00001",
@@ -294,6 +298,7 @@ Response ทุกตัวที่เป็นงานซ่อมใช้�
 - `reference` = เลขงานของ NavarichCare (`JOBYYMM-NNNN`, ออกเลขด้วย atomic counter), `externalRef` = `reference` ที่ POS ส่งมา
 - `repairItems` สงวนไว้ใน v1 (คืน `[]` เสมอ เพราะระบบซ่อมยังไม่แยกรายการอะไหล่)
 - `cancelReason` มีค่าเฉพาะเมื่อ `status = cancelled`
+- `outcome` (เพิ่มใหม่, additive) ตั้งเมื่อเข้า `ready_pickup`: `repaired` = ซ่อมเสร็จ, `not_repaired` = ลูกค้าไม่ซ่อม/ซ่อมไม่ได้ (เครื่องรอคืนโดยไม่ได้ซ่อม); `null` ก่อนถึงขั้นนั้น หรือเมื่อถูกส่งกลับ `in_progress`. `posStatus` ไม่เปลี่ยน (ทั้งสองกรณีเป็น `completed`) — POS ที่ต้องแยกกรณีให้ดู `outcome`
 - **ไม่ส่ง** `internalNotes`, `statusHistory`, ข้อมูลลูกค้า, รูป base64, field ภายในของ Mongoose (`_id`, `__v`), ข้อมูล idempotency, API Key/hash ใด ๆ
 
 ## 9. Status Mapping และ State Machine
@@ -317,19 +322,29 @@ Response ทุกตัวที่เป็นงานซ่อมใช้�
 
 | จาก | ไปได้ |
 |---|---|
-| `pending` | `checking`, `quoted`, `in_progress`, `cancelled` |
-| `checking` | `quoted`, `waiting_approval`, `in_progress`, `waiting_parts`, `cancelled` |
-| `quoted` | `checking`, `waiting_approval`, `in_progress`, `waiting_parts`, `cancelled` |
-| `waiting_approval` | `quoted`, `in_progress`, `waiting_parts`, `cancelled` |
+| `pending` | `checking`, `quoted`, `in_progress`, `cancelled`, `ready_pickup`* |
+| `checking` | `quoted`, `waiting_approval`, `in_progress`, `waiting_parts`, `cancelled`, `ready_pickup`* |
+| `quoted` | `checking`, `waiting_approval`, `in_progress`, `waiting_parts`, `cancelled`, `ready_pickup`* |
+| `waiting_approval` | `quoted`, `in_progress`, `waiting_parts`, `cancelled`, `ready_pickup`* |
 | `in_progress` | `waiting_parts`, `testing`, `ready_pickup`, `cancelled` |
-| `waiting_parts` | `in_progress`, `cancelled` |
+| `waiting_parts` | `in_progress`, `cancelled`, `ready_pickup`* |
 | `testing` | `in_progress`, `ready_pickup`, `cancelled` |
 | `ready_pickup` | `completed`, `in_progress` (ส่งกลับไปแก้) |
 | `completed` | – (ปิดงาน) |
 | `cancelled` | – (ปิดงาน) |
 
+\* เฉพาะ `outcome = not_repaired` (ลูกค้าไม่ซ่อม/ซ่อมไม่ได้) ซึ่งทำได้จากฝั่ง Admin เท่านั้น
+
+เงื่อนไขเพิ่มเติมฝั่ง Admin (ไม่กระทบ POS):
+- เข้า `in_progress`: งานของลูกค้า (`ownerType = customer`) ที่มีราคา > 0 ต้องมีรอบอนุมัติราคา (`approved`) สำหรับราคาปัจจุบัน (`costs.version`); งานเครื่องของร้านได้รับยกเว้น
+- เข้า `ready_pickup` แบบ `repaired`: QC ล่าสุดต้อง "ผ่าน" และบันทึกหลังเข้า `in_progress` ครั้งล่าสุด
+- เข้า `completed`: ต้องมีใบส่งมอบ (Admin บันทึกจากหน้างาน, POS ผ่าน `POST /handover`)
+
+เงื่อนไขที่ใช้ทั้ง Admin และ POS:
+- เข้า `ready_pickup` หรือ `completed`: เครื่องต้องไม่ค้างอยู่ที่ร้านซ่อมภายนอก (Admin ได้รับ `EXTERNAL_REPAIR_OPEN`, POS ได้รับ `INVALID_STATUS_TRANSITION`)
+
 เวลา:
-- `repairCompletedAt` — ตั้งเมื่อเข้า `ready_pickup` (ล้างค่าถ้าถูกส่งกลับ `in_progress`)
+- `repairCompletedAt` — ตั้งเมื่อเข้า `ready_pickup` (ล้างค่าถ้าถูกส่งกลับ `in_progress`); สำหรับ `outcome = not_repaired` คือเวลาที่เครื่องพร้อมคืน
 - `handedOverAt` — ตั้งเมื่อเข้า `completed` และตั้ง `completedAt` เดิมพร้อมกันเพื่อ backward-compatibility (งานเก่าที่มีแค่ `completedAt` จะใช้ค่านั้นเป็น `handedOverAt`)
 - `cancelledAt` — ตั้งเมื่อเข้า `cancelled`
 

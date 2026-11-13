@@ -4,14 +4,21 @@ import dbConnect from "@/lib/mongodb";
 import { recordAdminLog } from "@/lib/admin-log";
 import RepairJob, { type IRepairJob, type RepairStatusHistoryEntry } from "@/models/RepairJob";
 import RepairCustomer from "@/models/RepairCustomer";
+import Branch from "@/models/Branch";
 import { computeRepairCosts } from "./costs";
 import type { IntegrationCreateInput, IntegrationCustomerInput, SearchQuery } from "./integration-validation";
-import { canTransition, isRepairStatus, repairStatusLabel, toPosStatus, type RepairStatus } from "./status";
+import { isRepairStatus, toPosStatus, type RepairStatus } from "./status";
+import type { RepairOutcome } from "./options";
+import { currentCostsVersion, DEVICE_IN_HAND_STATUSES, resolveOutcome, transitionBlock, type WorkflowJob } from "./workflow";
 
 export type RepairErrorCode =
     | "NOT_FOUND"
     | "VALIDATION_ERROR"
     | "INVALID_STATUS_TRANSITION"
+    | "QUOTE_APPROVAL_REQUIRED"
+    | "QC_REQUIRED"
+    | "HANDOVER_REQUIRED"
+    | "EXTERNAL_REPAIR_OPEN"
     | "REPAIR_CLOSED"
     | "CONFLICT"
     | "IDEMPOTENCY_CONFLICT"
@@ -41,47 +48,87 @@ type LeanRepairJob = IRepairJob & { _id: mongoose.Types.ObjectId };
 // Status transitions (shared by admin PATCH, integration cancel/handover)
 // ---------------------------------------------------------------------------
 
-function statusSideEffects(job: Pick<IRepairJob, "repairCompletedAt">, to: RepairStatus, now: Date, note: string) {
+function statusSideEffects(
+    job: Pick<IRepairJob, "repairCompletedAt" | "outcome">,
+    to: RepairStatus,
+    now: Date,
+    note: string,
+    options: { outcome?: RepairOutcome; handedOverAt?: Date },
+) {
     const set: Record<string, unknown> = {};
     const unset: Record<string, ""> = {};
-    if (to === "ready_pickup") set.repairCompletedAt = now;
+    if (to === "ready_pickup") {
+        // With outcome not_repaired this marks when the device became ready to go back.
+        set.repairCompletedAt = now;
+        set.outcome = resolveOutcome(options.outcome);
+    }
     if (to === "completed") {
-        set.handedOverAt = now;
-        set.completedAt = now; // legacy field, kept for existing reports and the print view
-        if (!job.repairCompletedAt) set.repairCompletedAt = now;
+        const handedOverAt = options.handedOverAt ?? now;
+        set.handedOverAt = handedOverAt;
+        set.completedAt = handedOverAt; // legacy field, kept for existing reports and the print view
+        if (!job.repairCompletedAt) set.repairCompletedAt = handedOverAt;
+        // Jobs that reached ready_pickup before outcomes existed were repaired.
+        if (!job.outcome) set.outcome = "repaired";
     }
     if (to === "cancelled") {
         set.cancelledAt = now;
         if (note) set.cancelReason = note;
     }
-    // Sent back for rework: it is no longer "repair completed".
-    if (to === "in_progress") unset.repairCompletedAt = "";
+    // Sent back for rework: it is no longer "repair completed", and has no outcome yet.
+    if (to === "in_progress") {
+        unset.repairCompletedAt = "";
+        unset.outcome = "";
+    }
     return { set, unset };
 }
 
+/** The job as it reads after `extra` is written, which is what the guards check. */
+type TransitionSubject = Pick<IRepairJob, "status"> &
+    Partial<Pick<IRepairJob, "repairCompletedAt" | "ownerType" | "totalPrice" | "costsVersion" | "quoteApprovals" | "qcChecks" | "statusHistory" | "outcome" | "movements">> & {
+        _id: mongoose.Types.ObjectId | string;
+    };
+
+export interface TransitionExtra {
+    set?: Record<string, unknown>;
+    inc?: Record<string, number>;
+    /** Only for ready_pickup; defaults to "repaired". */
+    outcome?: RepairOutcome;
+}
+
 /**
- * Move a job to a new status. The update is conditional on the status we
- * read, so two concurrent transitions cannot both win, and the history entry
- * is written in the same update as the status (it used to be pushed onto an
- * in-memory copy that was never saved).
+ * Move a job to a new status, enforcing every workflow rule in one place:
+ * the status graph, quotation approval before in_progress, a passing QC
+ * before a repaired job goes to ready_pickup, and a handover record (passed
+ * in `extra.set.handover`) before completed.
+ *
+ * The update is conditional on the status we read (and on the prices or QC
+ * records a guard relied on), so two concurrent changes cannot both win, and
+ * the history entry is written in the same update as the status.
  */
 export async function transitionRepairJob(
-    job: Pick<IRepairJob, "status" | "repairCompletedAt"> & { _id: mongoose.Types.ObjectId | string },
+    job: TransitionSubject,
     to: string,
     actor: RepairActor,
     note: string,
-    extra: { set?: Record<string, unknown>; inc?: Record<string, number> } = {},
+    extra: TransitionExtra = {},
 ): Promise<LeanRepairJob> {
     if (!isRepairStatus(to)) throw new RepairWorkflowError("VALIDATION_ERROR", 400, `Unknown status "${to}"`);
-    if (!canTransition(job.status, to)) {
-        throw new RepairWorkflowError(
-            "INVALID_STATUS_TRANSITION",
-            409,
-            `ไม่สามารถเปลี่ยนสถานะจาก "${repairStatusLabel(job.status)}" เป็น "${repairStatusLabel(to)}" ได้`,
-        );
-    }
+    const set = extra.set ?? {};
+    const effective: WorkflowJob = {
+        ...job,
+        ...(typeof set.totalPrice === "number" ? { totalPrice: set.totalPrice } : {}),
+        costsVersion: typeof set.costsVersion === "number"
+            ? set.costsVersion
+            : currentCostsVersion(job) + (extra.inc?.costsVersion ?? 0),
+        // Closing needs the handover written in this same update.
+        handover: set.handover,
+    };
+    const block = transitionBlock(effective, to, extra.outcome);
+    if (block) throw new RepairWorkflowError(block.code, 409, block.message);
+
     const now = new Date();
-    const effects = statusSideEffects(job, to, now, note);
+    const handover = set.handover as { handedOverAt?: Date } | undefined;
+    const effects = statusSideEffects(job, to, now, note, { outcome: extra.outcome, handedOverAt: handover?.handedOverAt });
     const entry: RepairStatusHistoryEntry = {
         status: to,
         changedBy: actor.name,
@@ -91,12 +138,23 @@ export async function transitionRepairJob(
         note,
     };
     const update: mongoose.UpdateQuery<IRepairJob> = {
-        $set: { ...(extra.set ?? {}), ...effects.set, status: to },
+        $set: { ...set, ...effects.set, status: to },
         $push: { statusHistory: entry },
     };
     if (Object.keys(effects.unset).length) update.$unset = effects.unset;
     if (extra.inc && Object.keys(extra.inc).length) update.$inc = extra.inc;
-    const updated = await RepairJob.findOneAndUpdate({ _id: job._id, status: job.status }, update, {
+
+    const filter: Record<string, unknown> = { _id: job._id, status: job.status };
+    // The approval checked above covers these prices only.
+    if (to === "in_progress" && (job.ownerType ?? "customer") === "customer") filter.costsVersion = job.costsVersion ?? null;
+    // The QC checked above must still be the latest one.
+    if (to === "ready_pickup" && effects.set.outcome === "repaired") filter.qcChecks = { $size: job.qcChecks?.length ?? 0 };
+    // No outside repair may have been opened since we checked.
+    if ((DEVICE_IN_HAND_STATUSES as readonly string[]).includes(to)) {
+        filter.movements = { $not: { $elemMatch: { type: "external_repair", returnedAt: null } } };
+    }
+
+    const updated = await RepairJob.findOneAndUpdate(filter, update, {
         returnDocument: "after",
         runValidators: true,
     }).lean<LeanRepairJob>();
@@ -204,6 +262,16 @@ export function integrationActor(client: IntegrationClientRef): RepairActor {
     return { type: "integration", id: client.keyId, name: `integration:${client.name}` };
 }
 
+/**
+ * The branch a POS job belongs to. Admins map POS branches on the branch page
+ * (Branch.posBranchIds), by the POS branch id or its branch code.
+ */
+export async function findBranchForPos(branchId?: string | null, branchCode?: string | null) {
+    const keys = [branchId, branchCode].filter((key): key is string => typeof key === "string" && key.length > 0);
+    if (!keys.length) return null;
+    return Branch.findOne({ posBranchIds: { $in: keys } }).select("name").lean<{ _id: mongoose.Types.ObjectId; name: string }>();
+}
+
 export async function createIntegrationRepairJob(options: {
     input: IntegrationCreateInput;
     client: IntegrationClientRef;
@@ -229,12 +297,16 @@ export async function createIntegrationRepairJob(options: {
     const actor = integrationActor(client);
     const now = new Date();
     const { brand, deviceModel } = splitPosModel(input.model);
+    const branch = await findBranchForPos(input.branchId, input.branchCode);
     try {
         const saved = await saveNewRepairJob({
             ownerType: input.ownerType,
             source: INTEGRATION_SOURCE,
             externalRef: input.reference,
             ...(customerId ? { customer: customerId } : {}),
+            // Unmapped POS branches leave the job without a branch: only users
+            // who see all branches can find it until the branch is mapped.
+            ...(branch ? { branchId: branch._id, currentHolder: { kind: "branch", label: branch.name, branchId: branch._id } } : {}),
             deviceType: "Smartphone",
             brand,
             deviceModel,
@@ -384,7 +456,17 @@ export async function handoverPosRepairJob(options: {
     }
     let updated: LeanRepairJob;
     try {
-        updated = await transitionRepairJob(job, "completed", integrationActor(client), note || "Web POS รับเครื่องคืนแล้ว");
+        const actor = integrationActor(client);
+        updated = await transitionRepairJob(job, "completed", actor, note || "Web POS รับเครื่องคืนแล้ว", {
+            set: {
+                handover: {
+                    receiverName: "Web POS",
+                    handedOverBy: actor.name,
+                    handedOverAt: new Date(),
+                    note: note ?? "",
+                },
+            },
+        });
     } catch (error) {
         if (error instanceof RepairWorkflowError && error.code === "CONFLICT") {
             const current = await getPosRepairJob(id);
@@ -433,6 +515,8 @@ export function toIntegrationDto(job: LeanRepairJob) {
         ownerType: job.ownerType ?? "customer",
         status: job.status,
         posStatus: toPosStatus(job.status),
+        // Set on entering ready_pickup: "not_repaired" when the customer refused the repair.
+        outcome: job.outcome ?? null,
         device: {
             inventoryItemId: job.integration?.inventoryItemId ?? null,
             productCode: job.integration?.productCode ?? null,

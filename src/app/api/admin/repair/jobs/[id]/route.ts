@@ -5,37 +5,30 @@ import RepairJob from "@/models/RepairJob";
 
 import { sendLineFlexMessage } from "@/lib/line-messaging";
 import { recordAdminLog } from "@/lib/admin-log";
-import { checkPermission } from "@/lib/check-permission";
 import { assertClaimEligible, ClaimEligibilityError } from "@/lib/claim-eligibility";
-import { AdminValidationError, parseAdminPatch } from "@/lib/repair/admin-validation";
+import { parseAdminPatch } from "@/lib/repair/admin-validation";
+import { adminRepairErrorResponse } from "@/lib/repair/admin-route";
+import { ADMIN_JOB_POPULATE, jobNotFound, requireRepairAccess, scopedJobFilter } from "@/lib/repair/branch-scope";
 import { computeRepairCosts } from "@/lib/repair/costs";
-import { RepairWorkflowError, transitionRepairJob, type RepairActor } from "@/lib/repair/service";
-import { canTransition, repairStatusLabel } from "@/lib/repair/status";
+import { transitionRepairJob } from "@/lib/repair/service";
+import { REPAIR_OUTCOME } from "@/lib/repair/options";
+import { statusLabelForOutcome } from "@/lib/repair/workflow";
 
 interface Context {
     params: Promise<{ id: string }>;
 }
 
-function workflowErrorResponse(error: unknown): NextResponse | null {
-    if (error instanceof AdminValidationError) return NextResponse.json({ error: error.message, code: "VALIDATION_ERROR", fields: error.fields }, { status: 400 });
-    if (error instanceof RepairWorkflowError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
-    if (error instanceof ClaimEligibilityError) return NextResponse.json({ error: error.message, code: error.code }, { status: 409 });
-    return null;
-}
-
 export async function GET(req: NextRequest, { params }: Context) {
     try {
-        const { authorized, error } = await checkPermission(req, "view_repair_jobs");
-        if (!authorized) return error;
+        const access = await requireRepairAccess(req, "view_repair_jobs");
+        if (!access.ok) return access.error;
 
         await dbConnect();
         const { id } = await params;
-        if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Job not found" }, { status: 404 });
-        const job = await RepairJob.findById(id).populate("customer").populate("assignedTechnician", "name username");
-
-        if (!job) {
-            return NextResponse.json({ error: "Job not found" }, { status: 404 });
-        }
+        const filter = scopedJobFilter(access.scope, id);
+        if (!filter) return jobNotFound();
+        const job = await RepairJob.findOne(filter).populate(ADMIN_JOB_POPULATE);
+        if (!job) return jobNotFound();
 
         return NextResponse.json(job);
     } catch (error) {
@@ -58,22 +51,22 @@ const getStatusColor = (status: string) => {
 
 export async function PATCH(req: NextRequest, { params }: Context) {
     try {
-        const { authorized, error, user } = await checkPermission(req, "edit_repair_jobs");
-        if (!authorized) return error;
+        const access = await requireRepairAccess(req, "edit_repair_jobs");
+        if (!access.ok) return access.error;
+        const { actor } = access;
 
         await dbConnect();
         const { id } = await params;
-        if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+        const filter = scopedJobFilter(access.scope, id);
+        if (!filter) return jobNotFound();
         const body = await req.json().catch(() => null);
         if (!body || typeof body !== "object" || Array.isArray(body)) {
             return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
         }
         const input = parseAdminPatch(body);
 
-        const currentJob = await RepairJob.findById(id).select("-photosBefore -photosAfter").lean();
-        if (!currentJob) {
-            return NextResponse.json({ error: "Job not found" }, { status: 404 });
-        }
+        const currentJob = await RepairJob.findOne(filter).select("-photosBefore -photosAfter").lean();
+        if (!currentJob) return jobNotFound();
         // Photos are large inline images; only their counts are needed to log uploads.
         const [photoCounts] = await RepairJob.aggregate<{ photosBefore: number; photosAfter: number }>([
             { $match: { _id: new mongoose.Types.ObjectId(id) } },
@@ -83,19 +76,23 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         if (currentJob.jobType === "claim") await assertClaimEligible({ imei: currentJob.imei });
 
         // The actor is whoever holds the verified session, never a name the client sends.
-        const actor: RepairActor = { type: "admin", id: String(user._id), name: user.username };
         const logActor = { id: actor.id, name: actor.name };
         const jobTitle = `${currentJob.jobId} (${currentJob.brand} ${currentJob.deviceModel})`;
         const statusChanged = input.status !== undefined && input.status !== currentJob.status;
-        if (statusChanged && !canTransition(currentJob.status, input.status!)) {
+        // The outcome is chosen when the job enters ready_pickup; it cannot be swapped afterwards.
+        if (!statusChanged && input.outcome && input.outcome !== (currentJob.outcome ?? "repaired")) {
             return NextResponse.json({
-                error: `ไม่สามารถเปลี่ยนสถานะจาก "${repairStatusLabel(currentJob.status)}" เป็น "${repairStatusLabel(input.status!)}" ได้`,
+                error: `งานนี้บันทึกผลเป็น "${REPAIR_OUTCOME.labels[currentJob.outcome ?? "repaired"]}" แล้ว หากต้องการเปลี่ยน ให้ส่งกลับไป "กำลังซ่อม" ก่อน`,
                 code: "INVALID_STATUS_TRANSITION",
             }, { status: 409 });
         }
 
         // Totals are always derived on the server from the three cost inputs.
         const set: Record<string, unknown> = { ...input.set };
+        const backupChanged = input.dataBackupStatus !== undefined && input.dataBackupStatus !== currentJob.dataBackup?.status;
+        if (backupChanged) {
+            set.dataBackup = { status: input.dataBackupStatus, recordedBy: actor.name, recordedById: actor.id, recordedAt: new Date() };
+        }
         const inc: Record<string, number> = {};
         let costsChanged = false;
         if (input.costs) {
@@ -111,24 +108,29 @@ export async function PATCH(req: NextRequest, { params }: Context) {
                 Object.assign(set, next, {
                     totalPrice: computeRepairCosts(next).customerChargeTotal,
                     costsUpdatedAt: new Date(),
+                    // A new price needs a new approval round.
+                    quotationApproved: "pending",
                 });
-                inc.costsVersion = 1;
+                // $inc on a missing field would start at 1 and match an approval of version 1.
+                if (currentJob.costsVersion == null) set.costsVersion = 2;
+                else inc.costsVersion = 1;
             }
         }
 
         if (statusChanged) {
-            await transitionRepairJob(currentJob, input.status!, actor, input.statusNote, { set, inc });
+            await transitionRepairJob(currentJob, input.status!, actor, input.statusNote, { set, inc, outcome: input.outcome });
         } else if (Object.keys(set).length) {
             await RepairJob.updateOne({ _id: id }, { $set: set, ...(Object.keys(inc).length ? { $inc: inc } : {}) }, { runValidators: true });
         }
 
-        const updatedJob = await RepairJob.findById(id).populate("customer").populate("assignedTechnician", "name username");
+        const updatedJob = await RepairJob.findById(id).populate(ADMIN_JOB_POPULATE);
+        const newStatusLabel = statusChanged ? statusLabelForOutcome(input.status!, updatedJob?.outcome) : "";
 
         // ADMIN ACTIVITY LOGGING
         // 1. Log Status Changes
         if (statusChanged) {
             try {
-                await sendLineFlexMessage(currentJob, repairStatusLabel(input.status!), getStatusColor(input.status!));
+                await sendLineFlexMessage(currentJob, newStatusLabel, getStatusColor(input.status!));
             } catch (lineError) {
                 console.error("LINE notify failed:", lineError instanceof Error ? lineError.message : lineError);
             }
@@ -137,10 +139,10 @@ export async function PATCH(req: NextRequest, { params }: Context) {
                 req,
                 actor: logActor,
                 action: "update_job_status",
-                description: `เปลี่ยนสถานะงาน ${jobTitle} เป็น "${repairStatusLabel(input.status!)}"`,
+                description: `เปลี่ยนสถานะงาน ${jobTitle} เป็น "${newStatusLabel}"`,
                 targetId: id,
                 targetType: "RepairJob",
-                details: { oldStatus: currentJob.status, newStatus: input.status, note: input.statusNote }
+                details: { oldStatus: currentJob.status, newStatus: input.status, outcome: updatedJob?.outcome, note: input.statusNote }
             });
         }
 
@@ -172,7 +174,20 @@ export async function PATCH(req: NextRequest, { params }: Context) {
             }
         }
 
-        // 4. Log Warranty Updates
+        // 4. Log appointment and device-data changes
+        if (input.set.appointmentDate !== undefined || backupChanged) {
+            await recordAdminLog({
+                req,
+                actor: logActor,
+                action: "update_job_intake",
+                description: `อัปเดตวันนัด/สถานะข้อมูลในเครื่อง งาน ${jobTitle}`,
+                targetId: id,
+                targetType: "RepairJob",
+                details: { appointmentDate: input.set.appointmentDate, dataBackupStatus: backupChanged ? input.dataBackupStatus : undefined },
+            });
+        }
+
+        // 5. Log Warranty Updates
         if (input.set.warrantyExpireDate !== undefined || input.set.voidStickerCode !== undefined) {
             await recordAdminLog({
                 req,
@@ -187,7 +202,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
 
         return NextResponse.json(updatedJob);
     } catch (error: unknown) {
-        const handled = workflowErrorResponse(error);
+        const handled = adminRepairErrorResponse(error);
         if (handled) return handled;
         console.error("Update Job Error:", error);
         return NextResponse.json({ error: "Failed to update job" }, { status: 500 });
@@ -196,14 +211,16 @@ export async function PATCH(req: NextRequest, { params }: Context) {
 
 export async function DELETE(req: NextRequest, { params }: Context) {
     try {
-        const { authorized, error, user } = await checkPermission(req, "delete_repair_jobs");
-        if (!authorized) return error;
+        const access = await requireRepairAccess(req, "delete_repair_jobs");
+        if (!access.ok) return access.error;
+        const { user } = access;
 
         await dbConnect();
         const { id } = await params;
-        if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Job not found" }, { status: 404 });
-        const job = await RepairJob.findById(id).select("jobId jobType imei source externalRef").lean();
-        if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+        const filter = scopedJobFilter(access.scope, id);
+        if (!filter) return jobNotFound();
+        const job = await RepairJob.findOne(filter).select("jobId jobType imei source externalRef").lean();
+        if (!job) return jobNotFound();
         // The POS tracks these jobs by id; deleting one would orphan its record there.
         if (job.source === "pos") {
             return NextResponse.json({

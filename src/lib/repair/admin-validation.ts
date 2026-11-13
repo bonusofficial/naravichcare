@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
 import { MAX_MONEY } from "./costs";
+import {
+    APPROVAL_CHANNEL, APPROVAL_DECISION, DATA_BACKUP, QC_CHECKLIST, QC_ITEM_KEYS, QC_RESULT, REPAIR_OUTCOME,
+    type ApprovalChannel, type ApprovalDecision, type DataBackupStatus, type QcItemKey, type QcOverall, type QcResult, type RepairOutcome,
+} from "./options";
 import { isRepairStatus } from "./status";
 
 /**
@@ -44,6 +48,26 @@ function stringList(body: Record<string, unknown>, field: string, maxItems: numb
     return raw as string[];
 }
 
+function dateField(body: Record<string, unknown>, field: string): Date | null | undefined {
+    const raw = body[field];
+    if (raw === undefined) return undefined;
+    if (raw === null || raw === "") return null;
+    if (typeof raw !== "string") throw new AdminValidationError(`${field} ไม่ถูกต้อง`, [field]);
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) throw new AdminValidationError(`${field} ไม่ถูกต้อง`, [field]);
+    return date;
+}
+
+function dataBackupStatus(body: Record<string, unknown>, required: boolean): DataBackupStatus | undefined {
+    const raw = body.dataBackupStatus;
+    if (raw === undefined || raw === null || raw === "") {
+        if (required) throw new AdminValidationError("กรุณาเลือกสถานะข้อมูลในเครื่องลูกค้า", ["dataBackupStatus"]);
+        return undefined;
+    }
+    if (!DATA_BACKUP.is(raw)) throw new AdminValidationError("สถานะข้อมูลในเครื่องไม่ถูกต้อง", ["dataBackupStatus"]);
+    return raw;
+}
+
 // ---------------------------------------------------------------------------
 // POST /api/admin/repair/jobs
 // ---------------------------------------------------------------------------
@@ -52,6 +76,7 @@ const CREATE_FIELDS = [
     "deviceType", "brand", "deviceModel", "serialNumber", "imei", "color",
     "deviceCondition", "accessories", "jobType", "reportedSymptom", "internalNotes",
     "customer", "newCustomer",
+    "branchId", "appointmentDate", "dataBackupStatus",
 ] as const;
 const NEW_CUSTOMER_FIELDS = ["firstName", "lastName", "phone", "lineId", "address", "notes"] as const;
 
@@ -59,6 +84,10 @@ export interface AdminCreateInput {
     job: Record<string, unknown>;
     customerId: string | null;
     newCustomer: Record<string, string> | null;
+    /** Receiving branch as sent; the route checks it against the caller's scope. */
+    branchId: string | null;
+    /** The route stores it with the caller's name and the time. */
+    dataBackupStatus: DataBackupStatus;
 }
 
 export function parseAdminCreate(body: Record<string, unknown>): AdminCreateInput {
@@ -88,6 +117,17 @@ export function parseAdminCreate(body: Record<string, unknown>): AdminCreateInpu
         internalNotes: text(body, "internalNotes", 4000) ?? "",
         accessories: stringList(body, "accessories", 30, 100) ?? [],
     };
+    const appointmentDate = dateField(body, "appointmentDate");
+    if (appointmentDate) job.appointmentDate = appointmentDate;
+
+    let branchId: string | null = null;
+    if (body.branchId !== undefined && body.branchId !== null && body.branchId !== "") {
+        if (typeof body.branchId !== "string" || !mongoose.isValidObjectId(body.branchId)) {
+            throw new AdminValidationError("สาขาไม่ถูกต้อง", ["branchId"]);
+        }
+        branchId = body.branchId;
+    }
+    const backup = dataBackupStatus(body, true)!;
 
     let customerId: string | null = null;
     if (body.customer !== undefined && body.customer !== null && body.customer !== "") {
@@ -121,7 +161,7 @@ export function parseAdminCreate(body: Record<string, unknown>): AdminCreateInpu
     }
 
     if (!customerId && !newCustomer) throw new AdminValidationError("กรุณาระบุข้อมูลลูกค้า (Customer info required)", ["customer"]);
-    return { job, customerId, newCustomer };
+    return { job, customerId, newCustomer, branchId, dataBackupStatus: backup };
 }
 
 // ---------------------------------------------------------------------------
@@ -129,12 +169,13 @@ export function parseAdminCreate(body: Record<string, unknown>): AdminCreateInpu
 // ---------------------------------------------------------------------------
 
 const PATCH_FIELDS = [
-    "status", "statusNote",
+    "status", "statusNote", "outcome",
     "laborCost", "partsCost", "partsPurchaseCost",
     "diagnosticResult", "internalNotes", "quotationApproved", "assignedTechnician",
     "warrantyStartDate", "warrantyExpireDate", "warrantyType", "voidStickerCode",
     "photosBefore", "photosAfter",
     "color", "deviceCondition", "accessories",
+    "appointmentDate", "dataBackupStatus",
 ] as const;
 
 // Sent by older copies of the admin UI. adminUsername is ignored because the
@@ -149,8 +190,12 @@ const PHOTO_PATTERN = /^(data:image\/(png|jpe?g|webp|gif);base64,|https:\/\/|\/)
 export interface AdminPatchInput {
     status?: string;
     statusNote: string;
+    /** Only with status "ready_pickup"; transitionRepairJob defaults it to "repaired". */
+    outcome?: RepairOutcome;
     costs?: { laborCost?: number; partsCost?: number; partsPurchaseCost?: number };
     set: Record<string, unknown>;
+    /** The route stores it with the caller's name and the time. */
+    dataBackupStatus?: DataBackupStatus;
 }
 
 function money(body: Record<string, unknown>, field: string): number | undefined {
@@ -163,16 +208,6 @@ function money(body: Record<string, unknown>, field: string): number | undefined
     return Math.round(value * 100) / 100;
 }
 
-function dateField(body: Record<string, unknown>, field: string): Date | null | undefined {
-    const raw = body[field];
-    if (raw === undefined) return undefined;
-    if (raw === null || raw === "") return null;
-    if (typeof raw !== "string") throw new AdminValidationError(`${field} ไม่ถูกต้อง`, [field]);
-    const date = new Date(raw);
-    if (Number.isNaN(date.getTime())) throw new AdminValidationError(`${field} ไม่ถูกต้อง`, [field]);
-    return date;
-}
-
 export function parseAdminPatch(body: Record<string, unknown>): AdminPatchInput {
     rejectUnknown(body, PATCH_FIELDS, IGNORED_PATCH_FIELDS);
     const set: Record<string, unknown> = {};
@@ -183,6 +218,13 @@ export function parseAdminPatch(body: Record<string, unknown>): AdminPatchInput 
         status = body.status;
     }
     const statusNote = text(body, "statusNote", 1000) ?? "";
+
+    let outcome: RepairOutcome | undefined;
+    if (body.outcome !== undefined && body.outcome !== null && body.outcome !== "") {
+        if (!REPAIR_OUTCOME.is(body.outcome)) throw new AdminValidationError("ผลการซ่อมไม่ถูกต้อง", ["outcome"]);
+        if (status !== "ready_pickup") throw new AdminValidationError("ระบุผลการซ่อมได้เฉพาะเมื่อเปลี่ยนเป็นสถานะรอรับคืน", ["outcome"]);
+        outcome = body.outcome;
+    }
 
     const laborCost = money(body, "laborCost");
     const partsCost = money(body, "partsCost");
@@ -209,7 +251,7 @@ export function parseAdminPatch(body: Record<string, unknown>): AdminPatchInput 
         else throw new AdminValidationError("assignedTechnician ไม่ถูกต้อง", ["assignedTechnician"]);
     }
 
-    for (const field of ["warrantyStartDate", "warrantyExpireDate"] as const) {
+    for (const field of ["warrantyStartDate", "warrantyExpireDate", "appointmentDate"] as const) {
         const value = dateField(body, field);
         if (value !== undefined) set[field] = value;
     }
@@ -224,5 +266,104 @@ export function parseAdminPatch(body: Record<string, unknown>): AdminPatchInput 
         set[field] = photos;
     }
 
-    return { status, statusNote, costs, set };
+    return { status, statusNote, outcome, costs, set, dataBackupStatus: dataBackupStatus(body, false) };
+}
+
+// ---------------------------------------------------------------------------
+// Quote approvals, QC and handover (POST /api/admin/repair/jobs/:id/...)
+// ---------------------------------------------------------------------------
+
+/** Clock skew allowed for times the staff enter (decidedAt, handedOverAt). */
+const MAX_FUTURE_MS = 5 * 60 * 1000;
+
+function pastDate(body: Record<string, unknown>, field: string, label: string): Date | undefined {
+    const value = dateField(body, field);
+    if (!value) return undefined;
+    if (value.getTime() > Date.now() + MAX_FUTURE_MS) throw new AdminValidationError(`${label}ต้องไม่เป็นเวลาในอนาคต`, [field]);
+    return value;
+}
+
+export interface QuoteApprovalInput {
+    decision: ApprovalDecision;
+    channel: ApprovalChannel;
+    approverName: string;
+    /** Defaults to now in the route. */
+    decidedAt?: Date;
+    note: string;
+}
+
+export function parseQuoteApproval(body: Record<string, unknown>): QuoteApprovalInput {
+    rejectUnknown(body, ["decision", "channel", "approverName", "decidedAt", "note"]);
+    if (!APPROVAL_DECISION.is(body.decision)) throw new AdminValidationError("กรุณาเลือกผลการอนุมัติ (อนุมัติ/ไม่อนุมัติ)", ["decision"]);
+    if (!APPROVAL_CHANNEL.is(body.channel)) throw new AdminValidationError("กรุณาเลือกช่องทางที่ลูกค้าแจ้ง", ["channel"]);
+    const approverName = text(body, "approverName", 120);
+    if (!approverName) throw new AdminValidationError("กรุณากรอกชื่อผู้อนุมัติ", ["approverName"]);
+    return {
+        decision: body.decision,
+        channel: body.channel,
+        approverName,
+        decidedAt: pastDate(body, "decidedAt", "เวลาที่ลูกค้าแจ้ง"),
+        note: text(body, "note", 1000) ?? "",
+    };
+}
+
+export interface QcCheckInput {
+    items: { key: QcItemKey; result: QcResult }[];
+    overall: QcOverall;
+    note: string;
+}
+
+/** Every QC_CHECKLIST item exactly once; overall passes when nothing failed. */
+export function parseQcCheck(body: Record<string, unknown>): QcCheckInput {
+    rejectUnknown(body, ["items", "note"]);
+    if (!Array.isArray(body.items)) throw new AdminValidationError("กรุณาบันทึกผล QC ให้ครบทุกรายการ", ["items"]);
+    const results = new Map<string, QcResult>();
+    for (const raw of body.items as unknown[]) {
+        const item = raw as { key?: unknown; result?: unknown } | null;
+        if (!item || typeof item !== "object" || Array.isArray(item) || Object.keys(item).some((k) => k !== "key" && k !== "result")) {
+            throw new AdminValidationError("รายการ QC ไม่ถูกต้อง", ["items"]);
+        }
+        if (typeof item.key !== "string" || !(QC_ITEM_KEYS as readonly string[]).includes(item.key)) {
+            throw new AdminValidationError(`ไม่รู้จักรายการ QC "${String(item.key)}"`, ["items"]);
+        }
+        if (results.has(item.key)) throw new AdminValidationError(`รายการ QC "${item.key}" ซ้ำ`, ["items"]);
+        if (!QC_RESULT.is(item.result)) throw new AdminValidationError(`ผล QC ของ "${item.key}" ไม่ถูกต้อง`, ["items"]);
+        results.set(item.key, item.result);
+    }
+    const missing = QC_CHECKLIST.filter((item) => !results.has(item.key));
+    if (missing.length) {
+        throw new AdminValidationError(`กรุณาบันทึกผล QC ให้ครบ: ${missing.map((item) => item.label).join(", ")}`, ["items"]);
+    }
+    const items = QC_ITEM_KEYS.map((key) => ({ key, result: results.get(key)! }));
+    return {
+        items,
+        overall: items.every((item) => item.result !== "fail") ? "pass" : "fail",
+        note: text(body, "note", 1000) ?? "",
+    };
+}
+
+export interface HandoverInput {
+    receiverName: string;
+    receiverPhone: string;
+    receiverRelation: string;
+    /** Defaults to now in the route. */
+    handedOverAt?: Date;
+    note: string;
+}
+
+export function parseHandover(body: Record<string, unknown>): HandoverInput {
+    rejectUnknown(body, ["receiverName", "receiverPhone", "receiverRelation", "handedOverAt", "note"]);
+    const receiverName = text(body, "receiverName", 120);
+    if (!receiverName) throw new AdminValidationError("กรุณากรอกชื่อผู้รับเครื่อง", ["receiverName"]);
+    const receiverPhone = text(body, "receiverPhone", 20) ?? "";
+    if (receiverPhone && !/^[0-9+\-\s()]{6,20}$/.test(receiverPhone)) {
+        throw new AdminValidationError("เบอร์โทรผู้รับเครื่องไม่ถูกต้อง", ["receiverPhone"]);
+    }
+    return {
+        receiverName,
+        receiverPhone,
+        receiverRelation: text(body, "receiverRelation", 100) ?? "",
+        handedOverAt: pastDate(body, "handedOverAt", "เวลาส่งมอบ"),
+        note: text(body, "note", 1000) ?? "",
+    };
 }

@@ -3,11 +3,13 @@ import dbConnect from "@/lib/mongodb";
 import RepairJob from "@/models/RepairJob";
 import RepairCustomer from "@/models/RepairCustomer";
 import { recordAdminLog } from "@/lib/admin-log";
-import { checkPermission } from "@/lib/check-permission";
 import { assertClaimEligible, ClaimEligibilityError } from "@/lib/claim-eligibility";
 import { AdminValidationError, parseAdminCreate } from "@/lib/repair/admin-validation";
+import { isBranchInScope, requireRepairAccess } from "@/lib/repair/branch-scope";
+import { branchChoiceFilter, overdueFilter } from "@/lib/repair/dashboard";
 import { saveNewRepairJob } from "@/lib/repair/service";
-import { isRepairStatus } from "@/lib/repair/status";
+import { isRepairStatus, TERMINAL_STATUSES } from "@/lib/repair/status";
+import Branch from "@/models/Branch";
 
 function escapeRegex(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -15,18 +17,25 @@ function escapeRegex(value: string): string {
 
 export async function GET(req: NextRequest) {
     try {
-        const { authorized, error } = await checkPermission(req, "view_repair_jobs");
-        if (!authorized) return error;
+        const access = await requireRepairAccess(req, "view_repair_jobs");
+        if (!access.ok) return access.error;
 
         await dbConnect();
         const { searchParams } = new URL(req.url);
         const status = searchParams.get("status");
         const query = searchParams.get("q")?.trim().slice(0, 100);
 
-        const filter: Record<string, unknown> = {};
-        if (status && status !== "all" && isRepairStatus(status)) {
+        // branchId: a branch in scope, or "none" (jobs with no branch); anything else lists nothing.
+        const branchFilter = branchChoiceFilter(access.scope, searchParams.get("branchId"));
+        if (!branchFilter) return NextResponse.json([]);
+        const filter: Record<string, unknown> = { ...branchFilter };
+        if (status === "open") {
+            filter.status = { $nin: [...TERMINAL_STATUSES] };
+        } else if (status && status !== "all" && isRepairStatus(status)) {
             filter.status = status;
         }
+        const overdue = searchParams.get("overdue") === "1";
+        if (overdue) filter.$and = [overdueFilter(new Date())];
 
         if (query) {
             // Escaped: the search text is matched literally, never run as a pattern.
@@ -43,7 +52,8 @@ export async function GET(req: NextRequest) {
         const jobs = await RepairJob.find(filter)
             .select("-photosBefore -photosAfter")
             .populate("customer")
-            .sort({ createdAt: -1 })
+            .populate("branchId", "name location")
+            .sort(overdue ? { appointmentDate: 1 } : { createdAt: -1 })
             .limit(100);
 
         return NextResponse.json(jobs);
@@ -55,8 +65,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        const { authorized, error, user } = await checkPermission(req, "create_repair_jobs");
-        if (!authorized) return error;
+        const access = await requireRepairAccess(req, "create_repair_jobs");
+        if (!access.ok) return access.error;
+        const { user, scope } = access;
 
         await dbConnect();
         const body = await req.json().catch(() => null);
@@ -64,6 +75,19 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
         }
         const input = parseAdminCreate(body);
+
+        // The receiving branch: as chosen, else the only branch the user works in.
+        let branchId = input.branchId;
+        if (!branchId && !scope.all && scope.branchIds.length === 1) branchId = String(scope.branchIds[0]);
+        if (!branchId) {
+            return NextResponse.json({ error: "กรุณาเลือกสาขารับงาน", code: "VALIDATION_ERROR", fields: ["branchId"] }, { status: 400 });
+        }
+        const branch = isBranchInScope(scope, branchId)
+            ? await Branch.findOne({ _id: branchId, isActive: true }).select("name").lean<{ name: string }>()
+            : null;
+        if (!branch) {
+            return NextResponse.json({ error: "ไม่มีสิทธิ์รับงานในสาขานี้ หรือสาขาถูกปิดใช้งาน", code: "VALIDATION_ERROR", fields: ["branchId"] }, { status: 400 });
+        }
 
         if (input.job.jobType === "claim") await assertClaimEligible({ imei: input.job.imei as string });
 
@@ -79,8 +103,16 @@ export async function POST(req: NextRequest) {
         const now = new Date();
         const job = await saveNewRepairJob({
             ...input.job,
+            branchId,
             customer: customerId,
             receivedAt: now,
+            dataBackup: {
+                status: input.dataBackupStatus,
+                recordedBy: user.username,
+                recordedById: String(user._id),
+                recordedAt: now,
+            },
+            currentHolder: { kind: "branch", label: branch.name, branchId },
             statusHistory: [{
                 status: "pending",
                 changedBy: user.username,

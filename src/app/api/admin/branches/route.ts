@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { authErrorResponse, requireAdmin } from "@/lib/admin-auth";
 import { getErrorMessage } from "@/lib/buyback-api";
 import { recordAdminLog } from "@/lib/admin-log";
+import { parsePosBranchIds } from "@/lib/branches";
+import { isDuplicateKeyError } from "@/lib/errors";
 import Branch from "@/models/Branch";
 
 export async function GET() {
@@ -22,10 +24,13 @@ export async function POST(req: Request) {
         const name = typeof body.name === "string" ? body.name.trim() : "";
         const location = typeof body.location === "string" ? body.location.trim() : "";
         if (!name || !location) return NextResponse.json({ error: "กรุณาระบุชื่อและที่ตั้งสาขา" }, { status: 400 });
-        const branch = await Branch.create({ name, location, phone: String(body.phone || "").trim(), isActive: true });
+        const posBranchIds = parsePosBranchIds(body.posBranchIds);
+        if (posBranchIds && !Array.isArray(posBranchIds)) return NextResponse.json({ error: posBranchIds.error }, { status: 400 });
+        const branch = await Branch.create({ name, location, phone: String(body.phone || "").trim(), isActive: true, posBranchIds: posBranchIds ?? [] });
         await recordAdminLog({ req, action: "create_branch", description: `เพิ่มสาขา ${name}`, targetId: branch._id.toString(), targetType: "Branch" });
         return NextResponse.json({ branch }, { status: 201 });
     } catch (error) {
+        if (isDuplicateKeyError(error)) return NextResponse.json({ error: "รหัสสาขาใน POS นี้ผูกกับสาขาอื่นแล้ว" }, { status: 409 });
         const auth = authErrorResponse(error);
         return NextResponse.json({ error: auth?.message || getErrorMessage(error) }, { status: auth?.status || 500 });
     }

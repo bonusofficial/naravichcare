@@ -1,70 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import dbConnect from "@/lib/mongodb";
-import RepairJob from "@/models/RepairJob";
-import { checkPermission } from "@/lib/check-permission";
+import { requireRepairAccess } from "@/lib/repair/branch-scope";
+import { getRepairDashboard } from "@/lib/repair/dashboard";
+import { parseReportPeriod, PeriodInputError } from "@/lib/repair/period";
 
+/**
+ * Repair dashboard: per-branch counts and money for the caller's branches.
+ *
+ * Query: from, to (YYYY-MM-DD in Bangkok time, `to` inclusive; default: this
+ * month), branchId (a branch in scope, or "none" for jobs with no branch).
+ * Answers 404 for a branch outside the caller's scope.
+ */
 export async function GET(req: NextRequest) {
     try {
-        const { authorized, error } = await checkPermission(req, "view_repair_jobs");
-        if (!authorized) return error;
+        const access = await requireRepairAccess(req, "view_repair_jobs");
+        if (!access.ok) return access.error;
 
-        await dbConnect();
-
-        // 1. Basic Counts
-        const totalJobs = await RepairJob.countDocuments();
-        const pendingJobs = await RepairJob.countDocuments({ status: { $in: ["pending", "checking", "waiting_parts"] } });
-        const readyPickup = await RepairJob.countDocuments({ status: "ready_pickup" });
-        const completedJobs = await RepairJob.countDocuments({ status: "completed" });
-
-        // 2. Revenue Aggregation (Daily & Monthly)
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
-
-        const startOfThisMonth = new Date();
-        startOfThisMonth.setDate(1);
-        startOfThisMonth.setHours(0, 0, 0, 0);
-
-        const dailyStats = await RepairJob.aggregate([
-            { $match: { createdAt: { $gte: startOfToday } } },
-            { $group: { 
-                _id: null, 
-                revenue: { $sum: "$totalPrice" }, 
-                profit: { $sum: { $subtract: ["$totalPrice", { $ifNull: ["$partsPurchaseCost", 0] }] } },
-                count: { $sum: 1 } 
-            } }
-        ]);
-
-        const monthlyStats = await RepairJob.aggregate([
-            { $match: { createdAt: { $gte: startOfThisMonth } } },
-            { $group: { 
-                _id: null, 
-                revenue: { $sum: "$totalPrice" }, 
-                profit: { $sum: { $subtract: ["$totalPrice", { $ifNull: ["$partsPurchaseCost", 0] }] } },
-                count: { $sum: 1 } 
-            } }
-        ]);
-
-        // 3. Status Breakdown for Chart/List
-        const statusGroups = await RepairJob.aggregate([
-            { $group: { _id: "$status", count: { $sum: 1 } } }
-        ]);
-
-        return NextResponse.json({
-            stats: {
-                total: totalJobs,
-                pending: pendingJobs,
-                ready: readyPickup,
-                completed: completedJobs,
-                dailyRevenue: dailyStats[0]?.revenue || 0,
-                dailyProfit: dailyStats[0]?.profit || 0,
-                monthlyRevenue: monthlyStats[0]?.revenue || 0,
-                monthlyProfit: monthlyStats[0]?.profit || 0,
-                dailyCount: dailyStats[0]?.count || 0
-            },
-            statusBreakdown: statusGroups
+        const { searchParams } = new URL(req.url);
+        const period = parseReportPeriod({ from: searchParams.get("from"), to: searchParams.get("to") });
+        const dashboard = await getRepairDashboard({
+            scope: access.scope,
+            period,
+            branchId: searchParams.get("branchId"),
         });
+        if (!dashboard) return NextResponse.json({ error: "Branch not found" }, { status: 404 });
+        return NextResponse.json(dashboard);
     } catch (error) {
-        console.error("Dashboard Stats Error:", error);
+        if (error instanceof PeriodInputError) {
+            return NextResponse.json({ error: error.message, code: "VALIDATION_ERROR", fields: [error.field] }, { status: 400 });
+        }
+        console.error("Repair dashboard error:", error);
         return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 });
     }
 }

@@ -6,6 +6,7 @@ import Branch from "@/models/Branch";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
 import { validatePassword } from "@/lib/password-policy";
+import { validateBranchIds } from "@/lib/branches";
 
 // Used by /admin/repair/users to manage repair staff. It reads and writes
 // AdminUser records, so it is gated on the admin-user permissions rather than
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
         if (!authorized) return error;
 
         await dbConnect();
-        const users = await AdminUser.find({}).select("-password").populate("branchId", "name location").sort({ createdAt: -1 });
+        const users = await AdminUser.find({}).select("-password").populate("branchId", "name location").populate("branchIds", "name").sort({ createdAt: -1 });
         return NextResponse.json(users);
     } catch (error) {
         console.error("Fetch Users Error:", error);
@@ -32,6 +33,8 @@ export async function POST(req: NextRequest) {
         await dbConnect();
         const body = await req.json();
         const { username, password, name, role, email, branchId } = body;
+        const branchIds = await validateBranchIds(body.branchIds);
+        if (!branchIds.ok) return NextResponse.json({ error: branchIds.error }, { status: 400 });
         const passwordError = validatePassword(password);
         if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 });
         if (branchId && (!mongoose.isValidObjectId(branchId) || !(await Branch.exists({ _id: branchId, isActive: true })))) {
@@ -51,6 +54,7 @@ export async function POST(req: NextRequest) {
             role,
             email,
             branchId: branchId || undefined,
+            branchIds: branchIds.ids,
             isActive: true
         });
 

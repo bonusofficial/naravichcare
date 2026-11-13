@@ -19,6 +19,7 @@
     "migrate-profit": "tsx migrate-profit-data.ts",
     "seed-roles": "tsx seed-roles.ts",
     "migrate:coverage": "tsx migrate-coverage-snapshots.ts",
+    "migrate:repair-branches": "tsx migrate-repair-branches.ts",
     "cleanup:buyback-images": "tsx cleanup-buyback-images.ts"
   },
   "dependencies": {

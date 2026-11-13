@@ -11,9 +11,19 @@ import {
     ChevronRight, 
     Loader2, 
     CheckCircle2,
-    Save
+    Save,
+    MapPin,
+    HardDrive
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { DATA_BACKUP, type DataBackupStatus } from "@/lib/repair/options";
+import { fromDateTimeLocal } from "@/components/admin/repair/format";
+
+/** A branch from /api/admin/repair/branches (only branches the user may work in). */
+interface ScopedBranch {
+    _id: string;
+    name: string;
+}
 
 /** A match from /api/admin/repair/customers?phone=... */
 interface FoundCustomer {
@@ -48,6 +58,22 @@ export default function NewRepairJob() {
         reportedSymptom: "",
         internalNotes: "",
     });
+    // Receiving branch, promised completion time and the customer's choice for the data on the device.
+    const [branches, setBranches] = useState<ScopedBranch[]>([]);
+    const [branchId, setBranchId] = useState("");
+    const [appointment, setAppointment] = useState("");
+    const [dataBackupStatus, setDataBackupStatus] = useState<DataBackupStatus | "">("");
+
+    useEffect(() => {
+        fetch("/api/admin/repair/branches")
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data: { branches?: ScopedBranch[] } | null) => {
+                const list = data?.branches ?? [];
+                setBranches(list);
+                if (list.length === 1) setBranchId(list[0]._id);
+            })
+            .catch(() => setBranches([]));
+    }, []);
 
     const handleSearchCustomer = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -87,6 +113,14 @@ export default function NewRepairJob() {
             alert("กรุณากรอกข้อมูล แบรนด์, รุ่น และอาการเสียให้ครบถ้วน");
             return;
         }
+        if (!branchId) {
+            alert("กรุณาเลือกสาขารับงาน");
+            return;
+        }
+        if (!dataBackupStatus) {
+            alert("กรุณาเลือกสถานะข้อมูลในเครื่องลูกค้า");
+            return;
+        }
 
         setLoading(true);
         try {
@@ -94,6 +128,9 @@ export default function NewRepairJob() {
                 ...formData,
                 customer: customer?._id,
                 newCustomer: isNewCustomer ? { ...newCustomer, phone: searchPhone } : null,
+                branchId,
+                appointmentDate: fromDateTimeLocal(appointment),
+                dataBackupStatus,
             };
 
             const res = await fetch("/api/admin/repair/jobs", {
@@ -316,6 +353,49 @@ export default function NewRepairJob() {
                                     </div>
                                 </div>
                             </div>
+                         </div>
+
+                         {/* Branch, appointment and the data on the device */}
+                         <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1"><MapPin size={10} /> สาขารับงาน</label>
+                                <select
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-lg py-2 px-3 text-xs font-bold text-gray-800 outline-none focus:bg-white focus:border-blue-500 transition-all"
+                                    value={branchId}
+                                    onChange={(e) => setBranchId(e.target.value)}
+                                    required
+                                >
+                                    <option value="">{branches.length ? "เลือกสาขา" : "ยังไม่มีสาขาที่คุณรับงานได้"}</option>
+                                    {branches.map((branch) => <option key={branch._id} value={branch._id}>{branch.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1"><Clock size={10} /> วันนัดซ่อมเสร็จ</label>
+                                <input
+                                    type="datetime-local"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-lg py-2 px-3 text-xs font-bold text-gray-800 outline-none focus:bg-white focus:border-blue-500 transition-all"
+                                    value={appointment}
+                                    onChange={(e) => setAppointment(e.target.value)}
+                                />
+                            </div>
+                            <fieldset className="md:col-span-2 bg-amber-50/50 p-4 rounded-2xl border border-amber-100">
+                                <legend className="text-[9px] font-black text-amber-700 uppercase tracking-widest px-1 flex items-center gap-1"><HardDrive size={10} /> ข้อมูลในเครื่องลูกค้า (ต้องเลือก)</legend>
+                                <div className="grid gap-2 sm:grid-cols-3">
+                                    {DATA_BACKUP.values.map((value) => (
+                                        <label key={value} className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 text-xs font-bold cursor-pointer transition-all ${dataBackupStatus === value ? "border-slate-900 bg-white text-slate-900" : "border-transparent bg-white/60 text-slate-500"}`}>
+                                            <input
+                                                type="radio"
+                                                name="dataBackupStatus"
+                                                value={value}
+                                                checked={dataBackupStatus === value}
+                                                onChange={() => setDataBackupStatus(value)}
+                                                className="mt-0.5"
+                                            />
+                                            {DATA_BACKUP.labels[value]}
+                                        </label>
+                                    ))}
+                                </div>
+                            </fieldset>
                          </div>
 
                          <div className="flex flex-col gap-4 border-t border-gray-50 pt-6 sm:flex-row sm:items-center sm:justify-between">

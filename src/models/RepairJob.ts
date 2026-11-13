@@ -1,6 +1,12 @@
 import mongoose, { Schema, Document } from "mongoose";
 import { REPAIR_STATUSES, type RepairStatus } from "@/lib/repair/status";
 import { nextSequenceNumber, repairJobPrefix } from "@/lib/repair/sequence";
+import {
+    APPROVAL_CHANNELS, APPROVAL_DECISIONS, DATA_BACKUP_STATUSES, HOLDER_KINDS, MOVEMENT_TYPES,
+    PAYMENT_KINDS, PAYMENT_METHODS, QC_OVERALL_RESULTS, QC_RESULTS, REPAIR_OUTCOMES,
+    type ApprovalChannel, type ApprovalDecision, type DataBackupStatus, type HolderKind, type MovementType,
+    type PaymentKind, type PaymentMethod, type QcOverall, type QcResult, type RepairOutcome,
+} from "@/lib/repair/options";
 
 export type RepairOwnerType = "customer" | "store";
 export type RepairSource = "admin" | "pos";
@@ -27,8 +33,107 @@ export interface RepairIntegrationInfo {
     imageUrls?: string[];
 }
 
+// ---------------------------------------------------------------------------
+// Multi-branch repair records. Names (recordedBy, sentBy, ...) are stored as
+// text so the history still reads correctly after a user is renamed or deleted;
+// the *ById fields keep the AdminUser id where the actor is a logged-in admin.
+// ---------------------------------------------------------------------------
+
+/** What the customer chose for the data on the device, recorded at intake. */
+export interface RepairDataBackup {
+    status: DataBackupStatus;
+    recordedBy: string;
+    recordedById?: string;
+    recordedAt: Date;
+}
+
+/** Who physically has the device now. */
+export interface RepairHolder {
+    kind: HolderKind;
+    label: string;
+    branchId?: mongoose.Types.ObjectId | null;
+}
+
+/** One hand-off of the device: to another branch, a technician, or an outside shop. */
+export interface RepairMovement {
+    _id: mongoose.Types.ObjectId;
+    type: MovementType;
+    fromLabel: string;
+    toKind: HolderKind;
+    toLabel: string;
+    toBranchId?: mongoose.Types.ObjectId | null;
+    vendorName?: string;
+    sentBy: string;
+    receivedBy?: string;
+    sentAt: Date;
+    returnedAt?: Date | null;
+    returnReceivedBy?: string;
+    /** Actual cost charged by an outside shop, recorded when the device comes back. */
+    actualCost?: number | null;
+    note?: string;
+    recordedBy: string;
+    recordedById?: string;
+    recordedAt: Date;
+}
+
+/** Money received from, or refunded to, the customer. Never deleted; voided instead. */
+export interface RepairPayment {
+    _id: mongoose.Types.ObjectId;
+    kind: PaymentKind;
+    amount: number;
+    method: PaymentMethod;
+    receivedAt: Date;
+    receiptNo: string;
+    recordedBy: string;
+    recordedById?: string;
+    note?: string;
+    voidedAt?: Date | null;
+    voidedBy?: string;
+    voidReason?: string;
+}
+
+/** The customer's decision on one round of the quotation, with the prices it covered. */
+export interface RepairQuoteApproval {
+    _id: mongoose.Types.ObjectId;
+    round: number;
+    laborCost: number;
+    partsCost: number;
+    totalPrice: number;
+    costsVersion: number;
+    decision: ApprovalDecision;
+    channel: ApprovalChannel;
+    approverName: string;
+    decidedAt: Date;
+    recordedBy: string;
+    recordedById?: string;
+    note?: string;
+}
+
+export interface RepairQcCheck {
+    _id: mongoose.Types.ObjectId;
+    items: { key: string; result: QcResult }[];
+    overall: QcOverall;
+    note?: string;
+    checkedBy: string;
+    checkedById?: string;
+    checkedAt: Date;
+}
+
+/** Who took the device back, who gave it, and when. Required to close a job. */
+export interface RepairHandover {
+    receiverName: string;
+    receiverPhone?: string;
+    receiverRelation?: string;
+    handedOverBy: string;
+    handedOverById?: string;
+    handedOverAt: Date;
+    note?: string;
+}
+
 export interface IRepairJob extends Document {
     jobId: string;
+    /** Branch that received the job. Staff only see jobs in branches they are assigned to. */
+    branchId?: mongoose.Types.ObjectId | null;
     // Ownership: a customer's device, or shop stock sent from the POS
     ownerType: RepairOwnerType;
     source: RepairSource;
@@ -77,13 +182,112 @@ export interface IRepairJob extends Document {
     completedAt?: Date; // legacy: same moment as handedOverAt
     cancelledAt?: Date;
     cancelReason?: string;
+    // Multi-branch repair records (see the interfaces above)
+    appointmentDate?: Date | null;
+    dataBackup?: RepairDataBackup;
+    currentHolder?: RepairHolder;
+    movements: RepairMovement[];
+    payments: RepairPayment[];
+    quoteApprovals: RepairQuoteApproval[];
+    qcChecks: RepairQcCheck[];
+    outcome?: RepairOutcome;
+    handover?: RepairHandover;
     createdAt: Date;
     updatedAt: Date;
 }
 
+const actorFields = (prefix: string) => ({
+    [`${prefix}By`]: { type: String, required: true },
+    [`${prefix}ById`]: { type: String },
+});
+
+const DataBackupSchema = new Schema(
+    {
+        status: { type: String, enum: DATA_BACKUP_STATUSES, required: true },
+        ...actorFields("recorded"),
+        recordedAt: { type: Date, required: true },
+    },
+    { _id: false }
+);
+
+const HolderSchema = new Schema(
+    {
+        kind: { type: String, enum: HOLDER_KINDS, required: true },
+        label: { type: String, required: true },
+        branchId: { type: Schema.Types.ObjectId, ref: "Branch" },
+    },
+    { _id: false }
+);
+
+const MovementSchema = new Schema({
+    type: { type: String, enum: MOVEMENT_TYPES, required: true },
+    fromLabel: { type: String, required: true },
+    toKind: { type: String, enum: HOLDER_KINDS, required: true },
+    toLabel: { type: String, required: true },
+    toBranchId: { type: Schema.Types.ObjectId, ref: "Branch" },
+    vendorName: { type: String },
+    sentBy: { type: String, required: true },
+    receivedBy: { type: String },
+    sentAt: { type: Date, required: true },
+    returnedAt: { type: Date },
+    returnReceivedBy: { type: String },
+    actualCost: { type: Number, min: 0 },
+    note: { type: String, default: "" },
+    ...actorFields("recorded"),
+    recordedAt: { type: Date, required: true },
+});
+
+const PaymentSchema = new Schema({
+    kind: { type: String, enum: PAYMENT_KINDS, required: true },
+    amount: { type: Number, required: true, min: 0 },
+    method: { type: String, enum: PAYMENT_METHODS, required: true },
+    receivedAt: { type: Date, required: true },
+    receiptNo: { type: String, required: true },
+    ...actorFields("recorded"),
+    note: { type: String, default: "" },
+    voidedAt: { type: Date },
+    voidedBy: { type: String },
+    voidReason: { type: String },
+});
+
+const QuoteApprovalSchema = new Schema({
+    round: { type: Number, required: true },
+    laborCost: { type: Number, required: true },
+    partsCost: { type: Number, required: true },
+    totalPrice: { type: Number, required: true },
+    costsVersion: { type: Number, required: true },
+    decision: { type: String, enum: APPROVAL_DECISIONS, required: true },
+    channel: { type: String, enum: APPROVAL_CHANNELS, required: true },
+    approverName: { type: String, required: true },
+    decidedAt: { type: Date, required: true },
+    ...actorFields("recorded"),
+    note: { type: String, default: "" },
+});
+
+const QcCheckSchema = new Schema({
+    items: [{ _id: false, key: { type: String, required: true }, result: { type: String, enum: QC_RESULTS, required: true } }],
+    overall: { type: String, enum: QC_OVERALL_RESULTS, required: true },
+    note: { type: String, default: "" },
+    ...actorFields("checked"),
+    checkedAt: { type: Date, required: true },
+});
+
+const HandoverSchema = new Schema(
+    {
+        receiverName: { type: String, required: true },
+        receiverPhone: { type: String },
+        receiverRelation: { type: String },
+        ...actorFields("handedOver"),
+        handedOverAt: { type: Date, required: true },
+        note: { type: String, default: "" },
+    },
+    { _id: false }
+);
+
 const RepairJobSchema: Schema = new Schema(
     {
         jobId: { type: String, unique: true },
+        branchId: { type: Schema.Types.ObjectId, ref: "Branch" },
         ownerType: { type: String, enum: ["customer", "store"], default: "customer" },
         source: { type: String, enum: ["admin", "pos"], default: "admin" },
         externalRef: { type: String },
@@ -171,6 +375,16 @@ const RepairJobSchema: Schema = new Schema(
         cancelledByBuybackId: { type: Schema.Types.ObjectId, ref: "Buyback" },
         cancelledAt: { type: Date },
         cancelReason: { type: String },
+        // Multi-branch repair records
+        appointmentDate: { type: Date },
+        dataBackup: { type: DataBackupSchema, default: undefined },
+        currentHolder: { type: HolderSchema, default: undefined },
+        movements: { type: [MovementSchema], default: [] },
+        payments: { type: [PaymentSchema], default: [] },
+        quoteApprovals: { type: [QuoteApprovalSchema], default: [] },
+        qcChecks: { type: [QcCheckSchema], default: [] },
+        outcome: { type: String, enum: REPAIR_OUTCOMES },
+        handover: { type: HandoverSchema, default: undefined },
     },
     { timestamps: true }
 );
@@ -220,6 +434,15 @@ RepairJobSchema.index(
     { unique: true, partialFilterExpression: { "integration.idempotencyKey": { $type: "string" } } }
 );
 RepairJobSchema.index({ source: 1, createdAt: -1 });
+// Branch-scoped lists and the per-branch dashboard.
+RepairJobSchema.index({ branchId: 1, status: 1 });
+// Overdue filter: open jobs whose appointment has passed.
+RepairJobSchema.index({ appointmentDate: 1, status: 1 });
+// Receipt numbers come from a Counter; this only guards against a duplicate slipping in.
+RepairJobSchema.index(
+    { "payments.receiptNo": 1 },
+    { unique: true, partialFilterExpression: { "payments.receiptNo": { $type: "string" } } }
+);
 
 const RepairJob =
     (mongoose.models.RepairJob as mongoose.Model<IRepairJob>) ||

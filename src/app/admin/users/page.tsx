@@ -13,7 +13,12 @@ interface IAdminUser {
     isActive: boolean;
     createdAt?: string;
     branchId?: string | { _id: string; name: string; location: string };
+    /** Extra branches whose repair jobs this user may work on (home branch is always included). */
+    branchIds?: (string | { _id: string; name: string })[];
 }
+
+type BranchRef = string | { _id: string; name?: string } | null | undefined;
+const branchIdOf = (branch: BranchRef) => (typeof branch === "string" ? branch : branch?._id || "");
 
 // Shape of the JSON returned by the branches API. Declared locally rather than
 // imported from @/models/Branch: that type extends Mongoose's Document, which
@@ -53,7 +58,32 @@ export default function AdminManagement() {
     useEffect(() => {
         fetchUsers();
         fetchRoles();
+        fetchBranches();
     }, []);
+
+    const fetchBranches = async () => {
+        try {
+            const res = await fetch("/api/admin/branches", { cache: "no-store" });
+            const data = await res.json();
+            if (Array.isArray(data.branches)) setBranches(data.branches);
+        } catch (error) {
+            console.error("Error fetching branches:", error);
+        }
+    };
+
+    const branchName = (branch: BranchRef) => {
+        if (branch && typeof branch === "object" && branch.name) return branch.name;
+        return branches.find((item) => item._id === branchIdOf(branch))?.name || "";
+    };
+
+    // Toggle one extra branch in the add or edit form.
+    const toggleExtraBranch = (branchId: string) => {
+        const current = (showAddForm ? newForm.branchIds : editForm?.branchIds) ?? [];
+        const ids = current.map(branchIdOf);
+        const next = ids.includes(branchId) ? ids.filter((id) => id !== branchId) : [...ids, branchId];
+        if (showAddForm) setNewForm({ ...newForm, branchIds: next });
+        else setEditForm({ ...editForm!, branchIds: next });
+    };
 
     const fetchUsers = async () => {
         try {
@@ -265,6 +295,30 @@ export default function AdminManagement() {
                                     {branches.filter(branch => branch.isActive).map(branch => <option key={branch._id} value={branch._id}>{branch.name}</option>)}
                                 </select>
                             </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-gray-500 ml-1 uppercase">สาขาที่ดูงานซ่อมได้เพิ่มเติม</label>
+                                <p className="ml-1 text-[11px] text-gray-400">สาขาประจำรวมอยู่แล้ว บทบาทที่มีสิทธิ์ &ldquo;ดูงานซ่อมทุกสาขา&rdquo; ไม่ต้องเลือก</p>
+                                <div className="max-h-36 space-y-1 overflow-y-auto rounded-xl border-2 border-gray-100 p-3">
+                                    {(() => {
+                                        const form = showAddForm ? newForm : editForm;
+                                        const homeId = branchIdOf(form?.branchId);
+                                        const selected = (form?.branchIds ?? []).map(branchIdOf);
+                                        const options = branches.filter(branch => branch.isActive && branch._id !== homeId);
+                                        if (!options.length) return <p className="text-xs text-gray-400">ไม่มีสาขาอื่นให้เลือก</p>;
+                                        return options.map(branch => (
+                                            <label key={branch._id} className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                                <input
+                                                    type="checkbox"
+                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                    checked={selected.includes(branch._id)}
+                                                    onChange={() => toggleExtraBranch(branch._id)}
+                                                />
+                                                {branch.name}
+                                            </label>
+                                        ));
+                                    })()}
+                                </div>
+                            </div>
                             <div className="flex items-center gap-2 pt-2">
                                 <input
                                     type="checkbox"
@@ -333,14 +387,19 @@ export default function AdminManagement() {
                                 </span>
                             </div>
                             <div className="flex items-center gap-3 text-gray-500">
-                                <span className="text-xs font-medium">สาขา: {typeof user.branchId === "object" ? user.branchId.name : "ยังไม่ผูก"}</span>
+                                <span className="text-xs font-medium">สาขา: {branchName(user.branchId) || "ยังไม่ผูก"}</span>
                             </div>
+                            {(user.branchIds?.length ?? 0) > 0 && (
+                                <div className="flex items-center gap-3 text-gray-500">
+                                    <span className="text-xs font-medium">งานซ่อมสาขาเพิ่ม: {user.branchIds!.map(branchName).filter(Boolean).join(", ")}</span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Actions */}
                         <div className="flex gap-2 pt-4 border-t border-gray-50 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
-                                onClick={() => { setEditingId(user._id!); setEditForm({ ...user, branchId: typeof user.branchId === "object" ? user.branchId._id : user.branchId }); }}
+                                onClick={() => { setEditingId(user._id!); setEditForm({ ...user, branchId: branchIdOf(user.branchId), branchIds: (user.branchIds ?? []).map(branchIdOf) }); }}
                                 className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all text-xs font-bold"
                             >
                                 <Edit2 size={12} /> แก้ไข

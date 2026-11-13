@@ -59,6 +59,10 @@ export const PERMISSION_CATALOG = [
       { value: "create_repair_jobs", label: "สร้างงานซ่อม" },
       { value: "edit_repair_jobs", label: "แก้ไขงานซ่อม" },
       { value: "delete_repair_jobs", label: "ลบงานซ่อม" },
+      // Without this, a user only sees repair jobs of the branches assigned to them.
+      { value: "view_all_branches", label: "ดูงานซ่อมทุกสาขา" },
+      { value: "manage_repair_payments", label: "บันทึกรับเงินงานซ่อม" },
+      { value: "refund_repair_payments", label: "คืนเงิน/ยกเลิกรายการรับเงินงานซ่อม" },
     ],
   },
   {
@@ -165,6 +169,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "view_coverage_plans", "edit_coverage_plans",
     "view_claims", "create_claims", "edit_claims", "delete_claims",
     "view_repair_jobs", "create_repair_jobs", "edit_repair_jobs", "delete_repair_jobs",
+    "view_all_branches", "manage_repair_payments", "refund_repair_payments",
     "view_agents", "create_agents", "edit_agents", "delete_agents",
     "view_loans", "create_loans", "edit_loans",
     "view_payments", "create_payments", "view_insurance",
@@ -199,6 +204,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "view_registrations",
     "view_claims", "create_claims", "edit_claims",
     "view_repair_jobs", "create_repair_jobs", "edit_repair_jobs",
+    "manage_repair_payments",
   ],
 
   staff: [
