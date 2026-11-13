@@ -17,7 +17,8 @@ import {
     Store
 } from "lucide-react";
 import Link from "next/link";
-import { allowedNextStatuses } from "@/lib/repair/status";
+import { allowedNextStatuses, repairStatusLabel } from "@/lib/repair/status";
+import { statusLabelForOutcome } from "@/lib/repair/workflow";
 import type { RepairJobView, RepairPrintRequest } from "@/lib/repair/types";
 import QuotePrint from "@/components/admin/repair/QuotePrint";
 import ReceiptPrint from "@/components/admin/repair/ReceiptPrint";
@@ -214,21 +215,9 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
         setIsModalOpen(true);
     };
 
-    const getStatusLabel = (status: string) => {
-        switch (status) {
-            case "pending": return "รอตรวจเช็ก";
-            case "checking": return "กำลังเช็กอาการ";
-            case "quoted": return "เสนอราคาแล้ว";
-            case "waiting_approval": return "รออนุมัติ";
-            case "in_progress": return "กำลังซ่อม";
-            case "waiting_parts": return "รออะไหล่";
-            case "testing": return "ตรวจสอบงานซ่อม";
-            case "ready_pickup": return "ซ่อมเสร็จ/รอรับคืน";
-            case "completed": return "รับเครื่องคืนแล้ว";
-            case "cancelled": return "ยกเลิก";
-            default: return status;
-        }
-    };
+    const getStatusLabel = (status: string) => statusLabelForOutcome(status, status === "ready_pickup" ? job?.outcome : null);
+    // The job's outcome belongs to its latest ready_pickup entry; earlier ones may have had another.
+    const lastReadyIndex = job?.statusHistory?.map((h) => h.status).lastIndexOf("ready_pickup") ?? -1;
 
     const getStatusStyle = (status: string) => {
         switch (status) {
@@ -472,7 +461,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                             {job.statusHistory?.map((h, i) => (
                                 <div key={i} className="flex gap-4 group">
                                      <div className="flex-1 pb-4 border-b border-gray-50 last:border-0 font-bold">
-                                          <span className="text-[10px] text-blue-600 underline">{getStatusLabel(h.status)}</span>
+                                          <span className="text-[10px] text-blue-600 underline">{i === lastReadyIndex ? getStatusLabel(h.status) : repairStatusLabel(h.status)}</span>
                                           <p className="text-xs text-slate-500 mt-1">&ldquo;{h.note || "No comments"}&rdquo;</p>
                                           <p className="text-[10px] font-medium text-slate-400 mt-1">
                                               {h.changedBy || "-"}{h.changedAt ? ` · ${new Date(h.changedAt).toLocaleString("th-TH")}` : ""}
@@ -509,7 +498,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                                         <div className="flex items-center gap-2">
                                             {isActive && <CheckCircle size={14} className="text-white animate-pulse" />}
                                             <span className="text-xs font-bold">
-                                                {getStatusLabel(st)} {isActive && "(สถานะปัจจุบัน)"}
+                                                {isActive ? getStatusLabel(st) : repairStatusLabel(st)} {isActive && "(สถานะปัจจุบัน)"}
                                             </span>
                                         </div>
                                         <ChevronRight size={14} className={isActive ? "text-white/50" : "text-slate-500 group-hover:text-blue-400"} />
@@ -586,7 +575,7 @@ export default function RepairJobDetail({ params }: { params: Promise<{ id: stri
                     <div className="relative w-full max-w-md space-y-6 rounded-3xl bg-white p-5 shadow-2xl sm:p-8">
                         <div className="text-center">
                             <h2 className="text-base font-bold text-slate-800">เปลี่ยนสถานะงาน</h2>
-                            <p className="text-xs text-slate-500 font-semibold mt-1">เปลี่ยนเป็น: <span className="text-blue-600 underline">&ldquo;{getStatusLabel(pendingStatus || "")}&rdquo;</span></p>
+                            <p className="text-xs text-slate-500 font-semibold mt-1">เปลี่ยนเป็น: <span className="text-blue-600 underline">&ldquo;{repairStatusLabel(pendingStatus || "")}&rdquo;</span></p>
                         </div>
                         <textarea rows={3} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-xs font-bold text-gray-800 outline-none placeholder:text-gray-300" placeholder="หมายเหตุ (บันทึกในประวัติงาน)..." value={statusNote} onChange={(e) => setStatusNote(e.target.value)} />
                         <div className="flex gap-3">

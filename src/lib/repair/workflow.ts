@@ -3,6 +3,7 @@
  * handover record. Pure functions with no server-only imports, so the admin
  * API (through transitionRepairJob) and the job page share one rule set.
  */
+import { openExternalRepair, type MovementRecordLike } from "./movements";
 import type { RepairOutcome } from "./options";
 import { canTransition, REPAIR_STATUS_LABELS, repairStatusLabel } from "./status";
 
@@ -16,9 +17,18 @@ export interface WorkflowJob {
     statusHistory?: readonly { status: string; changedAt?: Date | string | null }[] | null;
     handover?: unknown;
     outcome?: string | null;
+    movements?: readonly MovementRecordLike[] | null;
 }
 
-export type TransitionBlockCode = "INVALID_STATUS_TRANSITION" | "QUOTE_APPROVAL_REQUIRED" | "QC_REQUIRED" | "HANDOVER_REQUIRED";
+export type TransitionBlockCode =
+    | "INVALID_STATUS_TRANSITION"
+    | "QUOTE_APPROVAL_REQUIRED"
+    | "QC_REQUIRED"
+    | "HANDOVER_REQUIRED"
+    | "EXTERNAL_REPAIR_OPEN";
+
+/** Statuses that say the device is back at the shop: ready for pickup, or handed over. */
+export const DEVICE_IN_HAND_STATUSES = ["ready_pickup", "completed"] as const;
 
 export interface TransitionBlock {
     code: TransitionBlockCode;
@@ -84,6 +94,13 @@ export function transitionBlock(job: WorkflowJob, to: string, outcome?: string |
         return {
             code: "INVALID_STATUS_TRANSITION",
             message: `ไม่สามารถเปลี่ยนสถานะจาก "${repairStatusLabel(job.status)}" เป็น "${statusLabelForOutcome(to, resolved)}" ได้`,
+        };
+    }
+    const external = (DEVICE_IN_HAND_STATUSES as readonly string[]).includes(to) ? openExternalRepair(job) : undefined;
+    if (external) {
+        return {
+            code: "EXTERNAL_REPAIR_OPEN",
+            message: `เครื่องยังอยู่ที่ร้านซ่อมภายนอก "${external.toLabel ?? ""}" กรุณาบันทึกรับเครื่องกลับในส่วน "ติดตามตัวเครื่อง" ก่อน`,
         };
     }
     if (to === "in_progress" && needsQuoteApproval(job)) {

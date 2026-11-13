@@ -176,6 +176,8 @@ paths:
         Only from ready_pickup; moves the job to completed and sets handedOverAt.
         Also stores a handover record (receiver "Web POS", handed over by
         "integration:<key name>"). Works for both outcomes (repaired / not_repaired).
+        Refused with INVALID_STATUS_TRANSITION while the device is still at an
+        outside repair shop.
         Calling it again after completed returns 200 and adds no history.
         The body is optional.
       requestBody:

@@ -219,6 +219,7 @@ Body ไม่บังคับ: `{ "note": "รับคืนที่สา�
 - ระบบบันทึกใบส่งมอบให้อัตโนมัติ: ผู้รับเครื่อง `Web POS`, ผู้ส่งมอบ `integration:<ชื่อ Key>`, เวลา = เวลาที่เรียก, หมายเหตุ = `note` (สัญญา request/response เดิมไม่เปลี่ยน)
 - ใช้ได้ทั้งงานที่ซ่อมเสร็จ (`outcome = repaired`) และงานที่ลูกค้าไม่ซ่อม (`outcome = not_repaired`)
 - ยังไม่พร้อม (`pending` … `testing`) → `409 INVALID_STATUS_TRANSITION`
+- เครื่องยังอยู่ร้านซ่อมภายนอก (Admin ยังไม่บันทึกรับเครื่องกลับ) → `409 INVALID_STATUS_TRANSITION`
 - ถูกยกเลิกแล้ว → `409 REPAIR_CLOSED`
 - เรียกซ้ำหลัง `completed` → `200` ไม่เพิ่ม history ซ้ำ
 - บันทึก AdminLog `repair_integration.handed_over`
@@ -338,6 +339,9 @@ Response ทุกตัวที่เป็นงานซ่อมใช้�
 - เข้า `in_progress`: งานของลูกค้า (`ownerType = customer`) ที่มีราคา > 0 ต้องมีรอบอนุมัติราคา (`approved`) สำหรับราคาปัจจุบัน (`costs.version`); งานเครื่องของร้านได้รับยกเว้น
 - เข้า `ready_pickup` แบบ `repaired`: QC ล่าสุดต้อง "ผ่าน" และบันทึกหลังเข้า `in_progress` ครั้งล่าสุด
 - เข้า `completed`: ต้องมีใบส่งมอบ (Admin บันทึกจากหน้างาน, POS ผ่าน `POST /handover`)
+
+เงื่อนไขที่ใช้ทั้ง Admin และ POS:
+- เข้า `ready_pickup` หรือ `completed`: เครื่องต้องไม่ค้างอยู่ที่ร้านซ่อมภายนอก (Admin ได้รับ `EXTERNAL_REPAIR_OPEN`, POS ได้รับ `INVALID_STATUS_TRANSITION`)
 
 เวลา:
 - `repairCompletedAt` — ตั้งเมื่อเข้า `ready_pickup` (ล้างค่าถ้าถูกส่งกลับ `in_progress`); สำหรับ `outcome = not_repaired` คือเวลาที่เครื่องพร้อมคืน

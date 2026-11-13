@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowRightCircle, HandHelping, Loader2, Printer } from "lucide-react";
+import { openExternalRepair } from "@/lib/repair/movements";
 import { REPAIR_OUTCOME, type RepairOutcome } from "@/lib/repair/options";
 import { NOT_REPAIRED_FROM, repairStatusLabel } from "@/lib/repair/status";
 import type { RepairJobSectionProps, RepairJobView } from "@/lib/repair/types";
@@ -10,6 +11,12 @@ import { formatDateTime, fromDateTimeLocal, patchJob } from "./format";
 import { inputClass, postJobAction, primaryButtonClass } from "./job-actions";
 
 const REPAIRED_FROM = ["in_progress", "testing"];
+
+/** The device must be back from an outside shop before it can be returned. */
+function externalRepairBlocker(job: RepairJobView): string {
+    const external = openExternalRepair(job);
+    return external ? `เครื่องยังอยู่ที่ร้านซ่อมภายนอก "${external.toLabel ?? ""}" ต้องบันทึกรับเครื่องกลับในส่วน "ติดตามตัวเครื่อง" ก่อน` : "";
+}
 
 function OutcomeBadge({ outcome }: { outcome?: RepairOutcome }) {
     const value = outcome ?? "repaired";
@@ -28,11 +35,11 @@ function OutcomeControl({ job, onChanged }: Pick<RepairJobSectionProps, "job" | 
     const [error, setError] = useState("");
 
     const qcOk = qcPassedForCurrentRepair(job);
-    const blocker = outcome === "repaired"
+    const blocker = externalRepairBlocker(job) || (outcome === "repaired"
         ? !REPAIRED_FROM.includes(job.status)
             ? `งานต้องอยู่ในสถานะ "${repairStatusLabel("in_progress")}" หรือ "${repairStatusLabel("testing")}" ก่อน`
             : !qcOk ? "ต้องบันทึก QC ผลผ่านในส่วน \"QC ก่อนส่งคืน\" ก่อน" : ""
-        : !NOT_REPAIRED_FROM.includes(job.status as (typeof NOT_REPAIRED_FROM)[number]) ? "สถานะปัจจุบันเปลี่ยนไม่ได้" : "";
+        : !NOT_REPAIRED_FROM.includes(job.status as (typeof NOT_REPAIRED_FROM)[number]) ? "สถานะปัจจุบันเปลี่ยนไม่ได้" : "");
 
     const save = async () => {
         if (outcome === "not_repaired" && !window.confirm("ยืนยันว่าลูกค้าไม่ซ่อม และจะคืนเครื่องโดยไม่ซ่อม?")) return;
@@ -89,6 +96,7 @@ function HandoverForm({ job, onChanged }: Pick<RepairJobSectionProps, "job" | "o
     const [note, setNote] = useState("");
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
+    const blocker = externalRepairBlocker(job);
 
     const save = async () => {
         setSaving(true);
@@ -132,8 +140,9 @@ function HandoverForm({ job, onChanged }: Pick<RepairJobSectionProps, "job" | "o
             </div>
             <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} className={inputClass} placeholder="หมายเหตุการส่งมอบ" />
             <p className="text-[11px] text-slate-400">ผู้ส่งมอบจะบันทึกเป็นผู้ใช้ที่เข้าสู่ระบบอยู่</p>
+            {blocker && <p className="text-[11px] font-semibold text-amber-700">{blocker}</p>}
             {error && <p className="text-xs font-bold text-red-600">{error}</p>}
-            <button onClick={save} disabled={saving || !receiverName.trim()} className={primaryButtonClass}>
+            <button onClick={save} disabled={saving || Boolean(blocker) || !receiverName.trim()} className={primaryButtonClass}>
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <HandHelping size={14} />} บันทึกส่งมอบและปิดงาน
             </button>
         </div>

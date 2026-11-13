@@ -18,6 +18,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { RepairJobView } from "@/lib/repair/types";
 import { repairStatusLabel } from "@/lib/repair/status";
+import { statusLabelForOutcome } from "@/lib/repair/workflow";
 import { isOverdue } from "@/lib/repair/summary";
 import { formatDateTime } from "@/components/admin/repair/format";
 
@@ -291,7 +292,7 @@ function RepairJobsList() {
                                 {/* Status & Action */}
                                 <div className="flex flex-row md:flex-col items-center gap-3 w-full md:w-auto">
                                     <div className={`px-4 py-2 rounded-lg border text-[9px] font-black uppercase tracking-widest shadow-sm ${getStatusStyle(job.status)}`}>
-                                        {repairStatusLabel(job.status)}
+                                        {statusLabelForOutcome(job.status, job.outcome)}
                                     </div>
                                     <div className="hidden md:flex items-center gap-1.5 text-[9px] font-bold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
                                         ดูรายละเอียด <ChevronRight size={12} />

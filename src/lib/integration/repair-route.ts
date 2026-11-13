@@ -14,6 +14,7 @@ export function toIntegrationError(error: unknown): unknown {
         case "QUOTE_APPROVAL_REQUIRED":
         case "QC_REQUIRED":
         case "HANDOVER_REQUIRED":
+        case "EXTERNAL_REPAIR_OPEN":
             return new IntegrationError("INVALID_STATUS_TRANSITION", 409, error.message);
         case "INVALID_STATUS_TRANSITION":
         case "REPAIR_CLOSED":

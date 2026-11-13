@@ -4,6 +4,8 @@ import { PATCH as patchRoute } from "@/app/api/admin/repair/jobs/[id]/route";
 import { POST as approvalRoute } from "@/app/api/admin/repair/jobs/[id]/quote-approvals/route";
 import { POST as qcRoute } from "@/app/api/admin/repair/jobs/[id]/qc/route";
 import { POST as handoverRoute } from "@/app/api/admin/repair/jobs/[id]/handover/route";
+import { POST as sendRoute } from "@/app/api/admin/repair/jobs/[id]/movements/route";
+import { PATCH as returnRoute } from "@/app/api/admin/repair/jobs/[id]/movements/[movementId]/route";
 import { POST as posCreateRoute } from "@/app/api/integration/v1/repair-jobs/route";
 import { GET as posGetRoute } from "@/app/api/integration/v1/repair-jobs/[id]/route";
 import { POST as posHandoverRoute } from "@/app/api/integration/v1/repair-jobs/[id]/handover/route";
@@ -23,6 +25,7 @@ interface JobJson {
     quoteApprovals: { round: number; laborCost: number; partsCost: number; totalPrice: number; costsVersion: number; decision: string; channel: string; approverName: string; decidedAt: string; recordedBy: string }[];
     qcChecks: { overall: string; items: { key: string; result: string }[]; checkedBy: string }[];
     handover?: { receiverName: string; receiverPhone?: string; receiverRelation?: string; handedOverBy: string; handedOverAt: string; note?: string };
+    movements?: { _id: string; type: string }[];
 }
 
 const allPass = () => QC_ITEM_KEYS.map((key) => ({ key, result: "pass" }));
@@ -58,7 +61,16 @@ async function setup() {
         qcRoute(adminRequest(`/api/admin/repair/jobs/${id}/qc`, { method: "POST", token: as, body }), params({ id }));
     const handover = (id: string, body: Record<string, unknown> = { receiverName: "สมหญิง ทดสอบ" }, as = token) =>
         handoverRoute(adminRequest(`/api/admin/repair/jobs/${id}/handover`, { method: "POST", token: as, body }), params({ id }));
-    return { token, username, branchId, create, patch, approve, qc, handover };
+    const sendOut = async (id: string, vendorName = "ร้านซ่อมบอร์ดเจริญ") => {
+        const res = await sendRoute(adminRequest(`/api/admin/repair/jobs/${id}/movements`, { method: "POST", token, body: { toKind: "external", vendorName } }), params({ id }));
+        expect(res.status).toBe(201);
+        return (await json<JobJson>(res)).movements!.at(-1)!._id;
+    };
+    const bringBack = async (id: string, movementId: string) => {
+        const res = await returnRoute(adminRequest(`/api/admin/repair/jobs/${id}/movements/${movementId}`, { method: "PATCH", token, body: { actualCost: 500 } }), params({ id, movementId }));
+        expect(res.status).toBe(200);
+    };
+    return { token, username, branchId, create, patch, approve, qc, handover, sendOut, bringBack };
 }
 
 async function code(res: Response) {
@@ -267,5 +279,31 @@ describeDb("repair quote approvals, QC and handover", () => {
         expect(await json<RepairIntegrationDto>(res)).toMatchObject({ status: "completed", outcome: "not_repaired" });
         const stored = await RepairJob.findById(pos.id).lean();
         expect(stored!.handover).toMatchObject({ receiverName: "Web POS", handedOverBy: "integration:Web POS", note: "คืนเข้าสต็อก" });
+    });
+
+    it("keeps a device at an outside shop from being marked ready or handed over", async () => {
+        const api = await setup();
+        const id = await api.create();
+        const first = await api.sendOut(id);
+        expect(await code(await api.patch(id, { status: "ready_pickup", outcome: "not_repaired" }))).toBe("EXTERNAL_REPAIR_OPEN");
+        await api.bringBack(id, first);
+        expect((await api.patch(id, { status: "ready_pickup", outcome: "not_repaired" })).status).toBe(200);
+
+        // Sent out again while waiting for pickup: no handover until it is back.
+        const second = await api.sendOut(id, "ร้านจอ");
+        expect(await code(await api.handover(id))).toBe("EXTERNAL_REPAIR_OPEN");
+        expect((await RepairJob.findById(id).lean())!.status).toBe("ready_pickup");
+        await api.bringBack(id, second);
+        expect((await api.handover(id)).status).toBe(200);
+
+        // The POS sees the same rule as a plain transition error.
+        const key = await insertApiKey({ name: "Web POS" });
+        const pos = await json<RepairIntegrationDto>(await posCreateRoute(
+            apiRequest("/api/integration/v1/repair-jobs", { method: "POST", apiKey: key.apiKey, body: posPayload() }), noParams));
+        await api.patch(pos.id, { status: "ready_pickup", outcome: "not_repaired" });
+        await api.sendOut(pos.id);
+        const res = await posHandoverRoute(apiRequest(`/api/integration/v1/repair-jobs/${pos.id}/handover`, { method: "POST", apiKey: key.apiKey, body: {} }), params({ id: pos.id }));
+        expect(res.status).toBe(409);
+        expect((await json<{ error: { code: string } }>(res)).error.code).toBe("INVALID_STATUS_TRANSITION");
     });
 });

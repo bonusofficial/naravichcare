@@ -9,7 +9,7 @@ import { computeRepairCosts } from "./costs";
 import type { IntegrationCreateInput, IntegrationCustomerInput, SearchQuery } from "./integration-validation";
 import { isRepairStatus, toPosStatus, type RepairStatus } from "./status";
 import type { RepairOutcome } from "./options";
-import { currentCostsVersion, resolveOutcome, transitionBlock, type WorkflowJob } from "./workflow";
+import { currentCostsVersion, DEVICE_IN_HAND_STATUSES, resolveOutcome, transitionBlock, type WorkflowJob } from "./workflow";
 
 export type RepairErrorCode =
     | "NOT_FOUND"
@@ -18,6 +18,7 @@ export type RepairErrorCode =
     | "QUOTE_APPROVAL_REQUIRED"
     | "QC_REQUIRED"
     | "HANDOVER_REQUIRED"
+    | "EXTERNAL_REPAIR_OPEN"
     | "REPAIR_CLOSED"
     | "CONFLICT"
     | "IDEMPOTENCY_CONFLICT"
@@ -83,7 +84,7 @@ function statusSideEffects(
 
 /** The job as it reads after `extra` is written, which is what the guards check. */
 type TransitionSubject = Pick<IRepairJob, "status"> &
-    Partial<Pick<IRepairJob, "repairCompletedAt" | "ownerType" | "totalPrice" | "costsVersion" | "quoteApprovals" | "qcChecks" | "statusHistory" | "outcome">> & {
+    Partial<Pick<IRepairJob, "repairCompletedAt" | "ownerType" | "totalPrice" | "costsVersion" | "quoteApprovals" | "qcChecks" | "statusHistory" | "outcome" | "movements">> & {
         _id: mongoose.Types.ObjectId | string;
     };
 
@@ -148,6 +149,10 @@ export async function transitionRepairJob(
     if (to === "in_progress" && (job.ownerType ?? "customer") === "customer") filter.costsVersion = job.costsVersion ?? null;
     // The QC checked above must still be the latest one.
     if (to === "ready_pickup" && effects.set.outcome === "repaired") filter.qcChecks = { $size: job.qcChecks?.length ?? 0 };
+    // No outside repair may have been opened since we checked.
+    if ((DEVICE_IN_HAND_STATUSES as readonly string[]).includes(to)) {
+        filter.movements = { $not: { $elemMatch: { type: "external_repair", returnedAt: null } } };
+    }
 
     const updated = await RepairJob.findOneAndUpdate(filter, update, {
         returnDocument: "after",

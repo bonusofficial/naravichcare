@@ -74,3 +74,28 @@ describe("closing", () => {
         expect(statusLabelForOutcome("ready_pickup", "repaired")).toBe("ซ่อมเสร็จ/รอรับคืน");
     });
 });
+
+describe("device at an outside shop", () => {
+    const atShop = { _id: "m1", type: "external_repair", toLabel: "ร้านช่างเอ", sentAt: at(30) };
+    const passed = customerJob({
+        status: "testing",
+        quoteApprovals: [{ round: 1, decision: "approved", costsVersion: 2 }],
+        qcChecks: [{ overall: "pass", checkedAt: at(25) }],
+        statusHistory: [{ status: "in_progress", changedAt: at(10) }],
+    });
+
+    it("blocks ready_pickup and handover until the device is back", () => {
+        expect(transitionBlock({ ...passed, movements: [atShop] }, "ready_pickup")?.code).toBe("EXTERNAL_REPAIR_OPEN");
+        expect(transitionBlock({ ...customerJob({ status: "pending" }), movements: [atShop] }, "ready_pickup", "not_repaired")?.code).toBe("EXTERNAL_REPAIR_OPEN");
+        const ready = customerJob({ status: "ready_pickup", handover: { receiverName: "ลูกค้า" }, movements: [atShop] });
+        expect(transitionBlock(ready, "completed")?.code).toBe("EXTERNAL_REPAIR_OPEN");
+    });
+
+    it("allows them once the outside repair is returned, and never blocks other moves", () => {
+        const returned = { ...atShop, returnedAt: at(40) };
+        expect(transitionBlock({ ...passed, movements: [returned] }, "ready_pickup")).toBeNull();
+        expect(transitionBlock({ ...passed, movements: [{ ...atShop, type: "transfer" }] }, "ready_pickup")).toBeNull();
+        expect(transitionBlock({ ...passed, movements: [atShop] }, "cancelled")).toBeNull();
+        expect(transitionBlock({ ...passed, movements: [atShop] }, "in_progress")).toBeNull();
+    });
+});
