@@ -294,7 +294,7 @@ function RepairDashboardPage() {
                             <p className="px-5 py-10 text-center text-sm font-bold text-slate-400">ไม่มีสาขาที่ดูได้</p>
                         ) : (
                             <div className="overflow-x-auto">
-                                <table className="w-full min-w-[760px] text-sm">
+                                <table className="w-full min-w-[680px] text-sm">
                                     <thead className="bg-slate-50 text-[11px] font-black text-slate-500">
                                         <tr>
                                             <th className="px-5 py-3 text-left">สาขา</th>

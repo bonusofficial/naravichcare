@@ -268,7 +268,7 @@ function RepairJobsList() {
                                 </div>
 
                                 {/* Symptom Snippet */}
-                                <div className="hidden lg:block flex-[2] border-l border-gray-100 pl-8">
+                                <div className="hidden xl:block flex-[2] border-l border-gray-100 pl-8">
                                     <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">อาการที่แจ้ง</p>
                                     <p className="text-[11px] font-semibold text-gray-600 line-clamp-2 leading-relaxed">&ldquo;{job.reportedSymptom}&rdquo;</p>
                                 </div>
