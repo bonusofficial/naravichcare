@@ -61,7 +61,9 @@ function RepairJobsList() {
     const query = searchParams.get("q") || "";
 
     const [jobs, setJobs] = useState<RepairJobView[]>([]);
-    const [loading, setLoading] = useState(true);
+    const requestKey = `${statusFilter}|${query}|${branchFilter}|${overdueOnly}`;
+    const [loadedKey, setLoadedKey] = useState<string | null>(null);
+    const loading = loadedKey !== requestKey;
     const [search, setSearch] = useState(query);
     const [branches, setBranches] = useState<BranchOption[]>([]);
     const [allBranches, setAllBranches] = useState(false);
@@ -89,31 +91,26 @@ function RepairJobsList() {
     }, []);
 
     useEffect(() => {
-        setSearch(query);
-    }, [query]);
-
-    useEffect(() => {
         const controller = new AbortController();
         const params = new URLSearchParams();
         params.set("status", statusFilter);
         if (query) params.set("q", query);
         if (branchFilter) params.set("branchId", branchFilter);
         if (overdueOnly) params.set("overdue", "1");
-        setLoading(true);
         fetch(`/api/admin/repair/jobs?${params}`, { signal: controller.signal })
             .then((res) => res.json())
             .then((data) => {
                 setJobs(Array.isArray(data) ? data : []);
                 setNow(new Date());
-                setLoading(false);
+                setLoadedKey(requestKey);
             })
             .catch((error) => {
                 if (controller.signal.aborted) return;
                 console.error("Fetch Jobs Error:", error);
-                setLoading(false);
+                setLoadedKey(requestKey);
             });
         return () => controller.abort();
-    }, [statusFilter, query, branchFilter, overdueOnly]);
+    }, [statusFilter, query, branchFilter, overdueOnly, requestKey]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
