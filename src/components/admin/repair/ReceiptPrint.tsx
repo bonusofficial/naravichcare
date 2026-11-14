@@ -28,7 +28,7 @@ function SingleReceipt({ job, payment, summary }: { job: RepairJobView; payment:
     const refund = payment.kind === "refund";
     return (
         <>
-            <PrintHeader job={job} title={refund ? "REFUND" : "RECEIPT"} date={new Date(payment.receivedAt)} />
+            <PrintHeader job={job} title={refund ? "ใบคืนเงิน" : "ใบเสร็จรับเงิน"} date={new Date(payment.receivedAt)} />
 
             <div className="grid grid-cols-3 gap-4 mb-8 text-black text-[11px]">
                 <MetaBox label={refund ? "เลขที่ใบคืนเงิน / Refund No." : "เลขที่ใบเสร็จ / Receipt No."} value={payment.receiptNo} strong />
@@ -88,7 +88,7 @@ function Statement({ job }: { job: RepairJobView }) {
     const summary = summarizePayments(job);
     return (
         <>
-            <PrintHeader job={job} title="STATEMENT" />
+            <PrintHeader job={job} title="สรุปการรับเงิน" />
             <PrintParties job={job} />
 
             <div className="border-2 border-slate-900 rounded-2xl overflow-hidden mb-6 text-black bg-white">

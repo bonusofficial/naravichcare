@@ -36,7 +36,7 @@ export default function RepairCustomersList() {
     const fetchCustomers = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/admin/repair/customers?q=${search}`);
+            const res = await fetch(`/api/admin/repair/customers?q=${encodeURIComponent(search.trim())}`, { cache: "no-store" });
             const data = await res.json();
             if (Array.isArray(data)) {
                 setCustomers(data);
@@ -86,7 +86,7 @@ export default function RepairCustomersList() {
                     </div>
                 ) : customers.length === 0 ? (
                     <div className="col-span-full py-32 bg-white rounded-[2.5rem] border border-gray-100 text-center text-gray-300">
-                        <p className="text-sm font-black uppercase tracking-widest opacity-50">ยังไม่มีข้อมูลลูกค้าในฐานข้อมูล</p>
+                        <p className="text-sm font-black uppercase tracking-widest opacity-50">{search.trim() ? "ไม่พบลูกค้าที่ตรงกับคำค้นหา" : "ยังไม่มีข้อมูลลูกค้าในฐานข้อมูล"}</p>
                     </div>
                 ) : (
                     customers.map((c) => (
@@ -100,9 +100,9 @@ export default function RepairCustomersList() {
                                 <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg font-black text-xl uppercase">
                                     {c.firstName.charAt(0)}{c.lastName.charAt(0)}
                                 </div>
-                                <button className="p-2 text-gray-300 hover:text-gray-900 transition-colors">
+                                <Link href={`/admin/repair/customers/${c._id}`} className="p-2 text-gray-300 hover:text-gray-900 transition-colors" aria-label="แก้ไขข้อมูลลูกค้า">
                                     <MoreHorizontal size={20} />
-                                </button>
+                                </Link>
                             </div>
 
                             <div className="relative z-10">
@@ -131,9 +131,9 @@ export default function RepairCustomersList() {
                                 <div className="flex flex-col text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                                      บันทึกเมื่อ: {new Date(c.createdAt).toLocaleDateString()}
                                 </div>
-                                <button className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-50 active:scale-95 transition-all">
-                                    ดูประวัติการซ่อม 
-                                </button>
+                                <Link href={`/admin/repair/customers/${c._id}`} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-50 active:scale-95 transition-all">
+                                    ดูประวัติ / แก้ไข
+                                </Link>
                             </div>
                         </div>
                     ))

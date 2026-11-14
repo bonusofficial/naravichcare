@@ -1,30 +1,31 @@
 import type { RepairJobView } from "@/lib/repair/types";
-import { APPROVAL_CHANNEL, APPROVAL_DECISION, DATA_BACKUP } from "@/lib/repair/options";
+import { APPROVAL_CHANNEL, APPROVAL_DECISION } from "@/lib/repair/options";
 import { latestQuoteApproval } from "@/lib/repair/workflow";
 import { PrintHeader, PrintParties, PrintSignatures } from "./PrintShell";
-import { formatDateTime } from "./format";
+import { formatBaht, formatDateTime } from "./format";
 
-/** Job sheet / quotation, printed at intake and when the price is quoted. */
+/**
+ * Quotation (ใบเสนอราคา): the inspection result and the price the customer
+ * pays, split into labour and parts. Only customer prices appear here, never
+ * the shop's part cost.
+ */
 export default function QuotePrint({ job }: { job: RepairJobView }) {
     const approval = latestQuoteApproval(job);
+    const labor = Number(job.laborCost) || 0;
+    const parts = Number(job.partsCost) || 0;
     return (
         <>
-            <PrintHeader job={job} title={job.totalPrice > 0 ? "QUOTATION" : "JOB SHEET"} />
+            <PrintHeader job={job} title="ใบเสนอราคา" />
             <PrintParties job={job} />
 
-            {/* Intake details the customer signs for: appointment and the data on the device */}
-            <div className="grid grid-cols-3 gap-4 mb-8 text-black text-[11px]">
-                <div className="border-2 border-slate-100 rounded-2xl p-4">
-                    <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">รับเครื่อง</p>
-                    <p className="font-bold text-slate-900">{formatDateTime(job.receivedAt)}</p>
+            <div className="border-2 border-slate-100 rounded-2xl p-4 mb-6 text-black text-[11px] space-y-3">
+                <div>
+                    <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">อาการที่แจ้ง / Reported problem</p>
+                    <p className="whitespace-pre-wrap font-bold text-slate-900">{job.reportedSymptom}</p>
                 </div>
-                <div className="border-2 border-slate-100 rounded-2xl p-4">
-                    <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">นัดซ่อมเสร็จ</p>
-                    <p className="font-bold text-slate-900">{job.appointmentDate ? formatDateTime(job.appointmentDate) : "-"}</p>
-                </div>
-                <div className="border-2 border-slate-100 rounded-2xl p-4">
-                    <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">ข้อมูลในเครื่อง</p>
-                    <p className="font-bold text-slate-900">{job.dataBackup ? DATA_BACKUP.labels[job.dataBackup.status] : "-"}</p>
+                <div>
+                    <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">ผลตรวจเช็ก / Inspection result</p>
+                    <p className="whitespace-pre-wrap font-bold text-slate-900">{job.diagnosticResult || "-"}</p>
                 </div>
             </div>
 
@@ -32,31 +33,23 @@ export default function QuotePrint({ job }: { job: RepairJobView }) {
                 <table className="w-full text-left text-[12px]">
                     <thead className="bg-slate-900 text-white uppercase font-black">
                         <tr>
-                            <th className="px-6 py-4">Description / รายการแจ้ง</th>
-                            <th className="px-6 py-4 text-right">Amount / จำนวนเงิน</th>
+                            <th className="px-6 py-4">รายการ / Description</th>
+                            <th className="px-6 py-4 text-right">จำนวนเงิน / Amount</th>
                         </tr>
                     </thead>
                     <tbody className="font-bold text-slate-800">
                         <tr className="border-b border-slate-100">
-                            <td className="px-6 py-6">
-                                <p className="text-slate-900 uppercase tracking-tight">Reported Problem: {job.reportedSymptom}</p>
-                            </td>
-                            <td className="px-6 py-6 text-right">
-                                {job.totalPrice > 0 ? "฿ " + job.totalPrice.toLocaleString() : "-"}
-                            </td>
+                            <td className="px-6 py-4">ค่าแรง / Service labor</td>
+                            <td className="px-6 py-4 text-right whitespace-nowrap">{formatBaht(labor)}</td>
                         </tr>
-                        {job.totalPrice > 0 && (
-                            <>
-                                <tr className="border-b border-slate-100 text-[10px] text-slate-400">
-                                    <td className="px-6 py-3 shrink-0">Spare Parts & Service Labor (รวมอะไหล่และค่าแรง)</td>
-                                    <td className="px-6 py-3 text-right">฿ {job.totalPrice.toLocaleString()}</td>
-                                </tr>
-                                <tr className="bg-slate-50 text-slate-900 text-2xl font-black">
-                                    <td className="px-6 py-8">TOTAL AMOUNT (ราคาสุทธิ)</td>
-                                    <td className="px-6 py-8 text-right underline decoration-double decoration-slate-900 text-black">฿ {job.totalPrice.toLocaleString()}</td>
-                                </tr>
-                            </>
-                        )}
+                        <tr className="border-b border-slate-100">
+                            <td className="px-6 py-4">ค่าอะไหล่ / Spare parts</td>
+                            <td className="px-6 py-4 text-right whitespace-nowrap">{formatBaht(parts)}</td>
+                        </tr>
+                        <tr className="bg-slate-50 text-slate-900 text-2xl font-black">
+                            <td className="px-6 py-6">ราคาสุทธิ / TOTAL</td>
+                            <td className="px-6 py-6 text-right underline decoration-double decoration-slate-900 text-black whitespace-nowrap">{formatBaht(job.totalPrice)}</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -65,15 +58,15 @@ export default function QuotePrint({ job }: { job: RepairJobView }) {
             {approval && (
                 <div className="border-2 border-slate-100 rounded-2xl p-4 mb-8 text-black text-[11px] grid grid-cols-4 gap-4">
                     <div>
-                        <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">อนุมัติราคา รอบที่ {approval.round}</p>
+                        <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">คำตอบลูกค้า รอบที่ {approval.round}</p>
                         <p className={`font-black ${approval.decision === "approved" ? "text-emerald-700" : "text-red-600"}`}>{APPROVAL_DECISION.labels[approval.decision]}</p>
                     </div>
                     <div>
-                        <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">ยอดที่อนุมัติ</p>
-                        <p className="font-bold text-slate-900">฿ {approval.totalPrice.toLocaleString()}</p>
+                        <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">ยอดในรอบนี้</p>
+                        <p className="font-bold text-slate-900">{formatBaht(approval.totalPrice)}</p>
                     </div>
                     <div>
-                        <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">ช่องทาง / ผู้อนุมัติ</p>
+                        <p className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-1">ช่องทาง / ผู้ตอบ</p>
                         <p className="font-bold text-slate-900">{APPROVAL_CHANNEL.labels[approval.channel]} · {approval.approverName}</p>
                     </div>
                     <div>
@@ -83,7 +76,9 @@ export default function QuotePrint({ job }: { job: RepairJobView }) {
                 </div>
             )}
 
-            <PrintSignatures />
+            <p className="mb-8 text-[10px] font-bold text-slate-500">เอกสารนี้ไม่ใช่ใบกำกับภาษี (Not a tax invoice)</p>
+
+            <PrintSignatures left="ลูกค้าผู้อนุมัติ / Customer" right="ผู้เสนอราคา / Quoted by" />
         </>
     );
 }

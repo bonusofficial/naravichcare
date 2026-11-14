@@ -13,11 +13,18 @@ import {
     CheckCircle2,
     Save,
     MapPin,
-    HardDrive
+    HardDrive,
+    History,
+    Wrench,
+    Lock
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { DATA_BACKUP, type DataBackupStatus } from "@/lib/repair/options";
-import { fromDateTimeLocal } from "@/components/admin/repair/format";
+import { DATA_BACKUP, DEVICE_TYPES, DEVICE_TYPE_LABELS, type DataBackupStatus } from "@/lib/repair/options";
+import { statusLabelForOutcome } from "@/lib/repair/workflow";
+import { formatDateTime, fromDateTimeLocal } from "@/components/admin/repair/format";
+import { AccessoriesInput, TechnicianSelect } from "@/components/admin/repair/DeviceInputs";
+import NoBranchNotice from "@/components/admin/repair/NoBranchNotice";
 
 /** A branch from /api/admin/repair/branches (only branches the user may work in). */
 interface ScopedBranch {
@@ -31,7 +38,23 @@ interface FoundCustomer {
     customerId?: string;
     firstName: string;
     lastName: string;
+    phone?: string;
+    lineId?: string;
 }
+
+/** A past job from /api/admin/repair/customers/[id] (jobs in the user's branches only). */
+interface PastJob {
+    _id: string;
+    jobId: string;
+    status: string;
+    outcome?: string;
+    brand: string;
+    deviceModel: string;
+    receivedAt: string;
+}
+
+const fieldClass = "w-full bg-slate-50 border border-slate-100 rounded-lg py-2 px-3 text-xs font-bold text-gray-800 outline-none focus:bg-white focus:border-blue-500 transition-all";
+const labelClass = "text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1";
 
 export default function NewRepairJob() {
     const router = useRouter();
@@ -42,6 +65,7 @@ export default function NewRepairJob() {
     const [searchPhone, setSearchPhone] = useState("");
     const [searchingCustomer, setSearchingCustomer] = useState(false);
     const [customer, setCustomer] = useState<FoundCustomer | null>(null);
+    const [pastJobs, setPastJobs] = useState<PastJob[] | null>(null);
 
     // Form State
     const [isNewCustomer, setIsNewCustomer] = useState(false);
@@ -60,9 +84,13 @@ export default function NewRepairJob() {
     });
     // Receiving branch, promised completion time and the customer's choice for the data on the device.
     const [branches, setBranches] = useState<ScopedBranch[]>([]);
+    // True once the branch list has loaded; an empty list then means the account has no branch.
+    const [branchesLoaded, setBranchesLoaded] = useState(false);
     const [branchId, setBranchId] = useState("");
     const [appointment, setAppointment] = useState("");
     const [dataBackupStatus, setDataBackupStatus] = useState<DataBackupStatus | "">("");
+    const [assignedTechnician, setAssignedTechnician] = useState("");
+    const noBranch = branchesLoaded && branches.length === 0;
 
     useEffect(() => {
         fetch("/api/admin/repair/branches")
@@ -71,6 +99,7 @@ export default function NewRepairJob() {
                 const list = data?.branches ?? [];
                 setBranches(list);
                 if (list.length === 1) setBranchId(list[0]._id);
+                if (data) setBranchesLoaded(true);
             })
             .catch(() => setBranches([]));
     }, []);
@@ -80,12 +109,18 @@ export default function NewRepairJob() {
         if (!searchPhone) return;
         setSearchingCustomer(true);
         try {
-            const res = await fetch(`/api/admin/repair/customers?phone=${searchPhone}`);
+            const res = await fetch(`/api/admin/repair/customers?phone=${encodeURIComponent(searchPhone.trim())}`, { cache: "no-store" });
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0) {
                 setCustomer(data[0]);
                 setIsNewCustomer(false);
                 setStep(2);
+                // Show the customer's earlier jobs so staff can see the repair history at intake.
+                setPastJobs(null);
+                fetch(`/api/admin/repair/customers/${data[0]._id}`, { cache: "no-store" })
+                    .then((r) => (r.ok ? r.json() : null))
+                    .then((detail: { jobs?: PastJob[] } | null) => setPastJobs(detail?.jobs ?? []))
+                    .catch(() => setPastJobs([]));
             } else {
                 setCustomer(null);
                 setIsNewCustomer(true);
@@ -114,7 +149,9 @@ export default function NewRepairJob() {
             return;
         }
         if (!branchId) {
-            alert("กรุณาเลือกสาขารับงาน");
+            alert(noBranch
+                ? "บัญชีนี้ยังไม่ได้ผูกสาขา จึงเปิดใบรับซ่อมไม่ได้ ให้ Super Admin ผูกสาขาให้ที่เมนู \"จัดการแอดมิน\" ก่อน"
+                : "กรุณาเลือกสาขารับงาน");
             return;
         }
         if (!dataBackupStatus) {
@@ -127,7 +164,8 @@ export default function NewRepairJob() {
             const payload = {
                 ...formData,
                 customer: customer?._id,
-                newCustomer: isNewCustomer ? { ...newCustomer, phone: searchPhone } : null,
+                newCustomer: isNewCustomer ? { ...newCustomer, phone: searchPhone.trim() } : null,
+                assignedTechnician: assignedTechnician || null,
                 branchId,
                 appointmentDate: fromDateTimeLocal(appointment),
                 dataBackupStatus,
@@ -142,7 +180,8 @@ export default function NewRepairJob() {
             if (res.ok) {
                 const job = await res.json();
                 alert(`สร้างใบรับซ่อมสำเร็จ! เลขที่ Job ID: ${job.jobId}`);
-                router.push("/admin/repair/jobs");
+                // Open the new job so staff can print the repair receipt (ใบรับซ่อม) for the customer.
+                router.push(`/admin/repair/jobs/${job._id}`);
             } else {
                 const err = await res.json();
                 alert(err.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
@@ -156,6 +195,7 @@ export default function NewRepairJob() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-5 duration-700">
+            {noBranch && <NoBranchNotice action="เปิดใบรับซ่อม" />}
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -234,9 +274,49 @@ export default function NewRepairJob() {
                             </div>
                         </div>
 
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-1.5">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">LINE ID</label>
+                                <input
+                                    maxLength={100}
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-lg py-2.5 px-4 text-xs font-bold text-gray-800 outline-none focus:bg-white focus:border-pink-500 transition-all"
+                                    value={newCustomer.lineId}
+                                    onChange={(e) => setNewCustomer({...newCustomer, lineId: e.target.value})}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">ที่อยู่</label>
+                                <input
+                                    maxLength={500}
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-lg py-2.5 px-4 text-xs font-bold text-gray-800 outline-none focus:bg-white focus:border-pink-500 transition-all"
+                                    value={newCustomer.address}
+                                    onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
+                                />
+                            </div>
+                            <div className="space-y-1.5 sm:col-span-2">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">หมายเหตุลูกค้า</label>
+                                <textarea
+                                    rows={2}
+                                    maxLength={1000}
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-lg py-2.5 px-4 text-xs font-bold text-gray-800 outline-none focus:bg-white focus:border-pink-500 transition-all"
+                                    value={newCustomer.notes}
+                                    onChange={(e) => setNewCustomer({...newCustomer, notes: e.target.value})}
+                                />
+                            </div>
+                        </div>
+
                         <div className="flex gap-3 pt-3">
                             <button onClick={() => setStep(1)} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">ยกเลิก</button>
-                            <button onClick={() => setStep(2)} className="flex-[2] py-3 bg-slate-900 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-pink-600 transition-all flex items-center justify-center gap-2">ถัดไป <ChevronRight size={14} /></button>
+                            <button
+                                onClick={() => {
+                                    if (!newCustomer.firstName.trim() || !newCustomer.lastName.trim()) {
+                                        alert("กรุณากรอกชื่อและนามสกุลลูกค้า");
+                                        return;
+                                    }
+                                    setStep(2);
+                                }}
+                                className="flex-[2] py-3 bg-slate-900 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-pink-600 transition-all flex items-center justify-center gap-2"
+                            >ถัดไป <ChevronRight size={14} /></button>
                         </div>
                     </div>
                 )}
@@ -254,7 +334,34 @@ export default function NewRepairJob() {
                                         <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">ID: {customer.customerId}</p>
                                     </div>
                                 </div>
-                                <button onClick={() => { setStep(1); setCustomer(null); }} className="text-[9px] font-black text-blue-600 hover:underline uppercase tracking-widest">เปลี่ยนลูกค้า</button>
+                                <div className="flex flex-col items-end gap-1">
+                                    <Link href={`/admin/repair/customers/${customer._id}`} target="_blank" className="text-[9px] font-black text-slate-500 hover:underline uppercase tracking-widest">ดู/แก้ไขข้อมูลลูกค้า</Link>
+                                    <button onClick={() => { setStep(1); setCustomer(null); setPastJobs(null); }} className="text-[9px] font-black text-blue-600 hover:underline uppercase tracking-widest">เปลี่ยนลูกค้า</button>
+                                </div>
+                            </div>
+                         )}
+                         {customer && (
+                            <div className="rounded-2xl border border-slate-100 p-4 -mt-4">
+                                <p className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2"><History size={12} /> ประวัติการซ่อม{pastJobs ? ` (${pastJobs.length} งาน)` : ""}</p>
+                                {pastJobs === null ? (
+                                    <p className="text-[11px] text-slate-400 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> กำลังโหลด...</p>
+                                ) : pastJobs.length === 0 ? (
+                                    <p className="text-[11px] text-slate-400">ยังไม่มีงานซ่อมในสาขาที่คุณดูได้</p>
+                                ) : (
+                                    <ul className="space-y-1">
+                                        {pastJobs.slice(0, 5).map((past) => (
+                                            <li key={past._id}>
+                                                <Link href={`/admin/repair/jobs/${past._id}`} target="_blank" className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-[11px] hover:bg-slate-50">
+                                                    <span className="font-black text-slate-800">{past.jobId} <span className="font-semibold text-slate-500">· {past.brand} {past.deviceModel}</span></span>
+                                                    <span className="text-slate-400">{statusLabelForOutcome(past.status, past.outcome)} · {formatDateTime(past.receivedAt)}</span>
+                                                </Link>
+                                            </li>
+                                        ))}
+                                        {pastJobs.length > 5 && (
+                                            <li><Link href={`/admin/repair/customers/${customer._id}`} target="_blank" className="px-2 text-[11px] font-bold text-blue-600 hover:underline">ดูทั้งหมด {pastJobs.length} งาน</Link></li>
+                                        )}
+                                    </ul>
+                                )}
                             </div>
                          )}
 
@@ -268,6 +375,16 @@ export default function NewRepairJob() {
                                 </div>
 
                                 <div className="space-y-3">
+                                    <div className="space-y-1">
+                                        <label className={labelClass}>ประเภทอุปกรณ์</label>
+                                        <select
+                                            className={fieldClass}
+                                            value={formData.deviceType}
+                                            onChange={(e) => setFormData({...formData, deviceType: e.target.value})}
+                                        >
+                                            {DEVICE_TYPES.map((type) => <option key={type} value={type}>{DEVICE_TYPE_LABELS[type]}</option>)}
+                                        </select>
+                                    </div>
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">แบรนด์</label>
                                         <input 
@@ -290,11 +407,24 @@ export default function NewRepairJob() {
                                         <div className="space-y-1">
                                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">IMEI</label>
                                             <input 
+                                                maxLength={32}
                                                 className="w-full bg-slate-50 border border-slate-100 rounded-lg py-2 px-3 text-xs font-bold text-gray-800 outline-none focus:bg-white focus:border-blue-500 transition-all"
                                                 value={formData.imei}
                                                 onChange={(e) => setFormData({...formData, imei: e.target.value})}
                                             />
                                         </div>
+                                        <div className="space-y-1">
+                                            <label className={labelClass}>Serial Number</label>
+                                            <input
+                                                maxLength={64}
+                                                placeholder="สำหรับเครื่องที่ไม่มี IMEI"
+                                                className={fieldClass}
+                                                value={formData.serialNumber}
+                                                onChange={(e) => setFormData({...formData, serialNumber: e.target.value})}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-3 sm:grid-cols-2">
                                         <div className="space-y-1">
                                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">สีเครื่อง</label>
                                             <input 
@@ -312,6 +442,10 @@ export default function NewRepairJob() {
                                                 value={formData.deviceCondition}
                                                 onChange={(e) => setFormData({...formData, deviceCondition: e.target.value})}
                                             />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className={labelClass}>อุปกรณ์ที่ฝากมากับเครื่อง</label>
+                                        <AccessoriesInput value={formData.accessories} onChange={(accessories) => setFormData({...formData, accessories})} />
                                     </div>
                                 </div>
                             </div>
@@ -351,6 +485,22 @@ export default function NewRepairJob() {
                                             required
                                         />
                                     </div>
+
+                                    <div className="space-y-1">
+                                        <label className={`${labelClass} flex items-center gap-1`}><Wrench size={10} /> ช่างผู้รับผิดชอบ</label>
+                                        <TechnicianSelect value={assignedTechnician} onChange={setAssignedTechnician} branchId={branchId || null} className={fieldClass} />
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <label className={`${labelClass} flex items-center gap-1`}><Lock size={10} /> หมายเหตุภายใน (ลูกค้าไม่เห็น)</label>
+                                        <textarea
+                                            rows={2}
+                                            maxLength={4000}
+                                            className={fieldClass}
+                                            value={formData.internalNotes}
+                                            onChange={(e) => setFormData({...formData, internalNotes: e.target.value})}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                          </div>
@@ -365,7 +515,7 @@ export default function NewRepairJob() {
                                     onChange={(e) => setBranchId(e.target.value)}
                                     required
                                 >
-                                    <option value="">{branches.length ? "เลือกสาขา" : "ยังไม่มีสาขาที่คุณรับงานได้"}</option>
+                                    <option value="">{branches.length ? "เลือกสาขา" : branchesLoaded ? "บัญชีนี้ยังไม่ได้ผูกสาขา" : "กำลังโหลดสาขา..."}</option>
                                     {branches.map((branch) => <option key={branch._id} value={branch._id}>{branch.name}</option>)}
                                 </select>
                             </div>
@@ -407,7 +557,7 @@ export default function NewRepairJob() {
                                 <button type="button" onClick={() => setStep(1)} className="px-6 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">ย้อนกลับ</button>
                                 <button 
                                     onClick={handleCreateJob}
-                                    disabled={loading}
+                                    disabled={loading || noBranch}
                                     className="px-8 py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2"
                                 >
                                     {loading ? <Loader2 className="animate-spin" size={14} /> : <><Save size={14} /> บันทึกใบรับซ่อม</>}

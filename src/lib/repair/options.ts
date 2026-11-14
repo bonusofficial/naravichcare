@@ -104,3 +104,28 @@ export const REPAIR_OUTCOME = labelled(REPAIR_OUTCOMES, {
     repaired: "ซ่อมเสร็จ",
     not_repaired: "ไม่ซ่อม (ลูกค้าปฏิเสธ/ซ่อมไม่ได้)",
 });
+
+// --- Device received at intake -------------------------------------------------
+/** Stored as the English value ("Smartphone" was the only value before this list). */
+export const DEVICE_TYPES = ["Smartphone", "Tablet", "Laptop", "Smartwatch", "Other"] as const;
+export const DEVICE_TYPE_LABELS: Record<string, string> = {
+    Smartphone: "สมาร์ทโฟน",
+    Tablet: "แท็บเล็ต",
+    Laptop: "โน้ตบุ๊ก",
+    Smartwatch: "สมาร์ทวอทช์",
+    Other: "อื่น ๆ",
+};
+/** Thai label for a stored device type; values the POS sent are shown as they are. */
+export const deviceTypeLabel = (value?: string | null) => (value ? DEVICE_TYPE_LABELS[value] ?? value : "-");
+
+/** Common items left with the device. Stored as these labels; staff may add others. */
+export const ACCESSORY_OPTIONS = [
+    "ซิมการ์ด/ถาดซิม",
+    "เมมโมรี่การ์ด",
+    "เคส",
+    "ฟิล์ม/กระจกกันรอย",
+    "สายชาร์จ",
+    "หัวชาร์จ",
+    "กล่อง",
+    "ปากกา",
+] as const;

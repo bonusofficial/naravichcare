@@ -14,6 +14,7 @@ import {
     Store,
     AlertTriangle,
 } from "lucide-react";
+import NoBranchNotice from "@/components/admin/repair/NoBranchNotice";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { RepairJobView } from "@/lib/repair/types";
@@ -68,6 +69,7 @@ function RepairJobsList() {
     const [search, setSearch] = useState(query);
     const [branches, setBranches] = useState<BranchOption[]>([]);
     const [allBranches, setAllBranches] = useState(false);
+    const [branchesLoaded, setBranchesLoaded] = useState(false);
     const [now, setNow] = useState(() => new Date());
 
     const updateQuery = useCallback((changes: Record<string, string | null>) => {
@@ -87,6 +89,7 @@ function RepairJobsList() {
                 if (!data) return;
                 setBranches(data.branches ?? []);
                 setAllBranches(Boolean(data.allBranches));
+                setBranchesLoaded(true);
             })
             .catch((error) => console.error("Fetch branches error:", error));
     }, []);
@@ -135,6 +138,8 @@ function RepairJobsList() {
                 </Link>
             </div>
 
+            {branchesLoaded && !allBranches && branches.length === 0 && <NoBranchNotice />}
+
             {/* Filter Bar */}
             <div className="bg-white p-4 rounded-[2rem] border border-gray-100 shadow-sm space-y-3">
                 <div className="flex flex-col lg:flex-row gap-3">
@@ -142,7 +147,7 @@ function RepairJobsList() {
                         <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
                         <input
                             type="text"
-                            placeholder="ค้นหา Job ID, IMEI, Ref จาก POS, รหัสสินค้า..."
+                            placeholder="ค้นหา ชื่อลูกค้า, เบอร์โทร, Job ID, IMEI, Serial, Ref จาก POS..."
                             className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3.5 pl-14 pr-6 text-sm font-bold text-gray-800 outline-none focus:bg-white focus:border-blue-500 transition-all"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -240,7 +245,7 @@ function RepairJobsList() {
                                         </div>
                                         <p className="text-[13px] font-black text-slate-800 uppercase tracking-tight truncate">
                                             {job.brand} {job.deviceModel}
-                                            <span className="text-[10px] font-bold text-slate-400 ml-2 tracking-tighter">(IMEI: {job.imei || "N/A"})</span>
+                                            <span className="text-[10px] font-bold text-slate-400 ml-2 tracking-tighter">({job.imei ? `IMEI: ${job.imei}` : job.serialNumber ? `S/N: ${job.serialNumber}` : "IMEI: N/A"})</span>
                                         </p>
                                     </div>
                                     {job.customer ? (

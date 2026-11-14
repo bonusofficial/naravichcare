@@ -10,10 +10,8 @@ import { branchChoiceFilter, overdueFilter } from "@/lib/repair/dashboard";
 import { saveNewRepairJob } from "@/lib/repair/service";
 import { isRepairStatus, TERMINAL_STATUSES } from "@/lib/repair/status";
 import Branch from "@/models/Branch";
-
-function escapeRegex(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+import { customerSearchFilter, escapeRegex } from "@/lib/repair/search";
+import { assertActiveTechnician } from "@/lib/repair/technicians";
 
 export async function GET(req: NextRequest) {
     try {
@@ -40,12 +38,18 @@ export async function GET(req: NextRequest) {
         if (query) {
             // Escaped: the search text is matched literally, never run as a pattern.
             const pattern = { $regex: escapeRegex(query), $options: "i" };
+            // Customer name (one name or "first last"), phone or customer id.
+            const customerFilter = customerSearchFilter(query);
+            const customerIds = customerFilter
+                ? await RepairCustomer.find(customerFilter).select("_id").limit(500).lean().then((rows) => rows.map((row) => row._id))
+                : [];
             filter.$or = [
                 { jobId: pattern },
                 { imei: pattern },
                 { serialNumber: pattern },
                 { externalRef: pattern },
                 { "integration.productCode": pattern },
+                ...(customerIds.length ? [{ customer: { $in: customerIds } }] : []),
             ];
         }
 
@@ -90,6 +94,7 @@ export async function POST(req: NextRequest) {
         }
 
         if (input.job.jobType === "claim") await assertClaimEligible({ imei: input.job.imei as string });
+        if (input.job.assignedTechnician) await assertActiveTechnician(input.job.assignedTechnician as string);
 
         let customerId = input.customerId;
         if (customerId && !(await RepairCustomer.exists({ _id: customerId }))) {

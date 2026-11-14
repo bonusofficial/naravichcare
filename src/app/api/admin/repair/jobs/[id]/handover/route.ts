@@ -49,8 +49,9 @@ export async function POST(req: NextRequest, { params }: Context) {
         };
         const updatedLean = await transitionRepairJob(job, "completed", actor, input.note || `ส่งมอบเครื่องให้ ${input.receiverName}`, { set: { handover } });
 
+        const updated = await RepairJob.findById(job._id).populate(ADMIN_JOB_POPULATE);
         try {
-            await sendLineFlexMessage(job, repairStatusLabel("completed"), "#10B981");
+            await sendLineFlexMessage(updated ?? job, repairStatusLabel("completed"), "#10B981");
         } catch (lineError) {
             console.error("LINE notify failed:", lineError instanceof Error ? lineError.message : lineError);
         }
@@ -65,7 +66,6 @@ export async function POST(req: NextRequest, { params }: Context) {
             details: { outcome, receiverName: input.receiverName, receiverRelation: input.receiverRelation, handedOverAt },
         });
 
-        const updated = await RepairJob.findById(job._id).populate(ADMIN_JOB_POPULATE);
         return NextResponse.json(updated);
     } catch (error) {
         const handled = adminRepairErrorResponse(error);

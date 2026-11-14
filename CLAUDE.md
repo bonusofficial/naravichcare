@@ -84,7 +84,8 @@ npm run cleanup:buyback-images              # daily cron job in production (dele
 - Repair business rules live in [src/lib/repair/](src/lib/repair/): `status.ts` (status list, `STATUS_TRANSITIONS`, mapping to the POS's 4 statuses), `costs.ts`, validators, and `service.ts`, which both `/api/admin/repair/*` and `/api/integration/v1/repair-jobs/*` call. Failures throw `RepairWorkflowError` with a code.
 - **Branch scope.** Every repair job has `branchId` (receiving branch). Admin repair routes must go through [src/lib/repair/branch-scope.ts](src/lib/repair/branch-scope.ts): `loadScopedRepairJob(req, id, permission)` for routes under `jobs/[id]/…`, or `requireRepairAccess` + `scopeFilter` for lists. Users with `view_all_branches` see everything (including jobs with no branch); others see only `AdminUser.branchId` + `branchIds`. Out-of-scope jobs answer 404. POS jobs get their branch from `Branch.posBranchIds` (POS branch id or code); unmapped ones stay branchless.
 - Choice lists with Thai labels (payment kinds/methods, data backup, approval channels, `QC_CHECKLIST`, outcomes) are in `src/lib/repair/options.ts`; derived figures (`summarizePayments`, `externalCostTotal`, `isOverdue`) in `src/lib/repair/summary.ts`. Both are client-safe and used by the model, API and UI.
-- The job detail page (`src/app/admin/repair/jobs/[id]/page.tsx`) renders section components from `src/components/admin/repair/` (each takes `RepairJobSectionProps`: `job`, `onChanged`, `onPrint`) and print documents (`QuotePrint`, `ReceiptPrint`, `HandoverPrint`) built from `PrintShell`. Add features as section components rather than growing the page; return the full job populated with `ADMIN_JOB_POPULATE` so `onChanged` can re-render it.
+- The job detail page (`src/app/admin/repair/jobs/[id]/page.tsx`) renders section components from `src/components/admin/repair/` (each takes `RepairJobSectionProps`: `job`, `onChanged`, `onPrint`) and the four customer documents (`IntakePrint` ใบรับซ่อม, `QuotePrint` ใบเสนอราคา, `ReceiptPrint` ใบเสร็จ, `HandoverPrint` ใบส่งมอบ) built from `PrintShell`; internal notes and shop costs never go on them. Add features as section components rather than growing the page; return the full job populated with `ADMIN_JOB_POPULATE` so `onChanged` can re-render it.
+- Job search (`q`) also matches customers by name, "first last", phone (with or without dashes) and customer id via `customerSearchFilter` (`src/lib/repair/search.ts`). Customer profiles and history are at `/admin/repair/customers/[id]` (history is branch-scoped); customer edits go through `parseCustomerInput`/`updateRepairCustomer`. Photos change one at a time through `POST jobs/[id]/photos` (`add`/`replace`/`delete` with the `expectedCount` the page saw, 409 if stale); the page shrinks images first because they are stored inline on the job.
 - Integration routes are built with `integrationRoute({ scope, body }, handler)` from `src/lib/integration/http.ts`. It handles API-key auth, scope checks, per-IP and per-key rate limits, the 64 KB body cap, request IDs, and the error envelope. Wrap service calls in `withRepairErrors()` and validation results in `unwrap()` (`src/lib/integration/repair-route.ts`).
 - The rate limiter is in process memory, so limits multiply with instance count.
 - Contract and ops docs: `docs/REPAIR_INTEGRATION_API.md`, `docs/REPAIR_INTEGRATION_RUNBOOK.md`, `docs/openapi/repair-integration-v1.yaml`.
@@ -95,7 +96,7 @@ Call `recordAdminLog({ req, action, description, targetId, targetType, details }
 
 ### LINE notifications
 
-Everything goes through `sendLinePortal()` in `src/lib/line-portal.ts`, which POSTs to `LINE_PORTAL_NOTIFY_URL` with `LINE_PORTAL_API_TOKEN` (an external portal, not LINE Notify directly). `sendLineNotify(text)` (`lib/line.ts`, re-exported by `lib/line-notify.ts`) and `sendLineFlexMessage` (`lib/line-messaging.ts`) are wrappers. When unconfigured, it logs a warning and returns `{ success: false }` without throwing.
+Everything goes through `sendLinePortal()` in `src/lib/line-portal.ts`, which POSTs to `LINE_PORTAL_NOTIFY_URL` with `LINE_PORTAL_API_TOKEN` (an external portal, not LINE Notify directly). `sendLineNotify(text)` (`lib/line.ts`, re-exported by `lib/line-notify.ts`) and `sendLineFlexMessage` (`lib/line-messaging.ts`) are wrappers. When unconfigured, it logs a warning and returns `{ success: false }` without throwing. Repair status messages (`buildRepairStatusNotification`) carry the job id and the customer's name, phone and LINE ID; the portal delivers to one fixed destination, so add the machine-readable `recipient` block only with `LINE_PORTAL_SEND_RECIPIENT=true`. Admin status changes and handovers notify; POS-driven changes do not. See `docs/REPAIR_NOTIFICATIONS.md`.
 
 ### Private file storage
 
@@ -121,7 +122,7 @@ Tailwind CSS 4 + shadcn/ui (New York style, `components.json`); only `components
 `.env.local` (see `.env.example`):
 - **Required:** `MONGODB_URI`, `JWT_SECRET` (≥ 32 chars).
 - **Optional:**
-  - `LINE_PORTAL_NOTIFY_URL`, `LINE_PORTAL_API_TOKEN`
+  - `LINE_PORTAL_NOTIFY_URL`, `LINE_PORTAL_API_TOKEN`, `LINE_PORTAL_SEND_RECIPIENT`
   - `BUYBACK_STORAGE_DIR`, `HERO_BANNER_STORAGE_DIR`
   - `INTEGRATION_API_RATE_LIMIT`, `INTEGRATION_API_IP_RATE_LIMIT`, `INTEGRATION_API_RATE_WINDOW_SECONDS`, `INTEGRATION_API_ALLOW_HTTP` (keep false in prod), `INTEGRATION_POS_ASSET_BASE_URL`, `INTEGRATION_API_LOG`
 

@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { MapPin, Phone, Wrench } from "lucide-react";
 import type { RepairJobView } from "@/lib/repair/types";
+import { deviceTypeLabel } from "@/lib/repair/options";
 
 /**
- * Building blocks shared by the printed repair documents (QuotePrint,
- * ReceiptPrint, HandoverPrint). Markup moved unchanged from the job page,
- * except that the header shows the job's branch when it has one.
+ * Building blocks shared by the printed repair documents (IntakePrint,
+ * QuotePrint, ReceiptPrint, HandoverPrint). These are customer documents:
+ * never put internal notes, part costs or outside-repair costs on them.
  */
 
 export function PrintHeader({ job, title, date = new Date() }: { job: RepairJobView; title: string; date?: Date }) {
@@ -49,7 +50,7 @@ export function PrintParties({ job }: { job: RepairJobView }) {
     return (
         <div className="grid grid-cols-2 gap-6 mb-8 text-black">
             <div className="border-2 border-slate-100 rounded-2xl p-6 bg-slate-50/20">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2 text-blue-600">CUSTOMER INFO</h3>
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2 text-blue-600">ลูกค้า / CUSTOMER</h3>
                 {job.customer ? (
                     <>
                         <p className="text-lg font-black text-slate-900 uppercase tracking-tight">{job.customer.firstName} {job.customer.lastName}</p>
@@ -63,9 +64,14 @@ export function PrintParties({ job }: { job: RepairJobView }) {
                 )}
             </div>
             <div className="border-2 border-slate-100 rounded-2xl p-6 bg-slate-50/20">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2 text-blue-600">DEVICE DETAILS</h3>
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2 text-blue-600">ข้อมูลเครื่อง / DEVICE</h3>
                 <p className="text-lg font-black text-slate-900 uppercase tracking-tight">{job.brand} {job.deviceModel}</p>
-                <p className="text-[11px] font-bold text-slate-700 mt-1">S/N: {job.imei || "Not Found"}</p>
+                <p className="text-[11px] font-bold text-slate-700 mt-1">
+                    {deviceTypeLabel(job.deviceType)}{job.color ? ` · สี ${job.color}` : ""}
+                </p>
+                {job.imei && <p className="text-[11px] font-bold text-slate-700">IMEI: {job.imei}</p>}
+                {job.serialNumber && <p className="text-[11px] font-bold text-slate-700">S/N: {job.serialNumber}</p>}
+                {!job.imei && !job.serialNumber && <p className="text-[11px] font-bold text-slate-400">ไม่มี IMEI / Serial Number</p>}
             </div>
         </div>
     );
