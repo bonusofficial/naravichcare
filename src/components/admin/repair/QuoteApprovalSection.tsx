@@ -66,9 +66,12 @@ export default function QuoteApprovalSection({ job, onChanged }: RepairJobSectio
                 )}
             </div>
 
-            <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-4 py-3 text-xs">
                 <span className="font-semibold text-slate-500">ราคาปัจจุบัน (ชุดราคาที่ {version})</span>
-                <span className="text-sm font-black text-slate-900">{formatBaht(job.totalPrice)}</span>
+                <span className="text-slate-500">
+                    ค่าแรง {formatBaht(job.laborCost)} + ค่าอะไหล่ {formatBaht(job.partsCost)} ={" "}
+                    <span className="text-sm font-black text-slate-900">{formatBaht(job.totalPrice)}</span>
+                </span>
             </div>
 
             {!closed && (

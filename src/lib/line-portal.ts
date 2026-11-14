@@ -7,7 +7,12 @@ export type LinePortalResult =
     | { success: true }
     | { success: false; error: string };
 
-export async function sendLinePortal(messages: LineMessage[]): Promise<LinePortalResult> {
+/**
+ * POST `{ messages }` to the LINE Portal, which delivers them to its
+ * configured destination. `extra` adds top-level fields (e.g. a recipient
+ * block) for portals that accept them; leave it out otherwise.
+ */
+export async function sendLinePortal(messages: LineMessage[], extra?: Record<string, unknown>): Promise<LinePortalResult> {
     const url = process.env.LINE_PORTAL_NOTIFY_URL?.trim();
     const token = process.env.LINE_PORTAL_API_TOKEN?.trim();
 
@@ -23,7 +28,7 @@ export async function sendLinePortal(messages: LineMessage[]): Promise<LinePorta
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${token}`,
             },
-            body: JSON.stringify({ messages }),
+            body: JSON.stringify({ ...extra, messages }),
             signal: AbortSignal.timeout(10_000),
         });
 

@@ -3,8 +3,16 @@ import dbConnect from "@/lib/mongodb";
 import RepairCustomer from "@/models/RepairCustomer";
 import { recordAdminLog } from "@/lib/admin-log";
 import { checkPermission } from "@/lib/check-permission";
-import { getErrorMessage, isDuplicateKeyError } from "@/lib/errors";
+import { isDuplicateKeyError } from "@/lib/errors";
+import { AdminValidationError, parseCustomerInput } from "@/lib/repair/admin-validation";
+import { adminRepairErrorResponse, invalidBody, readJsonObject } from "@/lib/repair/admin-route";
+import { customerSearchFilter } from "@/lib/repair/search";
+import { updateRepairCustomer } from "@/lib/repair/customers";
 
+/**
+ * Repair customers. `phone` looks one customer up by the exact number (intake
+ * form); `q` searches name, "first last", phone or customer id.
+ */
 export async function GET(req: NextRequest) {
     try {
         const { authorized, error } = await checkPermission(req, "view_repair_jobs");
@@ -12,21 +20,12 @@ export async function GET(req: NextRequest) {
 
         await dbConnect();
         const { searchParams } = new URL(req.url);
-        const query = searchParams.get("q");
-        const phone = searchParams.get("phone");
+        const query = searchParams.get("q")?.trim().slice(0, 100) ?? "";
+        const phone = searchParams.get("phone")?.trim().slice(0, 20) ?? "";
 
         let filter: Record<string, unknown> = {};
-        if (phone) {
-            filter.phone = phone;
-        } else if (query) {
-            filter = {
-                $or: [
-                    { firstName: { $regex: query, $options: "i" } },
-                    { lastName: { $regex: query, $options: "i" } },
-                    { phone: { $regex: query, $options: "i" } },
-                ],
-            };
-        }
+        if (phone) filter = { phone };
+        else if (query) filter = customerSearchFilter(query) ?? {};
 
         const customers = await RepairCustomer.find(filter).sort({ createdAt: -1 }).limit(50);
         return NextResponse.json(customers);
@@ -42,16 +41,10 @@ export async function POST(req: NextRequest) {
         if (!authorized) return error;
 
         await dbConnect();
-        const data = await req.json();
+        const body = await readJsonObject(req);
+        if (!body) return invalidBody();
+        const customer = await RepairCustomer.create(parseCustomerInput(body));
 
-        // Basic validation
-        if (!data.firstName || !data.lastName || !data.phone) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-        }
-
-        const customer = await RepairCustomer.create(data);
-
-        // LOGGING
         await recordAdminLog({
             req,
             action: "create_customer",
@@ -62,6 +55,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json(customer, { status: 201 });
     } catch (error) {
+        if (error instanceof AdminValidationError) return adminRepairErrorResponse(error)!;
         if (isDuplicateKeyError(error)) {
             return NextResponse.json({ error: "Customer already exists" }, { status: 400 });
         }
@@ -70,34 +64,22 @@ export async function POST(req: NextRequest) {
     }
 }
 
+/** Older clients send `{ id, ...fields }` here; /customers/[id] is the same edit. */
 export async function PATCH(req: NextRequest) {
     try {
         const { authorized, error } = await checkPermission(req, "edit_repair_jobs");
         if (!authorized) return error;
 
         await dbConnect();
-        const data = await req.json();
-        const { id, ...updateData } = data;
-
-        if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
-
-        const currentCustomer = await RepairCustomer.findById(id);
-        if (!currentCustomer) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-        const updated = await RepairCustomer.findByIdAndUpdate(id, updateData, { new: true });
-
-        // LOGGING
-        await recordAdminLog({
-            req,
-            action: "update_customer",
-            description: `แก้ไขข้อมูลลูกค้า "${currentCustomer.firstName} ${currentCustomer.lastName}" (${currentCustomer.phone})`,
-            targetId: id,
-            targetType: "RepairCustomer",
-            details: { before: currentCustomer, after: updated }
-        });
-
-        return NextResponse.json(updated);
+        const body = await readJsonObject(req);
+        if (!body) return invalidBody();
+        const { id, ...fields } = body;
+        if (typeof id !== "string" || !id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+        return await updateRepairCustomer(req, id, fields);
     } catch (error) {
-        return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
+        const handled = adminRepairErrorResponse(error);
+        if (handled) return handled;
+        console.error("Update Customer Error:", error);
+        return NextResponse.json({ error: "Failed to update customer" }, { status: 500 });
     }
 }

@@ -21,7 +21,7 @@ export default function HandoverPrint({ job }: { job: RepairJobView }) {
 
     return (
         <>
-            <PrintHeader job={job} title="HANDOVER" />
+            <PrintHeader job={job} title="ใบส่งมอบงาน" />
             <PrintParties job={job} />
 
             <div className="grid grid-cols-3 gap-4 mb-6 text-black text-[11px]">
@@ -83,7 +83,8 @@ export default function HandoverPrint({ job }: { job: RepairJobView }) {
                         </div>
                     ))}
                 </div>
-                {handover?.note && <p className="mt-3 text-slate-600">หมายเหตุ: {handover.note}</p>}
+                <p className="mt-3 text-slate-600">อุปกรณ์ที่คืนพร้อมเครื่อง: <span className="font-bold text-slate-900">{(job.accessories ?? []).length ? job.accessories!.join(", ") : "ไม่มี"}</span></p>
+                {handover?.note && <p className="mt-1 text-slate-600">หมายเหตุ: {handover.note}</p>}
                 <p className="mt-4 text-[9px] text-slate-400 leading-relaxed">
                     ผู้รับเครื่องได้ตรวจสอบสภาพเครื่องและอุปกรณ์แล้ว และยืนยันการรับเครื่องคืนตามรายละเอียดข้างต้น
                 </p>

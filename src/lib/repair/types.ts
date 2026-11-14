@@ -93,9 +93,18 @@ export interface RepairHandoverView {
 
 export interface RepairCustomerView {
     _id: string;
+    customerId?: string;
     firstName: string;
     lastName: string;
     phone: string;
+    lineId?: string;
+}
+
+/** assignedTechnician as the admin API returns it (populated). */
+export interface RepairTechnicianRef {
+    _id: string;
+    name?: string;
+    username: string;
 }
 
 export interface RepairStatusHistoryView {
@@ -129,7 +138,15 @@ export interface RepairJobView {
     deviceModel: string;
     imei?: string;
     serialNumber?: string;
+    color?: string;
+    deviceCondition?: string;
+    accessories?: string[];
     reportedSymptom: string;
+    /** Inspection result written by the technician; shown on the quotation. */
+    diagnosticResult?: string;
+    /** Staff only; never printed on customer documents. */
+    internalNotes?: string;
+    assignedTechnician?: RepairTechnicianRef | null;
     receivedAt: string;
     laborCost?: number;
     partsCost?: number;
@@ -163,7 +180,7 @@ export interface RepairJobView {
 
 /** Which document the job page prints. paymentId picks one receipt. */
 export interface RepairPrintRequest {
-    mode: "quote" | "receipt" | "handover";
+    mode: "intake" | "quote" | "receipt" | "handover";
     paymentId?: string;
 }
 

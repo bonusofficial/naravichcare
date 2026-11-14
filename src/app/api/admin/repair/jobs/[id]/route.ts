@@ -13,6 +13,7 @@ import { computeRepairCosts } from "@/lib/repair/costs";
 import { transitionRepairJob } from "@/lib/repair/service";
 import { REPAIR_OUTCOME } from "@/lib/repair/options";
 import { statusLabelForOutcome } from "@/lib/repair/workflow";
+import { assertActiveTechnician } from "@/lib/repair/technicians";
 
 interface Context {
     params: Promise<{ id: string }>;
@@ -36,6 +37,12 @@ export async function GET(req: NextRequest, { params }: Context) {
         return NextResponse.json({ error: "Failed to fetch job" }, { status: 500 });
     }
 }
+
+/** Fields whose changes are logged as "update_job_details". */
+const DETAIL_FIELDS = [
+    "deviceType", "brand", "deviceModel", "serialNumber", "imei", "color", "deviceCondition", "accessories",
+    "reportedSymptom", "diagnosticResult", "internalNotes", "assignedTechnician",
+] as const;
 
 const getStatusColor = (status: string) => {
     switch (status) {
@@ -74,6 +81,11 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         ]);
         const previousPhotoCounts = photoCounts ?? { photosBefore: 0, photosAfter: 0 };
         if (currentJob.jobType === "claim") await assertClaimEligible({ imei: currentJob.imei });
+        // A claim moved to another IMEI must be eligible under that IMEI too.
+        if (currentJob.jobType === "claim" && typeof input.set.imei === "string" && input.set.imei !== currentJob.imei) {
+            await assertClaimEligible({ imei: input.set.imei });
+        }
+        if (typeof input.set.assignedTechnician === "string") await assertActiveTechnician(input.set.assignedTechnician);
 
         // The actor is whoever holds the verified session, never a name the client sends.
         const logActor = { id: actor.id, name: actor.name };
@@ -130,7 +142,8 @@ export async function PATCH(req: NextRequest, { params }: Context) {
         // 1. Log Status Changes
         if (statusChanged) {
             try {
-                await sendLineFlexMessage(currentJob, newStatusLabel, getStatusColor(input.status!));
+                // The populated job carries the customer's contact details and the branch.
+                await sendLineFlexMessage(updatedJob ?? currentJob, newStatusLabel, getStatusColor(input.status!));
             } catch (lineError) {
                 console.error("LINE notify failed:", lineError instanceof Error ? lineError.message : lineError);
             }
@@ -197,6 +210,22 @@ export async function PATCH(req: NextRequest, { params }: Context) {
                 targetId: id,
                 targetType: "RepairJob",
                 details: { expire: input.set.warrantyExpireDate, void: input.set.voidStickerCode }
+            });
+        }
+
+        // 6. Log device details, technician, inspection result and internal notes
+        const before = currentJob as unknown as Record<string, unknown>;
+        const detailFields = DETAIL_FIELDS.filter((field) => input.set[field] !== undefined
+            && String(input.set[field] ?? "") !== String(before[field] ?? ""));
+        if (detailFields.length) {
+            await recordAdminLog({
+                req,
+                actor: logActor,
+                action: "update_job_details",
+                description: `แก้ไขข้อมูลเครื่อง/ผลตรวจ งาน ${jobTitle}`,
+                targetId: id,
+                targetType: "RepairJob",
+                details: Object.fromEntries(detailFields.map((field) => [field, { before: before[field], after: input.set[field] }])),
             });
         }
 

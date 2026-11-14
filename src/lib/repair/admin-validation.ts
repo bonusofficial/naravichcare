@@ -58,6 +58,15 @@ function dateField(body: Record<string, unknown>, field: string): Date | null | 
     return date;
 }
 
+/** An AdminUser id, null to clear it, or undefined when absent. */
+function technicianId(body: Record<string, unknown>): string | null | undefined {
+    const raw = body.assignedTechnician;
+    if (raw === undefined) return undefined;
+    if (raw === null || raw === "") return null;
+    if (typeof raw === "string" && mongoose.isValidObjectId(raw)) return raw;
+    throw new AdminValidationError("ช่างผู้รับผิดชอบไม่ถูกต้อง", ["assignedTechnician"]);
+}
+
 function dataBackupStatus(body: Record<string, unknown>, required: boolean): DataBackupStatus | undefined {
     const raw = body.dataBackupStatus;
     if (raw === undefined || raw === null || raw === "") {
@@ -75,10 +84,9 @@ function dataBackupStatus(body: Record<string, unknown>, required: boolean): Dat
 const CREATE_FIELDS = [
     "deviceType", "brand", "deviceModel", "serialNumber", "imei", "color",
     "deviceCondition", "accessories", "jobType", "reportedSymptom", "internalNotes",
-    "customer", "newCustomer",
+    "customer", "newCustomer", "assignedTechnician",
     "branchId", "appointmentDate", "dataBackupStatus",
 ] as const;
-const NEW_CUSTOMER_FIELDS = ["firstName", "lastName", "phone", "lineId", "address", "notes"] as const;
 
 export interface AdminCreateInput {
     job: Record<string, unknown>;
@@ -119,6 +127,8 @@ export function parseAdminCreate(body: Record<string, unknown>): AdminCreateInpu
     };
     const appointmentDate = dateField(body, "appointmentDate");
     if (appointmentDate) job.appointmentDate = appointmentDate;
+    const technician = technicianId(body);
+    if (technician) job.assignedTechnician = technician;
 
     let branchId: string | null = null;
     if (body.branchId !== undefined && body.branchId !== null && body.branchId !== "") {
@@ -142,22 +152,8 @@ export function parseAdminCreate(body: Record<string, unknown>): AdminCreateInpu
         if (typeof body.newCustomer !== "object" || Array.isArray(body.newCustomer)) {
             throw new AdminValidationError("ข้อมูลลูกค้าใหม่ไม่ถูกต้อง", ["newCustomer"]);
         }
-        const raw = body.newCustomer as Record<string, unknown>;
-        rejectUnknown(raw, NEW_CUSTOMER_FIELDS);
-        const firstName = text(raw, "firstName", 100);
-        const lastName = text(raw, "lastName", 100);
-        const phone = text(raw, "phone", 20);
-        if (!firstName || !lastName || !phone) {
-            throw new AdminValidationError("กรุณากรอกชื่อ นามสกุล และเบอร์โทรลูกค้า", ["newCustomer"]);
-        }
-        newCustomer = {
-            firstName,
-            lastName,
-            phone,
-            lineId: text(raw, "lineId", 100) ?? "",
-            address: text(raw, "address", 500) ?? "",
-            notes: text(raw, "notes", 1000) ?? "",
-        };
+        const parsed = parseCustomerInput(body.newCustomer as Record<string, unknown>);
+        newCustomer = { lineId: "", address: "", notes: "", ...parsed } as Record<string, string>;
     }
 
     if (!customerId && !newCustomer) throw new AdminValidationError("กรุณาระบุข้อมูลลูกค้า (Customer info required)", ["customer"]);
@@ -174,9 +170,13 @@ const PATCH_FIELDS = [
     "diagnosticResult", "internalNotes", "quotationApproved", "assignedTechnician",
     "warrantyStartDate", "warrantyExpireDate", "warrantyType", "voidStickerCode",
     "photosBefore", "photosAfter",
+    "deviceType", "brand", "deviceModel", "serialNumber", "imei", "reportedSymptom",
     "color", "deviceCondition", "accessories",
     "appointmentDate", "dataBackupStatus",
 ] as const;
+
+/** Device fields that cannot be blanked once the job exists. */
+const REQUIRED_DEVICE_FIELDS = new Set(["deviceType", "brand", "deviceModel", "reportedSymptom"]);
 
 // Sent by older copies of the admin UI. adminUsername is ignored because the
 // actor comes from the JWT; totalPrice is ignored because the server computes it.
@@ -233,9 +233,15 @@ export function parseAdminPatch(body: Record<string, unknown>): AdminPatchInput 
         ? { laborCost, partsCost, partsPurchaseCost }
         : undefined;
 
-    for (const [field, max] of [["diagnosticResult", 4000], ["internalNotes", 4000], ["warrantyType", 100], ["voidStickerCode", 100], ["color", 50], ["deviceCondition", 1000]] as const) {
+    for (const [field, max] of [
+        ["diagnosticResult", 4000], ["internalNotes", 4000], ["warrantyType", 100], ["voidStickerCode", 100],
+        ["deviceType", 50], ["brand", 80], ["deviceModel", 120], ["serialNumber", 64], ["imei", 32], ["reportedSymptom", 4000],
+        ["color", 50], ["deviceCondition", 1000],
+    ] as const) {
         const value = text(body, field, max);
-        if (value !== undefined) set[field] = value;
+        if (value === undefined) continue;
+        if (!value && REQUIRED_DEVICE_FIELDS.has(field)) throw new AdminValidationError(`กรุณากรอก ${field}`, [field]);
+        set[field] = value;
     }
 
     if (body.quotationApproved !== undefined) {
@@ -245,11 +251,8 @@ export function parseAdminPatch(body: Record<string, unknown>): AdminPatchInput 
         set.quotationApproved = body.quotationApproved;
     }
 
-    if (body.assignedTechnician !== undefined) {
-        if (body.assignedTechnician === null || body.assignedTechnician === "") set.assignedTechnician = null;
-        else if (typeof body.assignedTechnician === "string" && mongoose.isValidObjectId(body.assignedTechnician)) set.assignedTechnician = body.assignedTechnician;
-        else throw new AdminValidationError("assignedTechnician ไม่ถูกต้อง", ["assignedTechnician"]);
-    }
+    const technician = technicianId(body);
+    if (technician !== undefined) set.assignedTechnician = technician;
 
     for (const field of ["warrantyStartDate", "warrantyExpireDate", "appointmentDate"] as const) {
         const value = dateField(body, field);
@@ -366,4 +369,94 @@ export function parseHandover(body: Record<string, unknown>): HandoverInput {
         handedOverAt: pastDate(body, "handedOverAt", "เวลาส่งมอบ"),
         note: text(body, "note", 1000) ?? "",
     };
+}
+
+// ---------------------------------------------------------------------------
+// Repair customers (POST/PATCH /api/admin/repair/customers...)
+// ---------------------------------------------------------------------------
+
+const CUSTOMER_FIELDS = ["firstName", "lastName", "phone", "lineId", "address", "notes"] as const;
+type CustomerField = (typeof CUSTOMER_FIELDS)[number];
+export type CustomerInput = Partial<Record<CustomerField, string>>;
+
+const CUSTOMER_LIMITS: Record<CustomerField, number> = { firstName: 100, lastName: 100, phone: 20, lineId: 100, address: 500, notes: 1000 };
+const CUSTOMER_LABELS: Record<CustomerField, string> = { firstName: "ชื่อ", lastName: "นามสกุล", phone: "เบอร์โทร", lineId: "LINE ID", address: "ที่อยู่", notes: "หมายเหตุ" };
+const REQUIRED_CUSTOMER_FIELDS: readonly CustomerField[] = ["firstName", "lastName", "phone"];
+
+/**
+ * Customer contact details. `partial` (editing) accepts any subset but never
+ * blanks a required field; otherwise name and phone are required.
+ */
+export function parseCustomerInput(body: Record<string, unknown>, { partial = false, ignore = [] as readonly string[] } = {}): CustomerInput {
+    rejectUnknown(body, CUSTOMER_FIELDS, ignore);
+    const input: CustomerInput = {};
+    for (const field of CUSTOMER_FIELDS) {
+        const value = text(body, field, CUSTOMER_LIMITS[field]);
+        if (value === undefined) continue;
+        input[field] = value;
+    }
+    for (const field of REQUIRED_CUSTOMER_FIELDS) {
+        const missing = partial ? input[field] === "" : !input[field];
+        if (missing) throw new AdminValidationError(`กรุณากรอก${CUSTOMER_LABELS[field]}ลูกค้า`, [field]);
+    }
+    if (input.phone && !/^[0-9+\-\s()]{6,20}$/.test(input.phone)) {
+        throw new AdminValidationError("เบอร์โทรลูกค้าไม่ถูกต้อง", ["phone"]);
+    }
+    return input;
+}
+
+// ---------------------------------------------------------------------------
+// One photo change (POST /api/admin/repair/jobs/:id/photos)
+// ---------------------------------------------------------------------------
+
+export const PHOTO_ACTIONS = ["add", "replace", "delete"] as const;
+export type PhotoAction = (typeof PHOTO_ACTIONS)[number];
+
+/**
+ * Photos live inline on the job document (16 MB limit for the whole job), so
+ * one photo is capped well below that. The job page shrinks photos first.
+ */
+const MAX_UPLOAD_PHOTO_LENGTH = 3 * 1024 * 1024;
+
+export interface PhotoChangeInput {
+    action: PhotoAction;
+    field: "photosBefore" | "photosAfter";
+    /** Position of the photo to replace or delete. */
+    index?: number;
+    image?: string;
+    /** How many photos the client saw; the change is refused if that is stale. */
+    expectedCount: number;
+}
+
+export function parsePhotoChange(body: Record<string, unknown>): PhotoChangeInput {
+    rejectUnknown(body, ["action", "type", "index", "image", "expectedCount"]);
+    const action = body.action;
+    if (typeof action !== "string" || !(PHOTO_ACTIONS as readonly string[]).includes(action)) {
+        throw new AdminValidationError("คำสั่งรูปภาพไม่ถูกต้อง", ["action"]);
+    }
+    if (body.type !== "before" && body.type !== "after") throw new AdminValidationError("ประเภทรูปต้องเป็น before หรือ after", ["type"]);
+    const expectedCount = body.expectedCount;
+    if (typeof expectedCount !== "number" || !Number.isInteger(expectedCount) || expectedCount < 0 || expectedCount > MAX_PHOTOS) {
+        throw new AdminValidationError("จำนวนรูปไม่ถูกต้อง", ["expectedCount"]);
+    }
+    const input: PhotoChangeInput = { action: action as PhotoAction, field: body.type === "before" ? "photosBefore" : "photosAfter", expectedCount };
+
+    if (action !== "add") {
+        const index = body.index;
+        if (typeof index !== "number" || !Number.isInteger(index) || index < 0 || index >= expectedCount) {
+            throw new AdminValidationError("ตำแหน่งรูปไม่ถูกต้อง", ["index"]);
+        }
+        input.index = index;
+    } else if (expectedCount >= MAX_PHOTOS) {
+        throw new AdminValidationError(`เพิ่มรูปได้ไม่เกิน ${MAX_PHOTOS} รูปต่อหมวด`, ["image"]);
+    }
+    if (action !== "delete") {
+        const image = body.image;
+        if (typeof image !== "string" || !PHOTO_PATTERN.test(image)) {
+            throw new AdminValidationError("ไฟล์รูปไม่รองรับ (ใช้ JPG, PNG, WEBP หรือ GIF)", ["image"]);
+        }
+        if (image.length > MAX_UPLOAD_PHOTO_LENGTH) throw new AdminValidationError("รูปใหญ่เกินไป กรุณาใช้รูปขนาดเล็กลง", ["image"]);
+        input.image = image;
+    }
+    return input;
 }
